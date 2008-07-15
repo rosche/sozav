@@ -1,0 +1,14 @@
+- $Id: Notes,v 1.1 2008-07-15 17:20:21 roderick Exp $
+
+- variations for computer version
+
+    - which 1/2/3/4/5/6 cards to use
+    - no randomness in cards, always average
+    - reduced randomness in cards
+    - no or reduced randomness in cards, but only for X rounds
+    - changes in Z-Man version
+	- druid gets or doesn't get 3rd level bonus
+    	- 9 sages cards turn into dust if you can't buy that type of gem
+	  (Or produce that card?  What if you had a crystal of
+	  protection, eg?)
+    - restricted order of actions on your turn
