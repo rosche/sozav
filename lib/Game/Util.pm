@@ -1,4 +1,4 @@
-# $Id: Util.pm,v 1.1 2008-07-17 17:38:47 roderick Exp $
+# $Id: Util.pm,v 1.2 2008-07-17 20:05:35 roderick Exp $
 
 package Game::Util;
 
@@ -10,7 +10,7 @@ use RS::Handy	qw(badinvo data_dump dstr xcroak);
 
 use vars qw($VERSION @EXPORT @EXPORT_OK);
 
-$VERSION = q$Revision: 1.1 $ =~ /(\d\S+)/ ? $1 : '?';
+$VERSION = q$Revision: 1.2 $ =~ /(\d\S+)/ ? $1 : '?';
 
 BEGIN {
     @EXPORT = qw(
@@ -20,6 +20,8 @@ BEGIN {
 	add_array_indices
 	debug
 	debug_var
+	make_accessor
+	make_accessor_pkg
     );
     @EXPORT_OK = qw(
     	%Index
@@ -94,6 +96,21 @@ sub debug_var {
 #
 #}
 
+# XXX sub-types handling:  when adding a field to an object, it's
+# important not to class with fields of your ancestors, but it doesn't
+# matter if you clash with your siblings.  Right now all are disjoint,
+# which wasts array space.  Eg it'd be nice to have:
+#
+#     object Foo,          fields fa = 0, fb = 1
+#     object Bar @ISA Foo, fields bc = 2, bc = 3
+#     object Baz @ISA Foo, fields zd = 2, ze = 3
+#
+# but now we have
+#
+#     object Foo,          fields fa = 0, fb = 1
+#     object Bar @ISA Foo, fields bc = 2, bc = 3
+#     object Baz @ISA Foo, fields zd = 4, ze = 5
+
 sub add_array_index_type {
     @_ == 1 || badinvo;
     my ($itype) = map { uc } @_;
@@ -138,6 +155,29 @@ sub add_array_indices {
 
     add_array_index_type $itype;
     add_array_index $itype, $_, scalar caller for @iname;
+}
+
+sub make_accessor_pkg {
+    @_ >= 3 || badinvo;
+    my $pkg = shift;
+    @_ % 2 && badinvo;
+
+    while (@_) {
+	my ($name, $index) = splice @_, 0, 2;
+	my $sub = {
+	    @_ == 1 || @_ == 2 || badinvo;
+	    my $self = shift;
+	    my $old = $self->[$index];
+	    $self->[$index] = shift if @_;
+	    return $old;
+	};
+	no strict 'refs';
+	*{ "${pkg}::${name}" } = $sub;
+    }
+}
+
+sub make_accessor {
+    return make_accessor_pkg scalar caller, @_;
 }
 
 1
