@@ -1,7 +1,8 @@
-- $Id: Notes,v 1.1 2008-07-15 17:20:21 roderick Exp $
+- $Id: Notes,v 1.2 2008-07-17 01:56:30 roderick Exp $
 
-- variations for computer version
+- variations to implement
 
+    - 1 dust chits
     - which 1/2/3/4/5/6 cards to use
     - no randomness in cards, always average
     - reduced randomness in cards
