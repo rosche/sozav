@@ -1,77 +1,50 @@
-# $Id: Deck.pm,v 1.1 2008-07-17 01:49:09 roderick Exp $
-
-package Game::ScepterOfZavandor::Deck;
+# $Id: Deck.pm,v 1.2 2008-07-18 14:27:47 roderick Exp $
 
 use strict;
 
-use base qw(Exporter);
+package Game::ScepterOfZavandor::Deck;
 
-use RS::Handy	qw(badinvo create_constant_subs data_dump dstr xcroak);
+use base qw(Game::Util::Deck);
 
-use Game::ScepterOfZavandor::Game qw(/^GEM_/);
-use Game::ScepterOfZavandor::Util;
+use Game::Util	qw(add_array_index debug);
+use RS::Handy	qw(badinvo data_dump dstr xcroak);
 
-use vars qw($VERSION @EXPORT @EXPORT_OK);
-
-$VERSION = q$Revision: 1.1 $ =~ /(\d\S+)/ ? $1 : '?';
+use Game::ScepterOfZavandor::Constant qw(
+    /^GEM_/
+    @Gem
+    @Gem_data
+);
+use Game::ScepterOfZavandor::Item::Energy ();
 
 BEGIN {
-    @EXPORT_OK = qw(
-    );
+    add_array_index 'DECK', qw(GTYPE);
 }
-
-use subs grep { /^[a-z]/    } @EXPORT, @EXPORT_OK;
-use vars grep { /^[\$\@\%]/ } @EXPORT, @EXPORT_OK;
 
 sub new {
     @_ == 2 || badinvo;
     my ($class, $gtype) = @_;
 
-    my $self = bless [], $class;
-    $self->[GAME_OPTION] = [];
-    $self->[GAME_PLAYER] = [];
+    my $self = $class->SUPER::new;
+
+    $self->[DECK_GTYPE]   = $gtype;
+
+    $self->discard(
+	map { Game::ScepterOfZavandor::Item::Energy::Card->new($self, $_) }
+	    @{ $Gem_data[$gtype][GEM_DATA_CARD_LIST] });
+    $self->shuffle;
 
     return $self;
 }
 
-sub add_player {
-    @_ == 2 || badinvo;
-    my ($self, $player) = @_;
+sub draw {
+    my $self = shift;
 
-    ref $player or die dstr $player;
-
-    push @{ $self->[GAME_PLAYER] }, $player;
-}
-
-sub start {
-    @_ == 1 || badinvo;
-    my ($self) = @_;
-
-    my $num_players = $self->num_players;
-    debug_var num_players => $num_players;
-    my $num_players_config = $Config_by_num_players[$num_players];
-    if (!$num_players_config) {
-	xcroak "invalid number of players $num_players";
+    my @r = $self->SUPER::draw(@_);
+    if (!defined $r[-1]) {
+	xcroak "ran out of $Gem[$self->[DECK_GTYPE]] cards";
     }
 
-    # initialize gem decks
-
-    $self->[GAME_GEM_DECKS] = [];
-    for my $i (0..$#Gem) {
-    	next if $i == GEM_OPAL;
-	$self->[GAME_GEM_DECKS][$i] = Game::ScepterOfZavandor::Deck->new($i);
-    }
+    return @r == 1 ? $r[0] : @r;
 }
-
-#------------------------------------------------------------------------------
-
-sub num_players {
-    @_ == 1 || badinvo;
-    my ($self) = @_;
-
-    return scalar @{ $self->[GAME_PLAYER] };
-}
-
-#------------------------------------------------------------------------------
 
 1
