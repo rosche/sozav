@@ -1,47 +1,27 @@
-# $Id: UI.pm,v 1.1 2008-07-15 17:31:27 roderick Exp $
-
-=head1 NAME
-
-Game::ScepterOfZavandor::UI - XXX
-
-=head1 SYNOPSIS
-
-XXX
-
-=head1 DESCRIPTION
-
-XXX
-
-=cut
-
-package Game::ScepterOfZavandor::UI;
+# $Id: UI.pm,v 1.2 2008-07-19 18:33:31 roderick Exp $
 
 use strict;
 
-use base qw(Exporter);
+package Game::ScepterOfZavandor::UI;
 
+use Game::Util 	qw(add_array_indices debug make_rw_accessor);
 use RS::Handy	qw(badinvo data_dump dstr xcroak);
 
-use vars qw($VERSION @EXPORT);
-
-$VERSION = q$Revision: 1.1 $ =~ /(\d\S+)/ ? $1 : '?';
-
 BEGIN {
-    @EXPORT = qw(
-    );
+    add_array_indices 'UI', qw(PLAYER);
 }
 
-use subs grep { /^[a-z]/    } @EXPORT;
-use vars grep { /^[\$\@\%]/ } @EXPORT;
+sub new {
+    @_ == 1 || badinvo;
+    my ($class) = @_;
 
-=head1 IMPORTABLES
+    my $self = bless [], $class;
 
-=over 4
+    return $self;
+}
 
-XXX
-
-=back
-
-=cut
+make_rw_accessor (
+    a_player => UI_PLAYER,
+);
 
 1
