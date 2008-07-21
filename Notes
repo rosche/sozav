@@ -1,15 +1,48 @@
-- $Id: Notes,v 1.2 2008-07-17 01:56:30 roderick Exp $
+- $Id: Notes,v 1.3 2008-07-21 16:19:39 roderick Exp $
+
+- rules to remember
+
+    - 5 ruby limit
+    - diamond from elixir goes to the pentagon, only activated on your
+      turn
+    - faq says
+	- The phases 3a, 3b and 3c may be done in any order, although you may
+	  NOT split any of the phases, like selling
+	  gems (3a), increase gems knowledge (3b) and then buy gems (3a again).
+      but it also earlier says
+    - player 1 penalty applies if anybody has 10 points (eg another
+      player won an auction on player 1's turn and player 1 goes again)?
+      It says this in rules 2.0.  It would also apply to poisitions 5
+      and 6, but position 2's penalty only applies if position 2 has 10
+      points.
+
+- questions
+    - are gems limited?
+
+- todo
+    - undo
+    - show things you can afford to do
+    - search for die/croak, deal more gracefully with some of them
+    - many assertion-type tests
 
 - variations to implement
 
+    - select character
+    - multiple of same character
     - 1 dust chits
     - which 1/2/3/4/5/6 cards to use
     - no randomness in cards, always average
     - reduced randomness in cards
     - no or reduced randomness in cards, but only for X rounds
+    	- perhaps pick out 3+7 sapphires, include them when reshuffling
     - changes in Z-Man version
 	- druid gets or doesn't get 3rd level bonus
     	- 9 sages cards turn into dust if you can't buy that type of gem
 	  (Or produce that card?  What if you had a crystal of
 	  protection, eg?)
     - restricted order of actions on your turn
+    - bid for characters http://www.boardgamegeek.com/thread/29499
+    - fire 3 ruby for any player
+    - no druid fire 3 ruby
+    - don't turn 9 sages cards into dust
+    - no druid except in a 6 player game
