@@ -1,4 +1,4 @@
-# $Id: Deck.pm,v 1.2 2008-07-18 14:27:47 roderick Exp $
+# $Id: Deck.pm,v 1.3 2008-07-21 17:42:50 roderick Exp $
 
 use strict;
 
@@ -26,7 +26,7 @@ sub new {
 
     my $self = $class->SUPER::new;
 
-    $self->[DECK_GTYPE]   = $gtype;
+    $self->[DECK_GTYPE] = $gtype;
 
     $self->discard(
 	map { Game::ScepterOfZavandor::Item::Energy::Card->new($self, $_) }
@@ -41,6 +41,7 @@ sub draw {
 
     my @r = $self->SUPER::draw(@_);
     if (!defined $r[-1]) {
+	# XXX
 	xcroak "ran out of $Gem[$self->[DECK_GTYPE]] cards";
     }
 
