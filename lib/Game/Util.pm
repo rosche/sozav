@@ -1,4 +1,4 @@
-# $Id: Util.pm,v 1.2 2008-07-17 20:05:35 roderick Exp $
+# $Id: Util.pm,v 1.3 2008-07-21 00:06:40 roderick Exp $
 
 package Game::Util;
 
@@ -10,7 +10,7 @@ use RS::Handy	qw(badinvo data_dump dstr xcroak);
 
 use vars qw($VERSION @EXPORT @EXPORT_OK);
 
-$VERSION = q$Revision: 1.2 $ =~ /(\d\S+)/ ? $1 : '?';
+$VERSION = q$Revision: 1.3 $ =~ /(\d\S+)/ ? $1 : '?';
 
 BEGIN {
     @EXPORT = qw(
@@ -20,7 +20,8 @@ BEGIN {
 	add_array_indices
 	debug
 	debug_var
-	make_accessor
+	make_ro_accessor
+	make_rw_accessor
 	make_accessor_pkg
     );
     @EXPORT_OK = qw(
@@ -32,7 +33,7 @@ use subs grep { /^[a-z]/    } @EXPORT, @EXPORT_OK;
 use vars grep { /^[\$\@\%]/ } @EXPORT, @EXPORT_OK;
 
 BEGIN {
-    $Debug = 0;
+    $Debug = 0 if !defined $Debug;
 }
 
 sub debug {
@@ -129,6 +130,8 @@ sub add_array_index {
 
     my $r = $Index{$itype};
 
+    $iname =~ tr/ -/__/;
+
     if (!$r) {
 	xcroak "invalid index type ", dstr $itype;
     }
@@ -144,7 +147,7 @@ sub add_array_index {
 
     my $sub = "${itype}_${iname}";
     no strict 'refs';
-    debug "create ${pkg}::${sub}" if $Debug > 2;
+    debug "create ${pkg}::${sub} -> $ix" if $Debug > 2;
     *{ "${pkg}::${sub}" } = sub () { $ix };
     push @{ "${pkg}::EXPORT_OK" }, $sub;
 }
@@ -158,26 +161,36 @@ sub add_array_indices {
 }
 
 sub make_accessor_pkg {
-    @_ >= 3 || badinvo;
+    @_ >= 4 || badinvo;
     my $pkg = shift;
+    my $rw  = shift;
     @_ % 2 && badinvo;
 
     while (@_) {
 	my ($name, $index) = splice @_, 0, 2;
-	my $sub = {
-	    @_ == 1 || @_ == 2 || badinvo;
-	    my $self = shift;
-	    my $old = $self->[$index];
-	    $self->[$index] = shift if @_;
-	    return $old;
-	};
+	my $sub = $rw
+	    ? sub {
+		@_ == 1 || @_ == 2 || badinvo;
+		my $self = shift;
+		my $old = $self->[$index];
+		$self->[$index] = shift if @_;
+		return $old;
+	    }
+	    : sub {
+	    	@_ == 1 || badinvo;
+		return $_[0]->[$index];
+	    };
 	no strict 'refs';
 	*{ "${pkg}::${name}" } = $sub;
     }
 }
 
-sub make_accessor {
-    return make_accessor_pkg scalar caller, @_;
+sub make_ro_accessor {
+    return make_accessor_pkg scalar caller, 0, @_;
+}
+
+sub make_rw_accessor {
+    return make_accessor_pkg scalar caller, 1, @_;
 }
 
 1
