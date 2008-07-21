@@ -1,20 +1,11 @@
-# $Id: Deck.pm,v 1.2 2008-07-18 18:55:26 roderick Exp $
+# $Id: Deck.pm,v 1.3 2008-07-21 17:39:52 roderick Exp $
 
 package Game::Util::Deck;
 
 use strict;
 
-use base qw(Exporter);
-
 use Game::Util	qw(add_array_indices debug make_rw_accessor);
 use RS::Handy	qw(badinvo data_dump dstr xcroak);
-
-use vars qw($VERSION @EXPORT @EXPORT_OK);
-
-$VERSION = q$Revision: 1.2 $ =~ /(\d\S+)/ ? $1 : '?';
-
-use subs grep { /^[a-z]/    } @EXPORT, @EXPORT_OK;
-use vars grep { /^[\$\@\%]/ } @EXPORT, @EXPORT_OK;
 
 BEGIN {
     add_array_indices 'DECK', qw(DRAW DISCARD AUTO_RESHUFFLE);
