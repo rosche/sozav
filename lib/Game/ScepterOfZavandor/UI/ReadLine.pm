@@ -1,4 +1,4 @@
-# $Id: ReadLine.pm,v 1.1 2008-07-22 14:02:20 roderick Exp $
+# $Id: ReadLine.pm,v 1.2 2008-07-22 20:57:11 roderick Exp $
 
 use strict;
 
@@ -15,8 +15,6 @@ BEGIN {
     add_array_index 'UI', $_ for map { "READLINE_$_" } qw(OBJ);
 }
 
-my $Oi = UI_READLINE_OBJ; # object index
-
 sub new {
     @_ == 3 || badinvo;
     my ($class, $in_fh, $out_fh) = @_;
@@ -25,8 +23,10 @@ sub new {
     $out_fh = qualify_to_ref $out_fh, scalar caller;
 
     my $self = $class->SUPER::new($in_fh, $out_fh);
-    $self->[$Oi] = Term::ReadLine->new('zavandor', $in_fh, $out_fh)
+    $self->[UI_READLINE_OBJ] = Term::ReadLine->new('zavandor', $in_fh, $out_fh)
 	or xcroak "can't initialize Term::ReadLine";
+
+    # XXX completion
 
     return $self;
 }
@@ -35,5 +35,7 @@ sub in {
     @_ == 1 || badinvo;
     my $self = shift;
 
-    return $self->[$Oi]->readline;
+    return $self->[UI_READLINE_OBJ]->readline;
 }
+
+1
