@@ -1,4 +1,4 @@
-# $Id: Constant.pm,v 1.2 2008-07-21 16:20:46 roderick Exp $
+# $Id: Constant.pm,v 1.3 2008-07-22 02:10:51 roderick Exp $
 
 use strict;
 
@@ -13,8 +13,9 @@ use RS::Handy		qw(badinvo data_dump dstr xcroak);
 
 use vars qw($VERSION @EXPORT @EXPORT_OK);
 BEGIN {
-    $VERSION = q$Revision: 1.2 $ =~ /(\d\S+)/ ? $1 : '?';
+    $VERSION = q$Revision: 1.3 $ =~ /(\d\S+)/ ? $1 : '?';
     @EXPORT_OK = qw(
+	$Base_gem_slots
 	$Base_hand_limit
 	@Character
 	%Character
@@ -22,9 +23,10 @@ BEGIN {
 	@Config_by_num_players
 	$Concentrated_card_count
 	$Concentrated_additional_dust
-	$Concentrated_hand_limit
+	$Concentrated_hand_count
 	@Current_energy
 	@Dust_data
+	$Dust_data_val_1
 	@Gem
 	%Gem
 	@Gem_data
@@ -44,28 +46,36 @@ BEGIN {
     %Character = map { $Character[$_] => $_ } 0..$#Character;
     add_array_indices 'CHAR', @Character;
     add_array_indices 'CHAR_DATA', (
-    	'knowledge_track',
-    	'start_dust',
-	'start_items',
+    	'KNOWLEDGE_TRACK',
+    	'START_DUST',
+	'START_ITEMS',
     );
 
+    @Current_energy = (
+    	'total',		# total = liquid + active gems
+	    'liquid',		# liquid = cards+dust + inactive gems
+		'cards+dust',	# XXX better name
+		'inactive gems',
+	    'active gems');
+    add_array_indices 'CUR_ENERGY', @Current_energy;
+
     add_array_indices 'DUST_DATA', (
-    	'value',
-    	'hand_limit',
-	'opal_count',
+    	'VALUE',
+    	'HAND_COUNT',
+	'OPAL_COUNT',
     );
 
     @Gem = qw(opal sapphire emerald diamond ruby);
     %Gem = map { $Gem[$_] => $_ } 0..$#Gem;
     add_array_indices 'GEM', @Gem;
     add_array_indices 'GEM_DATA', (
-    	'cost',
-	'vp',
-    	'card_list',
-    	'card_min',
-    	'card_max',
-    	'card_avg',
-    	'concentrated',
+    	'COST',
+	'VP',
+    	'CARD_LIST',
+    	'CARD_MIN',
+    	'CARD_MAX',
+    	'CARD_AVG',
+    	'CONCENTRATED',
     );
 
     @Item_type = qw(knowledge artifact sentinel gem card dust concentrated);
@@ -76,9 +86,6 @@ BEGIN {
     %Knowledge = map { $Knowledge[$_] => $_ } 0..$#Knowledge;
     add_array_indices 'KNOW', @Knowledge;
 
-    @Current_energy = ('total', 'liquid', 'active gems');
-    add_array_indices 'CUR_ENERGY', @Current_energy;
-
     @Option = (
     	'1 dust',
     );
@@ -87,10 +94,11 @@ BEGIN {
 }
 
 BEGIN {
+    $Base_gem_slots               = 5;
     $Base_hand_limit              = 5;
     $Concentrated_card_count      = 4;
     $Concentrated_additional_dust = 2;
-    $Concentrated_hand_limit      = 3;
+    $Concentrated_hand_count      = 3;
 }
 
 BEGIN {
@@ -115,21 +123,27 @@ BEGIN {
     $Character_data[CHAR_ELF   ][$i] = \&start_items_common;
     $Character_data[CHAR_DRUID ][$i] = \&start_items_common;
     $Character_data[CHAR_FAIRY ][$i] = sub {
-    	(start_items_common(@_), $_[0]->draw_from_deck(GEM_SAPPHIRE, 2)) };
+    	(start_items_common(@_),
+	    $_[0]->a_game->draw_from_deck(GEM_SAPPHIRE, 2)) };
     $Character_data[CHAR_MAGE  ][$i] = \&start_items_common;
     $Character_data[CHAR_KOBOLD][$i] = \&start_items_common;
 }
 
 BEGIN {
-    # XXX 1-dust via options
-    for ([10 => 3, 3], [5 => 2, 2], [2 => 1, 1], [1 => 1]) {
+    # These have to be ordered by descending hand count efficiency.
+
+    for ([10 => 3, 3], [5 => 2, 2], [2 => 1, 1], [1 => 1, 1]) {
     	my ($v, $hl, $opal_count) = @$_;
     	my $r = [];
 	$r->[DUST_DATA_VALUE]      = $v;
-	$r->[DUST_DATA_HAND_LIMIT] = $hl;
+	$r->[DUST_DATA_HAND_COUNT] = $hl;
 	$r->[DUST_DATA_OPAL_COUNT] = $opal_count;
 	push @Dust_data, $r;
     }
+
+    # 1-value dust isn't normally present, it can be added via an option.
+
+    $Dust_data_val_1 = pop @Dust_data;
 }
 
 # 126 energy cards
@@ -188,26 +202,27 @@ BEGIN {
    @Config_by_num_players = (
     	undef, # 0
     	[], # XXX undef, # 1
-    	[], # 2
-    	[], # 3
-    	[], # 4
-    	[], # 5
-    	[], # 6
+    	[1], # 2
+    	[2], # 3
+    	[2], # 4
+    	[3], # 5
+    	[3], # 6
     );
 }
 
 #------------------------------------------------------------------------------
 
 sub start_items_common {
-    my ($game, $char) = @_;
+    my ($player) = @_;
 
     my @i;
 
     require Game::ScepterOfZavandor::Item::Gem;
     for (GEM_OPAL, GEM_OPAL, GEM_SAPPHIRE) {
-    	push @i, Game::ScepterOfZavandor::Item::Gem->new($_, $game);
+    	push @i, Game::ScepterOfZavandor::Item::Gem->new($_, $player);
     }
 
+    my $char = $player->a_char;
     push @i, Game::ScepterOfZavandor::Item::Energy::Dust->make_dust(
     	    	$Character_data[$char][CHAR_DATA_START_DUST]);
 
