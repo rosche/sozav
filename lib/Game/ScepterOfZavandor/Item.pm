@@ -1,4 +1,4 @@
-# $Id: Item.pm,v 1.3 2008-07-21 02:35:02 roderick Exp $
+# $Id: Item.pm,v 1.4 2008-07-23 01:09:06 roderick Exp $
 
 use strict;
 
@@ -6,7 +6,8 @@ package Game::ScepterOfZavandor::Item;
 
 use overload '""' => "as_string";
 
-use Game::Util  	qw($Debug add_array_indices debug make_rw_accessor);
+use Game::Util  	qw($Debug add_array_indices debug
+			    make_ro_accessor make_rw_accessor);
 use RS::Handy		qw(badinvo data_dump dstr xcroak);
 
 use Game::ScepterOfZavandor::Constant qw(
@@ -15,7 +16,13 @@ use Game::ScepterOfZavandor::Constant qw(
 );
 
 BEGIN {
-    add_array_indices 'ITEM', qw(TYPE VP HAND_LIMIT);
+    add_array_indices 'ITEM', qw(
+    	TYPE
+	VP
+	GEM_SLOTS
+	HAND_COUNT
+	HAND_LIMIT_MODIFIER
+    );
 }
 
 sub new {
@@ -26,19 +33,28 @@ sub new {
 	or die;
 
     my $self = bless [], $class;
-    $self->a_item_type($itype);
+    $self->[ITEM_TYPE] = $itype;
     $self->a_vp(0);
-    $self->a_hand_limit(0);
+    $self->a_hand_count(0);
+    $self->a_hand_limit_modifier(0);
+    $self->a_gem_slots(0);
 
     return $self;
 }
 
-make_rw_accessor (
-    a_item_type  => ITEM_TYPE,
-    a_vp         => ITEM_VP,
-    a_hand_limit => ITEM_HAND_LIMIT,
+make_ro_accessor (
+    a_item_type           => ITEM_TYPE,
 );
 
+make_rw_accessor (
+    # XXX maybe a ITEM_STATIC_VP, if that isn't set use a method (for
+    # sentinels, gems)
+    a_vp                  => ITEM_VP,
+    # XXX pass these to ->new and make them read only?
+    a_hand_count          => ITEM_HAND_COUNT,
+    a_hand_limit_modifier => ITEM_HAND_LIMIT_MODIFIER,
+    a_gem_slots           => ITEM_GEM_SLOTS,
+);
 
 sub as_string_fields {
     @_ || badinvo;
@@ -47,7 +63,7 @@ sub as_string_fields {
     my @r;
     push @r,
 	    "vp=$self->[ITEM_VP]",
-	    "hl=$self->[ITEM_HAND_LIMIT]",
+	    "hl=$self->[ITEM_HAND_COUNT]",
     	if $Debug > 1;
     return @r;
 }
@@ -74,12 +90,26 @@ sub is_gem {
 sub energy {
     @_ == 1 || badinvo;
     my $self = shift;
-    return $self->is_energy ? $self->a_value : 0;
+
+    return 0;
 }
 
 sub produce_energy {
     @_ == 1 || badinvo;
     my $self = shift;
+    return;
+}
+
+sub use_up {
+    @_ == 1 || badinvo;
+    my $self = shift;
+
+    # I think gems and energy are the only things which can be discarded.
+    # I don't now if this assumption has influenced any code, but I'm
+    # testing it here so I'll know if it's wrong.
+
+    $self->is_gem || $self->is_energy
+	or xcroak "->use_up called on $self";
 
     return;
 }
