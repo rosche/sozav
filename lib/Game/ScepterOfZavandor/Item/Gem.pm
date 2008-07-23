@@ -1,12 +1,14 @@
-# $Id: Gem.pm,v 1.2 2008-07-21 00:20:03 roderick Exp $
+# $Id: Gem.pm,v 1.3 2008-07-23 12:01:26 roderick Exp $
 
 use strict;
 
 package Game::ScepterOfZavandor::Item::Gem;
 
+use overload '<=>' => "spaceship";
+
 use base qw(Game::ScepterOfZavandor::Item);
 
-use Game::Util	qw(add_array_index debug make_rw_accessor);
+use Game::Util	qw(add_array_index debug make_ro_accessor);
 use RS::Handy	qw(badinvo data_dump dstr xcroak);
 
 use Game::ScepterOfZavandor::Constant qw(
@@ -18,26 +20,29 @@ use Game::ScepterOfZavandor::Constant qw(
 
 BEGIN {
     add_array_index 'ITEM', $_ for map { "GEM_$_" }
-	qw(TYPE DECK ACTIVE_VP ACTIVE);
+	qw(TYPE PLAYER DECK ACTIVE_VP ACTIVE);
 }
 
 sub new {
     @_ == 3 || badinvo;
-    my ($class, $gtype, $game) = @_;
+    my ($class, $gtype, $player) = @_;
 
-    defined $Gem[$gtype] or die;;
+    defined $Gem[$gtype] or xcroak;;
+    $player->isa(Game::ScepterOfZavandor::Player::) or xcroak;
 
     my $self = $class->SUPER::new(ITEM_TYPE_GEM);
     $self->[ITEM_GEM_TYPE]      = $gtype;
-    $self->[ITEM_GEM_DECK]      = $game->a_gem_decks->[$gtype];
+    $self->[ITEM_GEM_PLAYER]    = $player;
+    $self->[ITEM_GEM_DECK]      = $player->a_game->a_gem_decks->[$gtype];
     $self->[ITEM_GEM_ACTIVE_VP] = $Gem_data[$gtype][GEM_DATA_VP];
     $self->[ITEM_GEM_ACTIVE]    = 0;
 
     return $self;
 }
 
-make_rw_accessor (
+make_ro_accessor (
     a_gem_type => ITEM_GEM_TYPE,
+    a_player   => ITEM_GEM_PLAYER,
 );
 
 sub as_string_fields {
@@ -50,11 +55,11 @@ sub as_string_fields {
     return @r;
 }
 
-sub is_active {
-    @_ == 1 || badinvo;
-    my $self = shift;
+sub spaceship {
+    @_ == 3 || badinvo;
+    my ($a, $b) = @_;
 
-    return $self->[ITEM_GEM_ACTIVE];
+    return $a->[ITEM_GEM_TYPE] <=> $b->[ITEM_GEM_TYPE];
 }
 
 sub activate {
@@ -63,10 +68,38 @@ sub activate {
 
     return if $self->is_active;
 
+    debug "activate $self";
+
     # XXX check for slots
 
     $self->[ITEM_GEM_ACTIVE] = 1;
     $self->a_vp($self->[ITEM_GEM_ACTIVE_VP])
+}
+
+sub deactivate {
+    @_ == 1 || badinvo;
+    my $self = shift;
+
+    return if !$self->is_active;
+
+    debug "deactivate $self";
+
+    $self->[ITEM_GEM_ACTIVE] = 0;
+    $self->a_vp(0);
+}
+
+sub is_active {
+    @_ == 1 || badinvo;
+    my $self = shift;
+
+    return $self->[ITEM_GEM_ACTIVE];
+}
+
+sub energy {
+    @_ == 1 || badinvo;
+    my $self = shift;
+
+    return $self->a_player->gem_value($self);
 }
 
 sub produce_energy {
@@ -75,6 +108,15 @@ sub produce_energy {
 
     # XXX
     return $self->is_active ? $self->[ITEM_GEM_DECK]->draw : ();
+}
+
+sub use_up {
+    @_ == 1 || badinvo;
+    my $self = shift;
+
+    $self->SUPER::use_up;
+    $self->deactivate;
+    return $self->a_player->sell_gem($self);
 }
 
 1
