@@ -1,17 +1,22 @@
-# $Id: Game.pm,v 1.2 2008-07-21 16:24:43 roderick Exp $
+# $Id: Game.pm,v 1.3 2008-07-23 01:03:20 roderick Exp $
 
 use strict;
 
 package Game::ScepterOfZavandor::Game;
 
-use Game::Util	qw(add_array_indices debug debug_var make_rw_accessor);
+use Game::Util	qw(add_array_indices debug debug_var make_ro_accessor);
 use RS::Handy	qw(badinvo create_constant_subs data_dump dstr xcroak);
 
 use Game::ScepterOfZavandor::Constant	qw(
     /^GEM_/
+    /^OPT_/
     @Character
     @Config_by_num_players
+    @Dust_data
+    $Dust_data_val_1
     @Gem
+    @Option
+    %Option
 );
 use Game::ScepterOfZavandor::Deck	();
 use Game::ScepterOfZavandor::Player	();
@@ -35,12 +40,26 @@ sub new {
     $self->[GAME_OPTION] = [];
     $self->[GAME_PLAYER] = [];
 
+    for (0..$#Option) {
+	# XXX non-boolean types
+	$self->option($_, 0);
+    }
+
     return $self;
 }
 
-make_rw_accessor (
+make_ro_accessor (
     a_gem_decks => GAME_GEM_DECKS,
 );
+
+sub die_if_initialized {
+    @_ == 1 || badinvo;
+    my ($self) = @_;
+
+    if ($self->[GAME_INITIALIZED]) {
+    	xcroak "game is already initialized";
+    }
+}
 
 sub add_player {
     @_ == 2 || badinvo;
@@ -52,19 +71,48 @@ sub add_player {
     push @{ $self->[GAME_PLAYER] }, $player;
 }
 
+sub option {
+    @_ == 2 || @_ == 3 || badinvo;
+    my $self = shift;
+    my $opt = shift;
+
+    if (!$opt < 0 || $opt > @Option) {
+	xcroak "invalid option ", dstr $opt;
+    }
+
+    my $old = $self->[GAME_OPTION][$opt];
+    if (@_) {
+	my $new = shift;
+	$self->die_if_initialized;
+	# XXX check type
+	$self->[GAME_OPTION][$opt] = $new;
+    }
+
+    return $old;
+}
+
 sub init {
     @_ == 1 || badinvo;
     my ($self) = @_;
 
-    if ($self->[GAME_INITIALIZED]) {
-    	xcroak "game is already initialized";
-    }
+    $self->die_if_initialized;
+
+    # XXX
+    print "options: ", join(" ",
+	map { ($self->option($_) ? "" : "!") . $Option[$_] } 0..$#Option),
+	"\n";
 
     my $num_players = $self->num_players;
     debug_var num_players => $num_players;
     my $num_players_config = $Config_by_num_players[$num_players];
     if (!$num_players_config) {
 	xcroak "invalid number of players $num_players";
+    }
+
+    # add 1 dust if desired
+
+    if ($self->option(OPT_1_DUST)) {
+	push @Dust_data, $Dust_data_val_1;
     }
 
     # initialize gem decks
@@ -81,7 +129,7 @@ sub init {
 
     my @c = RS::Handy::shuffle 0..$#Character;
     for my $player ($self->players) {
-    	$player->init($self, shift @c);
+    	$player->init(shift @c);
     }
 
     $self->[GAME_INITIALIZED] = 1;
@@ -115,6 +163,10 @@ sub play {
 	# phase 4: check victory conditions
 
 	# phase 4: hand limit
+
+	for ($self->players) {
+	    $_->enforce_hand_limit;
+	}
     }
 }
 
