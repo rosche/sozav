@@ -1,4 +1,4 @@
-# $Id: Energy.pm,v 1.2 2008-07-21 02:41:16 roderick Exp $
+# $Id: Energy.pm,v 1.3 2008-07-23 11:59:39 roderick Exp $
 
 use strict;
 
@@ -10,7 +10,7 @@ use overload '<=>' => "spaceship";
 
 use base qw(Game::ScepterOfZavandor::Item);
 
-use Game::Util	qw(add_array_index debug make_rw_accessor);
+use Game::Util	qw(add_array_index debug make_ro_accessor);
 use RS::Handy	qw(badinvo data_dump dstr xcroak);
 
 #use Game::ScepterOfZavandor::Constant qw(
@@ -24,24 +24,24 @@ BEGIN {
     # person has
     #
     # XXX or maybe store this in a central array indexed by type of
-    # thing (1, 2, 10 dust, 4 gem cards types, 4 concntrated energy
+    # thing (1, 2, 5, 10 dust, 4 gem cards types, 4 concntrated energy
     # types)
 }
 
 sub new {
     @_ == 4 || badinvo;
-    my ($class, $itype, $value, $hand_limit) = @_;
+    my ($class, $itype, $value, $hand_count) = @_;
 
     $value >= 1 or die;;
 
     my $self = $class->SUPER::new($itype);
-    $self->a_value($value);
-    $self->a_hand_limit($hand_limit);
+    $self->[ITEM_ENERGY_VALUE] = $value;
+    $self->a_hand_count($hand_count);
 
     return $self;
 }
 
-make_rw_accessor (
+make_ro_accessor (
     a_value => ITEM_ENERGY_VALUE,
 );
 
@@ -50,24 +50,28 @@ sub as_string_fields {
     my $self = shift;
     my @r = $self->SUPER::as_string_fields(@_);
     push @r,
-	"v=$self->[ITEM_ENERGY_VALUE]",
-    	sprintf("hlr=%3.1f", $self->a_value / $self->a_hand_limit);
+	sprintf("v=%2d", $self->a_value),
+	sprintf("hc=%1d", $self->a_hand_count),
+    	sprintf("hlr=%3.1f", $self->a_value / $self->a_hand_count);
     return @r;
+}
+
+sub energy {
+    @_ == 1 || badinvo;
+    my $self = shift;
+
+    return $self->a_value;
 }
 
 sub spaceship {
     @_ == 3 || badinvo;
     my ($a, $b) = @_;
 
-    # Prefer cards with a higher value:hand-limit ratio.
+    # Prefer cards with a higher value:hand-count ratio.
 
-    return(($a->a_value/$a->a_hand_limit) <=> ($b->a_value/$b->a_hand_limit));
+    return(($a->a_value/$a->a_hand_count) <=> ($b->a_value/$b->a_hand_count));
 }
 
-sub use_up {
-    @_ == 1 || badinvo;
-    my $self = shift;
-}
 
 #------------------------------------------------------------------------------
 
@@ -103,6 +107,7 @@ sub use_up {
 
     $self->SUPER::use_up;
     $self->[ITEM_ENERGY_CARD_DECK]->discard($self);
+    return;
 }
 
 #------------------------------------------------------------------------------
@@ -122,14 +127,14 @@ use Game::ScepterOfZavandor::Constant qw(
 
 {
 
-my %dust_to_hand_limit
-    = map { $_->[DUST_DATA_VALUE] => $_->[DUST_DATA_HAND_LIMIT] } @Dust_data;
+my %dust_to_hand_count
+    = map { $_->[DUST_DATA_VALUE] => $_->[DUST_DATA_HAND_COUNT] } @Dust_data;
 
 sub new {
     @_ == 2 || badinvo;
     my ($class, $value) = @_;
 
-    my $hl = $dust_to_hand_limit{$value};
+    my $hl = $dust_to_hand_count{$value};
     defined $hl or die;
 
     return $class->SUPER::new(ITEM_TYPE_DUST, $value, $hl);
@@ -183,7 +188,7 @@ use RS::Handy	qw(badinvo data_dump dstr xcroak);
 use Game::ScepterOfZavandor::Constant qw(
     /^GEM_/
     /^ITEM_/
-    $Concentrated_hand_limit
+    $Concentrated_hand_count
     @Gem_data
 );
 
@@ -193,7 +198,7 @@ sub new {
 
     return $class->SUPER::new(ITEM_TYPE_CONCENTRATED,
 				$Gem_data[$gtype][GEM_DATA_CONCENTRATED],
-    	    	    	    	$Concentrated_hand_limit);
+    	    	    	    	$Concentrated_hand_count);
 }
 
 #------------------------------------------------------------------------------
