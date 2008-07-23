@@ -1,4 +1,4 @@
-# $Id: Stdio.pm,v 1.2 2008-07-21 02:44:49 roderick Exp $
+# $Id: Stdio.pm,v 1.3 2008-07-23 00:51:42 roderick Exp $
 
 use strict;
 
@@ -6,7 +6,7 @@ package Game::ScepterOfZavandor::UI::Stdio;
 
 use base qw(Game::ScepterOfZavandor::UI);
 
-use Game::Util 	qw(add_array_index debug make_rw_accessor);
+use Game::Util 	qw(add_array_index debug);
 use RS::Handy	qw(badinvo data_dump dstr xcroak);
 use Symbol	qw(qualify_to_ref);
 
@@ -68,7 +68,8 @@ sub one_action {
 
     my $liquid = $self->a_player->current_energy_liquid;
     my $hc = $self->a_player->current_hand_count;
-    $self->out_char("action? ($liquid liquid, $hc hand count) ");
+    my $hl = $self->a_player->hand_limit;
+    $self->out_char("action? ($liquid liquid, $hc/$hl hand limit) ");
     my $s = $self->in;
     return unless defined $s && $s ne '';
     my ($cmd, @arg) = split ' ', $s;
@@ -130,9 +131,11 @@ sub action_items {
     my $self = shift;
 
     my @e = $self->a_player->current_energy;
-    $self->out_char(sprintf "energy: %d (%d + %d)\n",
+    $self->out_char(sprintf "energy: %d total %d liquid (%d + %d) %d active\n",
 		    @e[CUR_ENERGY_TOTAL,
 			CUR_ENERGY_LIQUID,
+			CUR_ENERGY_CARDS_DUST,
+			CUR_ENERGY_INACTIVE_GEMS,
 			CUR_ENERGY_ACTIVE_GEMS]);
     $self->out_char("items:\n");
     $self->out("  $_\n") for $self->a_player->items;
@@ -140,7 +143,7 @@ sub action_items {
 }
 *action_i = \&action_items;
 
-sub action_buy_gem {
+sub action_enchant_gem {
     @_ == 2 || badinvo;
     my $self = shift;
     my $gname = shift;
@@ -150,17 +153,46 @@ sub action_buy_gem {
     	die "invalid gem name ", dstr $gname;
     }
 
-    # XXX can_buy
+    # XXX can_enchant
 
-    my $g = $self->a_player->buy_gem($gtype)
+    my $g = $self->a_player->enchant_gem($gtype)
 	or die "didn't get a gem back";
 
-    # XXX slots
+    # XXX don't automatically activate
 
-    $g->activate;
+    $self->a_player->auto_activate_gems;
 
     return 1;
 }
-*action_b = \&action_buy_gem;
+*action_e = \&action_enchant_gem;
+
+sub action_sell_gem {
+    @_ == 2 || badinvo;
+    my $self  = shift;
+    my $gname = shift;
+
+    my $gtype = $Gem{$gname};
+    if (!defined $gtype) {
+    	die "invalid gem name ", dstr $gname;
+    }
+
+    # XXX let user pick
+    #
+    # XXX or at least prefer inactive ones (though the auto-activate
+    # makes this non-critical)
+
+    my ($gem) = grep { $_->a_gem_type == $gtype } $self->a_player->gems;
+    if (!$gem) {
+	die "you don't own a $gname"; # XXX grammar
+    }
+
+    $self->a_player->remove_items($gem);
+
+    # XXX don't automatically activate
+
+    $self->a_player->auto_activate_gems;
+
+    return 1;
+}
 
 1
