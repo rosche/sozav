@@ -1,4 +1,4 @@
-# $Id: Constant.pm,v 1.3 2008-07-22 02:10:51 roderick Exp $
+# $Id: Constant.pm,v 1.4 2008-07-24 23:36:30 roderick Exp $
 
 use strict;
 
@@ -13,10 +13,17 @@ use RS::Handy		qw(badinvo data_dump dstr xcroak);
 
 use vars qw($VERSION @EXPORT @EXPORT_OK);
 BEGIN {
-    $VERSION = q$Revision: 1.3 $ =~ /(\d\S+)/ ? $1 : '?';
+    $VERSION = q$Revision: 1.4 $ =~ /(\d\S+)/ ? $1 : '?';
     @EXPORT_OK = qw(
 	$Base_gem_slots
 	$Base_hand_limit
+	@Artifact
+    	%Artifact
+	@Artifact_data
+	@Artifact_data_field
+	@Auctionable
+	%Auctionable
+	@Auctionable_data_field
 	@Character
 	%Character
 	@Character_data
@@ -36,6 +43,10 @@ BEGIN {
 	%Knowledge
 	@Option
 	%Option
+	@Sentinel
+    	%Sentinel
+	@Sentinel_data
+	@Sentinel_data_field
     );
 }
 use subs grep { /^[a-z]/    } @EXPORT, @EXPORT_OK;
@@ -54,7 +65,7 @@ BEGIN {
     @Current_energy = (
     	'total',		# total = liquid + active gems
 	    'liquid',		# liquid = cards+dust + inactive gems
-		'cards+dust',	# XXX better name
+		'cards+dust',	# XXY better name
 		'inactive gems',
 	    'active gems');
     add_array_indices 'CUR_ENERGY', @Current_energy;
@@ -91,6 +102,72 @@ BEGIN {
     );
     %Option = map { $Option[$_] => $_ } 0..$#Option;
     add_array_indices 'OPT', @Option;
+
+    # XXX indices overlap
+
+    @Artifact = (
+	'Crystal Ball',
+	'Runestone',
+	'Spellbook',
+	'Magic Belt',
+	'Magic Mirror',
+	'Elixir',
+	'Crystal of Protection',
+	'Mask of Charisma',
+	'Magic Wand',
+	'Chalice of Fire',
+	'Shadow Cloak',
+	'Talisman',
+    );
+    %Artifact = map { $Artifact[$_] => $_ } 0..$#Artifact;
+    add_array_indices 'ARTI', @Artifact;
+
+    @Sentinel = qw(
+	Phoenix
+	Owl
+	Fox
+	Toad
+	Unicorn
+	Tomcat
+	Scarab
+	Raven
+	Salamander
+    );
+    %Sentinel = map { $Sentinel[$_] => $_ } 0..$#Sentinel;
+    add_array_indices 'SENT', @Sentinel;
+
+    @Auctionable = (@Artifact, @Sentinel);
+    %Auctionable = map { $Auctionable[$_] => $_ } 0..$#Auctionable;
+    add_array_indices 'AUC', @Auctionable;
+
+    @Auctionable_data_field = (
+	'NAME',
+	'MIN_BID',
+	'VP',
+    );
+    add_array_indices 'AUC_DATA', @Auctionable_data_field;
+
+    @Artifact_data_field = (
+    	@Auctionable_data_field,
+	'DECK_LETTER',			# A-D, S for sentinels
+	'DISCOUNT_ARTIFACT',		# artifact you get a discount on
+	'DISCOUNT_ARTIFACT_AMOUNT',	# discount of N on specified artifact
+	'DISCOUNT_SENTINELS',		# discount of N on sentinels
+	'OWN_ONLY_1',			# can only own 1 of these
+	'KNOWLEDGE_CHIP',		# stage N knowledge chips
+	'ADVANCE_KNOWLEDGE',		# advance N knowledge stages
+	'GEM_SLOTS',			# add N gem slots
+    	'HAND_LIMIT',			# add N to hand limit
+	'CAN_BUY_GEM',			# you can by gem type GTYPE
+    	'FREE_GEM',			# you get a free gem of type GTYPE
+	'GEM_ENERGY_PRODUCTION',	# produces an energy card of type GTYPE
+	'DESTROY_GEM',			# destroy N gems of each other player
+    );
+    add_array_indices 'ARTI_DATA', @Artifact_data_field;
+
+    @Sentinel_data_field = (
+    	@Auctionable_data_field,
+    );
 }
 
 BEGIN {
@@ -198,17 +275,149 @@ BEGIN {
 }
 
 BEGIN {
-   # XXX
-   @Config_by_num_players = (
+    my ($r, $ix);
+
+    for ([\@Artifact, \@Artifact_data],
+	    [\@Sentinel, \@Sentinel_data]) {
+    	my ($ritem, $rdata) = @$_;
+    	for my $i (0..$#{ $ritem }) {
+	    $rdata->[$i] = [];
+	    $rdata->[$i][AUC_DATA_NAME]    = $ritem->[$i];
+	    $rdata->[$i][AUC_DATA_MIN_BID] = undef;
+	    $rdata->[$i][AUC_DATA_VP]      = undef;
+	}
+    }
+
+    for (0..$#Artifact) {
+    	my $r = $Artifact_data[$_];
+	$r->[ARTI_DATA_DECK_LETTER]              = undef;
+	$r->[ARTI_DATA_DISCOUNT_ARTIFACT]        = undef;
+	$r->[ARTI_DATA_DISCOUNT_ARTIFACT_AMOUNT] = 0;
+	$r->[ARTI_DATA_DISCOUNT_SENTINELS]       = 0;
+	$r->[ARTI_DATA_OWN_ONLY_1]               = 0;
+	$r->[ARTI_DATA_KNOWLEDGE_CHIP]           = 0;
+	$r->[ARTI_DATA_ADVANCE_KNOWLEDGE]        = 0;
+	$r->[ARTI_DATA_GEM_SLOTS]                = 0;
+	$r->[ARTI_DATA_HAND_LIMIT]               = 0;
+	$r->[ARTI_DATA_CAN_BUY_GEM]              = 0;
+	$r->[ARTI_DATA_FREE_GEM]                 = 0;
+	$r->[ARTI_DATA_GEM_ENERGY_PRODUCTION]    = 0;
+	$r->[ARTI_DATA_DESTROY_GEM]              = 0;
+    }
+
+    $r = $Artifact_data[ARTI_CRYSTAL_BALL];
+    $r->[ARTI_DATA_MIN_BID]                  = 20;
+    $r->[ARTI_DATA_VP]                       = 1;
+    $r->[ARTI_DATA_DECK_LETTER]              = 'A';
+    $r->[ARTI_DATA_DISCOUNT_ARTIFACT]        = ARTI_ELIXIR;
+    $r->[ARTI_DATA_DISCOUNT_ARTIFACT_AMOUNT] = 5;
+    $r->[ARTI_DATA_HAND_LIMIT]               = 3;
+
+    $r = $Artifact_data[ARTI_RUNESTONE];
+    $r->[ARTI_DATA_MIN_BID]                  = 20;
+    $r->[ARTI_DATA_VP]                       = 1;
+    $r->[ARTI_DATA_DECK_LETTER]              = 'A';
+    $r->[ARTI_DATA_DISCOUNT_ARTIFACT]        = ARTI_CHALICE_OF_FIRE;
+    $r->[ARTI_DATA_DISCOUNT_ARTIFACT_AMOUNT] = 10;
+    $r->[ARTI_DATA_ADVANCE_KNOWLEDGE]        = 1;
+
+    $r = $Artifact_data[ARTI_SPELLBOOK];
+    $r->[ARTI_DATA_MIN_BID]                  = 20;
+    $r->[ARTI_DATA_VP]                       = 1;
+    $r->[ARTI_DATA_DECK_LETTER]              = 'A';
+    $r->[ARTI_DATA_DISCOUNT_ARTIFACT]        = ARTI_SHADOW_CLOAK;
+    $r->[ARTI_DATA_DISCOUNT_ARTIFACT_AMOUNT] = 15;
+    $r->[ARTI_DATA_CAN_BUY_GEM]              = GEM_EMERALD;
+
+
+    $r = $Artifact_data[ARTI_MAGIC_BELT];
+    $r->[ARTI_DATA_MIN_BID]                  = 30;
+    $r->[ARTI_DATA_VP]                       = 2;
+    $r->[ARTI_DATA_DECK_LETTER]              = 'B';
+    $r->[ARTI_DATA_OWN_ONLY_1]               = 1;
+    $r->[ARTI_DATA_GEM_SLOTS]                = 2;
+
+    $r = $Artifact_data[ARTI_MAGIC_MIRROR];
+    $r->[ARTI_DATA_MIN_BID]                  = 40;
+    $r->[ARTI_DATA_VP]                       = 2;
+    $r->[ARTI_DATA_DECK_LETTER]              = 'B';
+    $r->[ARTI_DATA_KNOWLEDGE_CHIP]           = 1;
+    $r->[ARTI_DATA_DESTROY_GEM]              = 1;
+
+    $r = $Artifact_data[ARTI_ELIXIR];
+    $r->[ARTI_DATA_MIN_BID]                  = 60;
+    $r->[ARTI_DATA_VP]                       = 2;
+    $r->[ARTI_DATA_DECK_LETTER]              = 'B';
+    $r->[ARTI_DATA_CAN_BUY_GEM]              = GEM_DIAMOND;
+    $r->[ARTI_DATA_FREE_GEM]                 = GEM_DIAMOND;
+
+    $r = $Artifact_data[ARTI_CRYSTAL_OF_PROTECTION];
+    $r->[ARTI_DATA_MIN_BID]                  = 40;
+    $r->[ARTI_DATA_VP]                       = 2;
+    $r->[ARTI_DATA_DECK_LETTER]              = 'B';
+    $r->[ARTI_DATA_GEM_ENERGY_PRODUCTION]    = GEM_EMERALD;
+
+
+    $r = $Artifact_data[ARTI_MASK_OF_CHARISMA];
+    $r->[ARTI_DATA_MIN_BID]                  = 50;
+    $r->[ARTI_DATA_VP]                       = 3;
+    $r->[ARTI_DATA_DECK_LETTER]              = 'C';
+    $r->[ARTI_DATA_DISCOUNT_SENTINELS]       = 20;
+    $r->[ARTI_DATA_ADVANCE_KNOWLEDGE]        = 1;
+
+    $r = $Artifact_data[ARTI_MAGIC_WAND];
+    $r->[ARTI_DATA_MIN_BID]                  = 60;
+    $r->[ARTI_DATA_VP]                       = 3;
+    $r->[ARTI_DATA_DECK_LETTER]              = 'C';
+    $r->[ARTI_DATA_OWN_ONLY_1]               = 1;
+    $r->[ARTI_DATA_GEM_SLOTS]                = 2;
+    $r->[ARTI_DATA_HAND_LIMIT]               = 3;
+
+    $r = $Artifact_data[ARTI_CHALICE_OF_FIRE];
+    $r->[ARTI_DATA_MIN_BID]                  = 80;
+    $r->[ARTI_DATA_VP]                       = 4;
+    $r->[ARTI_DATA_DECK_LETTER]              = 'C';
+    $r->[ARTI_DATA_GEM_ENERGY_PRODUCTION]    = GEM_RUBY;
+
+
+    $r = $Artifact_data[ARTI_SHADOW_CLOAK];
+    $r->[ARTI_DATA_MIN_BID]                  = 80;
+    $r->[ARTI_DATA_VP]                       = 5;
+    $r->[ARTI_DATA_DECK_LETTER]              = 'D';
+    $r->[ARTI_DATA_KNOWLEDGE_CHIP]           = 1;
+    $r->[ARTI_DATA_DESTROY_GEM]              = 1;
+
+    $r = $Artifact_data[ARTI_TALISMAN];
+    $r->[ARTI_DATA_MIN_BID]                  = 100;
+    $r->[ARTI_DATA_VP]                       = 8;
+    $r->[ARTI_DATA_DECK_LETTER]              = 'D';
+    $r->[ARTI_DATA_KNOWLEDGE_CHIP]           = 2;
+
+    # XXX
+    @Config_by_num_players = (
     	undef, # 0
-    	[], # XXX undef, # 1
+    	[1], # XXX undef, # 1
     	[1], # 2
     	[2], # 3
     	[2], # 4
     	[3], # 5
     	[3], # 6
     );
+
+# real limits are only on fox and tomcat I think
+#
+# Phoenix * 120 5 2 per kind of active gem 10
+# Owl 120 5 2 per top-level knowledge 12
+# Fox 120 5 2 per active sapphire 12
+# Toad 120 5 2 for each Runestone, Protective Crystal, Spellbook, Elixir -
+# Unicorn 120 5 1 for each active diamond 11
+# Tomcat 120 5 2 for each active opal 12
+# Scarab * 120 5 1 for each active emerald 11
+# Raven 120 5 2 for each Crystal Ball, Charismatic Mask, Magic Belt, Magic Wand -
+# Salamander * 120 5 2 for each active ruby 10
+
 }
+
 
 #------------------------------------------------------------------------------
 
@@ -233,6 +442,7 @@ sub start_items_common {
 
 1
 
-
-
-    # XXX druid ruby at level 3
+# XXX use $ix instead of $i for indexes, $i for items
+# XXX use confess for assertions
+# XXX limit to 5 rubies
+# XXX POE to facilitate multiple clients
