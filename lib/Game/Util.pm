@@ -1,4 +1,4 @@
-# $Id: Util.pm,v 1.4 2008-07-22 00:08:46 roderick Exp $
+# $Id: Util.pm,v 1.5 2008-07-24 21:31:29 roderick Exp $
 
 package Game::Util;
 
@@ -10,7 +10,7 @@ use RS::Handy	qw(badinvo data_dump dstr xcroak);
 
 use vars qw($VERSION @EXPORT @EXPORT_OK);
 
-$VERSION = q$Revision: 1.4 $ =~ /(\d\S+)/ ? $1 : '?';
+$VERSION = q$Revision: 1.5 $ =~ /(\d\S+)/ ? $1 : '?';
 
 BEGIN {
     @EXPORT = qw(
@@ -177,7 +177,7 @@ sub make_accessor_pkg {
 		return $old;
 	    }
 	    : sub {
-	    	@_ == 1 || badinvo "$name property is read-only";
+	    	@_ == 1 || badinvo 1, "$name property is read-only";
 		return $_[0]->[$index];
 	    };
 	no strict 'refs';
