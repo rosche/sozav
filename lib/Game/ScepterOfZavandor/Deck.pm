@@ -1,4 +1,4 @@
-# $Id: Deck.pm,v 1.3 2008-07-21 17:42:50 roderick Exp $
+# $Id: Deck.pm,v 1.4 2008-07-24 00:02:03 roderick Exp $
 
 use strict;
 
@@ -41,7 +41,7 @@ sub draw {
 
     my @r = $self->SUPER::draw(@_);
     if (!defined $r[-1]) {
-	# XXX
+	# XXX find out what's supposed to happen
 	xcroak "ran out of $Gem[$self->[DECK_GTYPE]] cards";
     }
 
