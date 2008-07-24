@@ -1,4 +1,4 @@
-# $Id: Deck.pm,v 1.3 2008-07-21 17:39:52 roderick Exp $
+# $Id: Deck.pm,v 1.4 2008-07-24 00:55:51 roderick Exp $
 
 package Game::Util::Deck;
 
@@ -61,6 +61,13 @@ sub discard {
     my ($self, @card) = @_;
 
     push @{ $self->[DECK_DISCARD] }, @card;
+}
+
+sub push {
+    @_ >= 2 || badinvo;
+    my ($self, @card) = @_;
+
+    push @{ $self->[DECK_DRAW] }, @card;
 }
 
 1
