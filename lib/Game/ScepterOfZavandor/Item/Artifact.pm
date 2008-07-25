@@ -1,8 +1,6 @@
-# $Id: Artifact.pm,v 1.2 2008-07-25 01:06:44 roderick Exp $
+# $Id: Artifact.pm,v 1.3 2008-07-25 17:41:40 roderick Exp $
 
 use strict;
-
-# XXX Auctionable super class
 
 package Game::ScepterOfZavandor::Item::Artifact;
 
@@ -16,23 +14,15 @@ use Game::ScepterOfZavandor::Constant qw(
     /^ITEM_/
     @Artifact
     @Artifact_data
-    @Artifact_data_field
 );
-
-#BEGIN {
-#    add_array_index 'ITEM_AUC', $_ for map { "ARTI_$_" } qw(TYPE);
-#}
 
 sub new {
     @_ == 2 || badinvo;
-    my ($class, $auc_type) = @_;
+    my ($class, $arti_type) = @_;
 
-    #XXX
-    #defined $Artifact[$auc_type] or xcroak;;
+    my $self = $class->SUPER::new(ITEM_TYPE_ARTIFACT,
+				    $arti_type, \@Artifact_data);
 
-    my $self = $class->SUPER::new(ITEM_TYPE_ARTIFACT, $auc_type, \@Artifact_data);
-
-    $self->a_vp($self->data(ARTI_DATA_VP));
     $self->a_gem_slots($self->data(ARTI_DATA_GEM_SLOTS));
     $self->a_hand_limit_modifier($self->data(ARTI_DATA_HAND_LIMIT));
 
@@ -43,24 +33,9 @@ sub as_string_fields {
     @_ || badinvo;
     my $self = shift;
     my @r = $self->SUPER::as_string_fields(@_);
-    push @r,
-	$self->data(ARTI_DATA_DECK_LETTER, ARTI_DATA_NAME);
+    unshift @r,
+	$self->data(ARTI_DATA_DECK_LETTER);
     return @r;
-}
-
-sub data {
-    @_ >= 2 || badinvo;
-    my $self = shift;
-    my @ix   = @_;
-
-    my $auc_type = $self->a_auc_type;
-    my @r;
-    for my $ix (@ix) {
-	$ix >= 0 && $ix <= $#Artifact_data_field || die dstr $ix;
-	push @r, $Artifact_data[$auc_type][$ix];
-    }
-
-    return @r == 1 ? $r[0] : @r;
 }
 
 sub new_deck {
@@ -87,17 +62,48 @@ sub new_deck {
     return $deck;
 }
 
+#------------------------------------------------------------------------------
+
+
+sub allows_player_to_enchant_gem_type {
+    @_ == 2 || badinvo;
+    my $self = shift;
+    my $want_gtype = shift;
+
+    my $got_gtype = $self->data(ARTI_DATA_CAN_BUY_GEM);
+    return defined $got_gtype && $got_gtype == $want_gtype;
+}
+
 # cost modifiers
 #     - knowledge of artifacts
 #     - turn order
 #     - other artifacts
 
-#sub produce_energy {
-#    @_ == 1 || badinvo;
-#    my $self = shift;
-#
-#    # XXX
-#    return $self->is_active ? $self->[ITEM_GEM_DECK]->draw : ();
-#}
+sub free_items {
+    @_ == 1 || badinvo;
+    my $self = shift;
+
+    my $gtype = $self->data(ARTI_DATA_FREE_GEM);
+    return unless defined $gtype;
+    return Game::ScepterOfZavandor::Item::Gem->new($gtype, $self->a_player);
+}
+
+sub own_only_one {
+    @_ == 1 || badinvo;
+    my $self = shift;
+
+    return $self->data(ARTI_DATA_OWN_ONLY_ONE);
+}
+
+sub produce_energy {
+    @_ == 1 || badinvo;
+    my $self = shift;
+
+    my $gtype = $self->data(ARTI_DATA_GEM_ENERGY_PRODUCTION);
+    defined $gtype
+	or return;
+
+    return $self->a_player->a_game->a_gem_decks->[$gtype]->draw;
+}
 
 1
