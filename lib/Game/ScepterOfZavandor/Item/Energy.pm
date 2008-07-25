@@ -1,4 +1,4 @@
-# $Id: Energy.pm,v 1.3 2008-07-23 11:59:39 roderick Exp $
+# $Id: Energy.pm,v 1.4 2008-07-25 12:36:48 roderick Exp $
 
 use strict;
 
@@ -10,8 +10,8 @@ use overload '<=>' => "spaceship";
 
 use base qw(Game::ScepterOfZavandor::Item);
 
-use Game::Util	qw(add_array_index debug make_ro_accessor);
-use RS::Handy	qw(badinvo data_dump dstr xcroak);
+use Game::Util		qw(add_array_index debug make_ro_accessor);
+use RS::Handy		qw(badinvo data_dump dstr xcroak);
 
 #use Game::ScepterOfZavandor::Constant qw(
 #);
@@ -32,7 +32,7 @@ sub new {
     @_ == 4 || badinvo;
     my ($class, $itype, $value, $hand_count) = @_;
 
-    $value >= 1 or die;;
+    $value >= 1 or die dstr $value;
 
     my $self = $class->SUPER::new($itype);
     $self->[ITEM_ENERGY_VALUE] = $value;
@@ -72,6 +72,12 @@ sub spaceship {
     return(($a->a_value/$a->a_hand_count) <=> ($b->a_value/$b->a_hand_count));
 }
 
+sub use_up {
+    @_ == 1 || badinvo;
+    my $self = shift;
+    # nothing to do for most types of energy
+}
+
 
 #------------------------------------------------------------------------------
 
@@ -79,8 +85,9 @@ package Game::ScepterOfZavandor::Item::Energy::Card;
 
 use base qw(Game::ScepterOfZavandor::Item::Energy);
 
-use Game::Util	qw(add_array_index debug);
-use RS::Handy	qw(badinvo data_dump dstr xcroak);
+use Game::Util		qw(add_array_index debug);
+use RS::Handy		qw(badinvo data_dump dstr xcroak);
+use Scalar::Util	qw(weaken);
 
 use Game::ScepterOfZavandor::Constant qw(
     /^ITEM_/
@@ -96,7 +103,8 @@ sub new {
 
     my $self = $class->SUPER::new(ITEM_TYPE_CARD, $value, 1);
 
-    $self->[ITEM_ENERGY_CARD_DECK] = $deck; # XXX circular reference
+    $self->[ITEM_ENERGY_CARD_DECK] = $deck;
+    weaken $self->[ITEM_ENERGY_CARD_DECK];
 
     return $self;
 }
@@ -105,9 +113,7 @@ sub use_up {
     @_ == 1 || badinvo;
     my $self = shift;
 
-    $self->SUPER::use_up;
     $self->[ITEM_ENERGY_CARD_DECK]->discard($self);
-    return;
 }
 
 #------------------------------------------------------------------------------
@@ -135,7 +141,7 @@ sub new {
     my ($class, $value) = @_;
 
     my $hl = $dust_to_hand_count{$value};
-    defined $hl or die;
+    defined $hl or die dstr $value;
 
     return $class->SUPER::new(ITEM_TYPE_DUST, $value, $hl);
 } }
@@ -144,7 +150,10 @@ sub make_dust {
     @_ == 2 || badinvo;
     my ($class, $tot_value) = @_;
 
-    $tot_value > 0 or die;
+    $tot_value > 0 or die dstr $tot_value;
+
+    # XXX this can cheat you if there's no 1 dust:  6 energy -> 5 dust
+    # chit, could be 2+2+2 chits
 
     my @r;
     for my $v (map { $_->[DUST_DATA_VALUE] } @Dust_data) {
@@ -153,6 +162,7 @@ sub make_dust {
 	    $tot_value -= $v;
 	}
     }
+    # XXX info if you lost 1 dust
     return @r;
 }
 
@@ -160,7 +170,7 @@ sub make_dust_from_opals {
     @_ == 2 || badinvo;
     my ($class, $opal_count) = @_;
 
-    $opal_count > 0 or die;
+    $opal_count > 0 or die dstr $opal_count;
 
     my $tot_value = 0;
     for (@Dust_data) {
