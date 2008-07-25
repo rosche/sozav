@@ -1,4 +1,4 @@
-# $Id: Player.pm,v 1.4 2008-07-25 12:41:11 roderick Exp $
+# $Id: Player.pm,v 1.5 2008-07-25 17:44:29 roderick Exp $
 
 use strict;
 
@@ -137,6 +137,12 @@ sub active_gems {
     return grep { $_->is_active } $self->gems;
 }
 
+sub auctionables {
+    @_ == 1 || badinvo;
+    my $self = shift;
+    return grep { $_->is_auctionable } $self->items;
+}
+
 sub current_energy {
     @_ == 1 || badinvo;
     my $self = shift;
@@ -255,7 +261,13 @@ sub buy_auctionable {
     my $auc   = shift;
     my $price = shift;
 
-    if ($price < (my $cost = $auc->a_min_bid)) {
+    if ($auc->own_only_one
+	    && grep { $_->a_auc_type == $auc->a_auc_type }
+		    $self->auctionables) {
+    	die "you can only own one $auc";
+    }
+
+    if ($price < (my $cost = $auc->get_min_bid)) {
 	die "$price < $cost";
     }
 
@@ -266,7 +278,11 @@ sub buy_auctionable {
 
     $self->pay_energy($price - $discount);
     $self->a_game->auctionable_sold($auc);
-    $self->add_items($auc);
+    # XXX weaken
+    $auc->a_player($self);
+    $self->add_items($auc, $auc->free_items);
+    # XXX
+    $self->auto_activate_gems;
 }
 
 sub enchant_gem {
