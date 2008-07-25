@@ -1,10 +1,8 @@
-# $Id: Gem.pm,v 1.4 2008-07-25 12:40:05 roderick Exp $
+# $Id: Gem.pm,v 1.5 2008-07-25 17:36:23 roderick Exp $
 
 use strict;
 
 package Game::ScepterOfZavandor::Item::Gem;
-
-use overload '<=>' => "spaceship";
 
 use base qw(Game::ScepterOfZavandor::Item);
 
@@ -35,6 +33,7 @@ sub new {
     my $self = $class->SUPER::new(ITEM_TYPE_GEM);
     $self->[ITEM_GEM_TYPE]      = $gtype;
     $self->[ITEM_GEM_PLAYER]    = $player;
+    weaken $self->[ITEM_GEM_PLAYER];
     $self->[ITEM_GEM_DECK]      = $player->a_game->a_gem_decks->[$gtype];
     weaken $self->[ITEM_GEM_DECK];
     $self->[ITEM_GEM_ACTIVE_VP] = $Gem_data[$gtype][GEM_DATA_VP];
@@ -109,7 +108,6 @@ sub produce_energy {
     @_ == 1 || badinvo;
     my $self = shift;
 
-    # XXX
     return $self->is_active ? $self->[ITEM_GEM_DECK]->draw : ();
 }
 
