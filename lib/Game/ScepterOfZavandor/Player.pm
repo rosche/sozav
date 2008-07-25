@@ -1,14 +1,14 @@
-# $Id: Player.pm,v 1.3 2008-07-23 12:05:24 roderick Exp $
+# $Id: Player.pm,v 1.4 2008-07-25 12:41:11 roderick Exp $
 
 use strict;
 
 package Game::ScepterOfZavandor::Player;
 
-use List::Util	qw(sum);
+use List::Util	qw(first sum);
 use Game::Util  qw($Debug add_array_indices debug debug_var
 		    make_ro_accessor make_rw_accessor);
 use RS::Handy	qw(badinvo data_dump dstr xcroak);
-use Scalar::Util qw(refaddr);
+use Scalar::Util qw(refaddr weaken);
 
 use Game::ScepterOfZavandor::Constant qw(
     /^CHAR_/
@@ -47,8 +47,9 @@ sub new {
 
     my $self = bless [], $class;
     $self->[PLAYER_GAME] = $game;
+    weaken $self->[PLAYER_GAME];
     $self->[PLAYER_UI  ] = $ui;
-    $ui->a_player($self); # XXX circular reference
+    $ui->a_player($self);
 
     return $self;
 }
@@ -99,18 +100,15 @@ sub items {
     return @{ $_[0]->[PLAYER_ITEM] };
 }
 
-# This returns items which it adds as a result of the discards -- if you
-# discard gems you get dust.
-
 sub remove_items {
-    @_ || badinvo;
-    my ($self, @remove_item) = @_;
+    my $self = shift;
+    my (@remove_item) = @_;
 
     debug "remove @remove_item";
 
     my @old = $self->items;
     my @new;
-    for my $old ($self->items) {
+    for my $old (@old) {
 	push @new, $old
 	    unless grep { refaddr($old) == refaddr($_) } @remove_item;
     }
@@ -123,15 +121,12 @@ sub remove_items {
 	    "old: @old\n";
     }
 
-    my @xxx;
     for (@remove_item) {
 	debug "$Character[$self->[PLAYER_CHAR]] remove item $_";
-	# XXX dust added here is lost because \@new will be replaced
-	push @xxx, $_->use_up;
+	$_->use_up;
     }
 
     $self->[PLAYER_ITEM] = \@new;
-    return @xxx;
 }
 
 #------------------------------------------------------------------------------
@@ -140,18 +135,6 @@ sub active_gems {
     @_ == 1 || badinvo;
     my $self = shift;
     return grep { $_->is_active } $self->gems;
-}
-
-sub name {
-    @_ == 1 || badinvo;
-
-    return $Character[$_->[PLAYER_CHAR]];
-}
-
-sub gems {
-    @_ == 1 || badinvo;
-    my $self = shift;
-    return grep { $_->is_gem } $self->items;
 }
 
 sub current_energy {
@@ -196,11 +179,22 @@ sub current_hand_count {
     return sum map { $_->a_hand_count } $self->items;
 }
 
+sub gems {
+    @_ == 1 || badinvo;
+    my $self = shift;
+    return grep { $_->is_gem } $self->items;
+}
+
 sub hand_limit {
     @_ == 1 || badinvo;
     my $self = shift;
     return sum $Base_hand_limit,
 		map { $_->a_hand_limit_modifier } $self->items;
+}
+
+sub name {
+    @_ == 1 || badinvo;
+    return $Character[$_->[PLAYER_CHAR]];
 }
 
 sub num_gem_slots {
@@ -210,7 +204,27 @@ sub num_gem_slots {
 		map { $_->a_gem_slots } $self->items;
 }
 
+sub score {
+    @_ == 1 || badinvo;
+    my $self = shift;
+    return sum map { $_->vp } $self->items;
+}
+
 #------------------------------------------------------------------------------
+
+sub auctionable_discount {
+    @_ == 2 || badinvo;
+    my $self         = shift;
+    my $arti_or_type = shift;
+
+    my $arti_type = ref $arti_or_type
+			? $arti_or_type->a_arti_type
+			: $arti_or_type;
+    # XXX validate
+
+    my $discount = 0;
+    # XXX
+}
 
 sub auto_activate_gems {
     @_ == 1 || badinvo;
@@ -235,13 +249,33 @@ sub auto_activate_gems {
     }
 }
 
+sub buy_auctionable {
+    @_ == 3 || badinvo;
+    my $self  = shift;
+    my $auc   = shift;
+    my $price = shift;
+
+    if ($price < (my $cost = $auc->a_min_bid)) {
+	die "$price < $cost";
+    }
+
+    my $discount = 0; # XXX
+    my $cash = $self->current_energy_liquid;
+    $cash + $discount >= $price
+	or die "not enough liquid cash, $cash + $discount < $price";
+
+    $self->pay_energy($price - $discount);
+    $self->a_game->auctionable_sold($auc);
+    $self->add_items($auc);
+}
+
 sub enchant_gem {
     @_ == 2 || badinvo;
     my $self = shift;
     my ($gtype) = @_;
 
     if (!$self->can_enchant_gem_type($gtype)) {
-	# XXX ungrammatical
+	# XXY ungrammatical
 	die "not allowed to enchant $Gem[$gtype]";
     }
 
@@ -263,18 +297,17 @@ sub can_enchant_gem_type {
     my $self = shift;
     my $gtype = shift;
 
-    # XXX ask the items if the player can make a gem type?  could have a
-    # standard item which gives you opal + sapphire, or retain hardcoding
-    # here
+    defined $Gem[$gtype] or die dstr $gtype;
 
     if ($gtype == GEM_OPAL || $gtype == GEM_SAPPHIRE) {
 	return 1;
     }
 
-    # XXX emerald
-    # XXX diamond
+    if (first { $_->allows_player_to_enchant_gem_type($gtype) } $self->items) {
+	return 1;
+    }
+
     # XXX level 3 druid ruby
-    # XXX ruby
 
     return 0;
 }
@@ -307,8 +340,7 @@ sub enforce_hand_limit {
 	}
     }
 
-    my $tot_discarded_energy = sum map { $_->a_value } @rm;
-    $self->remove_items(@rm);
+    my $tot_discarded_energy = $self->spend(@rm);
 
     # Add in as much dust as possible, starting with most efficient forms.
 
@@ -336,7 +368,10 @@ sub enforce_hand_limit {
 
     $new_hc == $hl or die "$new_hc != $hl";
 
-    # XXX info output
+    if ($tot_discarded_energy) {
+	# XXX info output
+	print "lost $tot_discarded_energy energy to hand limit\n";
+    }
 }
 
 sub gain_energy {
@@ -474,26 +509,23 @@ print "value $v from $i\n";
     # but I'm spending that energy, I don't want it back, need an arg or
     # another function to deal with this
 
-    $self->remove_items(@to_use);
+    $self->spend(@to_use);
     $self->add_items(
 	    Game::ScepterOfZavandor::Item::Energy::Dust->make_dust(0 - $tot))
 	if $tot < 0;
 }
 
-# This is called automatically from $gem->use_up, which is called by
-# ->remove_items.  You don't want to call it by hand.
+# Take some things out of your inventory.  Return the amount of energy
+# which was in them.
 
-sub sell_gem {
-    @_ == 2 || badinvo;
+sub spend {
+    @_ > 1 || badinvo;
     my $self = shift;
-    my $gem  = shift;
+    my @i = @_;
 
-    my $value = $self->gem_value($gem);
-    $value > 0 or die $value;
-
-    my @dust = Game::ScepterOfZavandor::Item::Energy::Dust->make_dust($value);
-    $self->add_items(@dust);
-    return @dust;
+    my $tot_energy = sum map { $_->energy } @i;
+    $self->remove_items(@i);
+    return $tot_energy;
 }
 
 #------------------------------------------------------------------------------
