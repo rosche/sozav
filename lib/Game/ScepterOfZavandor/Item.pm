@@ -1,4 +1,4 @@
-# $Id: Item.pm,v 1.4 2008-07-23 01:09:06 roderick Exp $
+# $Id: Item.pm,v 1.5 2008-07-25 00:56:13 roderick Exp $
 
 use strict;
 
@@ -56,6 +56,17 @@ make_rw_accessor (
     a_gem_slots           => ITEM_GEM_SLOTS,
 );
 
+for (qw(Artifact Auctionable Energy Gem Sentinel)) {
+    my $pkg = __PACKAGE__ . "::$_";
+    my $method = "is_" . lc $_;
+    my $sub = sub {
+	@_ == 1 || badinvo;
+	return $_[0]->isa($pkg);
+    };
+    no strict 'refs';
+    *$method = $sub;
+}
+
 sub as_string_fields {
     @_ || badinvo;
     my $self = shift;
@@ -77,14 +88,22 @@ sub as_string {
 	join " ", $self->as_string_fields;
 }
 
-sub is_energy {
-    @_ == 1 || badinvo;
-    return $_[0]->isa(Game::ScepterOfZavandor::Item::Energy::);
+sub allows_player_to_enchant_gem_type {
+    @_ == 2 || badinvo;
+    my $self = shift;
+    my $gtype = shift;
+
+    return 0;
 }
 
-sub is_gem {
-    @_ == 1 || badinvo;
-    return $_[0]->isa(Game::ScepterOfZavandor::Item::Gem::);
+sub discount_on {
+    @_ == 2 || badinvo;
+    my $self = shift;
+    # XXX sentinel
+    my $auc_type = shift;
+
+    # XXX
+    #return $_[0]->isa(Game::ScepterOfZavandor::Item::Artifact::);
 }
 
 sub energy {
@@ -100,18 +119,21 @@ sub produce_energy {
     return;
 }
 
-sub use_up {
+# Call this after removing an item from a person's inventory.  There's no
+# default for it, but it's defined for any object which can be removed
+# from a person's inventory.
+#
+#sub use_up {
+#    @_ == 1 || badinvo;
+#    my $self = shift;
+#}
+
+# This is overridden by sentinels.
+
+sub vp {
     @_ == 1 || badinvo;
     my $self = shift;
-
-    # I think gems and energy are the only things which can be discarded.
-    # I don't now if this assumption has influenced any code, but I'm
-    # testing it here so I'll know if it's wrong.
-
-    $self->is_gem || $self->is_energy
-	or xcroak "->use_up called on $self";
-
-    return;
+    return $self->a_vp;
 }
 
 1
