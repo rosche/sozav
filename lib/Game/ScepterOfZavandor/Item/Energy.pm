@@ -1,12 +1,10 @@
-# $Id: Energy.pm,v 1.4 2008-07-25 12:36:48 roderick Exp $
+# $Id: Energy.pm,v 1.5 2008-07-25 17:36:34 roderick Exp $
 
 use strict;
 
 #------------------------------------------------------------------------------
 
 package Game::ScepterOfZavandor::Item::Energy;
-
-use overload '<=>' => "spaceship";
 
 use base qw(Game::ScepterOfZavandor::Item);
 
