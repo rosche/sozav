@@ -1,4 +1,4 @@
-# $Id: Gem.pm,v 1.3 2008-07-23 12:01:26 roderick Exp $
+# $Id: Gem.pm,v 1.4 2008-07-25 12:40:05 roderick Exp $
 
 use strict;
 
@@ -10,6 +10,7 @@ use base qw(Game::ScepterOfZavandor::Item);
 
 use Game::Util	qw(add_array_index debug make_ro_accessor);
 use RS::Handy	qw(badinvo data_dump dstr xcroak);
+use Scalar::Util qw(weaken);
 
 use Game::ScepterOfZavandor::Constant qw(
     /^GEM_/
@@ -17,6 +18,7 @@ use Game::ScepterOfZavandor::Constant qw(
     @Gem
     @Gem_data
 );
+use Game::ScepterOfZavandor::Player ();
 
 BEGIN {
     add_array_index 'ITEM', $_ for map { "GEM_$_" }
@@ -34,6 +36,7 @@ sub new {
     $self->[ITEM_GEM_TYPE]      = $gtype;
     $self->[ITEM_GEM_PLAYER]    = $player;
     $self->[ITEM_GEM_DECK]      = $player->a_game->a_gem_decks->[$gtype];
+    weaken $self->[ITEM_GEM_DECK];
     $self->[ITEM_GEM_ACTIVE_VP] = $Gem_data[$gtype][GEM_DATA_VP];
     $self->[ITEM_GEM_ACTIVE]    = 0;
 
@@ -114,9 +117,17 @@ sub use_up {
     @_ == 1 || badinvo;
     my $self = shift;
 
-    $self->SUPER::use_up;
     $self->deactivate;
-    return $self->a_player->sell_gem($self);
 }
 
 1
+
+__END__
+
+energy or gem
+    buy artifact, gem
+    change possible
+
+energy
+    hand limit
+    change possible
