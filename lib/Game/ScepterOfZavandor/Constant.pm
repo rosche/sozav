@@ -1,4 +1,4 @@
-# $Id: Constant.pm,v 1.4 2008-07-24 23:36:30 roderick Exp $
+# $Id: Constant.pm,v 1.5 2008-07-25 17:45:07 roderick Exp $
 
 use strict;
 
@@ -13,7 +13,7 @@ use RS::Handy		qw(badinvo data_dump dstr xcroak);
 
 use vars qw($VERSION @EXPORT @EXPORT_OK);
 BEGIN {
-    $VERSION = q$Revision: 1.4 $ =~ /(\d\S+)/ ? $1 : '?';
+    $VERSION = q$Revision: 1.5 $ =~ /(\d\S+)/ ? $1 : '?';
     @EXPORT_OK = qw(
 	$Base_gem_slots
 	$Base_hand_limit
@@ -44,6 +44,7 @@ BEGIN {
 	@Option
 	%Option
 	@Sentinel
+	@Sentinel_real_ix_xxx
     	%Sentinel
 	@Sentinel_data
 	@Sentinel_data_field
@@ -89,7 +90,7 @@ BEGIN {
     	'CONCENTRATED',
     );
 
-    @Item_type = qw(knowledge artifact sentinel gem card dust concentrated);
+    @Item_type = qw(knowledge sentinel artifact gem concentrated card dust);
     %Item_type = map { $Item_type[$_] => $_ } 0..$#Item_type;
     add_array_indices 'ITEM_TYPE', @Item_type;
 
@@ -122,7 +123,7 @@ BEGIN {
     %Artifact = map { $Artifact[$_] => $_ } 0..$#Artifact;
     add_array_indices 'ARTI', @Artifact;
 
-    @Sentinel = qw(
+    @Sentinel = ((undef) x @Artifact, qw(
 	Phoenix
 	Owl
 	Fox
@@ -132,11 +133,14 @@ BEGIN {
 	Scarab
 	Raven
 	Salamander
-    );
-    %Sentinel = map { $Sentinel[$_] => $_ } 0..$#Sentinel;
-    add_array_indices 'SENT', @Sentinel;
+    ));
+    @Sentinel_real_ix_xxx = grep { defined $Sentinel[$_] } 0..$#Sentinel;
+    %Sentinel = map { $Sentinel[$_] => $_ } @Sentinel_real_ix_xxx;
+    #add_array_indices 'SENT', @Sentinel;
+    RS::Handy::create_index_subs 'SENT', undef, @Sentinel;
 
-    @Auctionable = (@Artifact, @Sentinel);
+    # XXX
+    @Auctionable = (@Artifact, @Sentinel[@Sentinel_real_ix_xxx]);
     %Auctionable = map { $Auctionable[$_] => $_ } 0..$#Auctionable;
     add_array_indices 'AUC', @Auctionable;
 
@@ -150,24 +154,26 @@ BEGIN {
     @Artifact_data_field = (
     	@Auctionable_data_field,
 	'DECK_LETTER',			# A-D, S for sentinels
-	'DISCOUNT_ARTIFACT',		# artifact you get a discount on
-	'DISCOUNT_ARTIFACT_AMOUNT',	# discount of N on specified artifact
-	'DISCOUNT_SENTINELS',		# discount of N on sentinels
-	'OWN_ONLY_1',			# can only own 1 of these
-	'KNOWLEDGE_CHIP',		# stage N knowledge chips
-	'ADVANCE_KNOWLEDGE',		# advance N knowledge stages
+	'DISCOUNT_ARTIFACT',		# XXX artifact you get a discount on
+	'DISCOUNT_ARTIFACT_AMOUNT',	# XXX discount of N on specified artifact
+	'DISCOUNT_SENTINELS',		# XXX discount of N on sentinels
+	'OWN_ONLY_ONE',			# can only own 1 of these
+	'KNOWLEDGE_CHIP',		# XXX stage N knowledge chips
+	'ADVANCE_KNOWLEDGE',		# XXX advance N knowledge stages
 	'GEM_SLOTS',			# add N gem slots
     	'HAND_LIMIT',			# add N to hand limit
 	'CAN_BUY_GEM',			# you can by gem type GTYPE
     	'FREE_GEM',			# you get a free gem of type GTYPE
 	'GEM_ENERGY_PRODUCTION',	# produces an energy card of type GTYPE
-	'DESTROY_GEM',			# destroy N gems of each other player
+	'DESTROY_GEM',			# XXX destroy N gems of each other player
     );
     add_array_indices 'ARTI_DATA', @Artifact_data_field;
 
     @Sentinel_data_field = (
     	@Auctionable_data_field,
+	'MAX_BONUS_VP',
     );
+    add_array_indices 'SENT_DATA', @Sentinel_data_field;
 }
 
 BEGIN {
@@ -277,6 +283,17 @@ BEGIN {
 BEGIN {
     my ($r, $ix);
 
+    # XXX
+    @Config_by_num_players = (
+    	undef, # 0
+    	[24, 2], # XXX undef, # 1
+    	[2, 1], # 2
+    	[3, 2], # 3
+    	[4, 2], # 4
+    	[5, 3], # 5
+    	[6, 3], # 6
+    );
+
     for ([\@Artifact, \@Artifact_data],
 	    [\@Sentinel, \@Sentinel_data]) {
     	my ($ritem, $rdata) = @$_;
@@ -288,20 +305,25 @@ BEGIN {
 	}
     }
 
+    for (@Sentinel_real_ix_xxx) {
+    	$Sentinel_data[$_][AUC_DATA_MIN_BID]     = 120;
+    	$Sentinel_data[$_][AUC_DATA_VP]          = 5;
+    }
+
     for (0..$#Artifact) {
     	my $r = $Artifact_data[$_];
 	$r->[ARTI_DATA_DECK_LETTER]              = undef;
 	$r->[ARTI_DATA_DISCOUNT_ARTIFACT]        = undef;
 	$r->[ARTI_DATA_DISCOUNT_ARTIFACT_AMOUNT] = 0;
 	$r->[ARTI_DATA_DISCOUNT_SENTINELS]       = 0;
-	$r->[ARTI_DATA_OWN_ONLY_1]               = 0;
+	$r->[ARTI_DATA_OWN_ONLY_ONE]             = 0;
 	$r->[ARTI_DATA_KNOWLEDGE_CHIP]           = 0;
 	$r->[ARTI_DATA_ADVANCE_KNOWLEDGE]        = 0;
 	$r->[ARTI_DATA_GEM_SLOTS]                = 0;
 	$r->[ARTI_DATA_HAND_LIMIT]               = 0;
-	$r->[ARTI_DATA_CAN_BUY_GEM]              = 0;
-	$r->[ARTI_DATA_FREE_GEM]                 = 0;
-	$r->[ARTI_DATA_GEM_ENERGY_PRODUCTION]    = 0;
+	$r->[ARTI_DATA_CAN_BUY_GEM]              = undef;
+	$r->[ARTI_DATA_FREE_GEM]                 = undef;
+	$r->[ARTI_DATA_GEM_ENERGY_PRODUCTION]    = undef;
 	$r->[ARTI_DATA_DESTROY_GEM]              = 0;
     }
 
@@ -334,7 +356,7 @@ BEGIN {
     $r->[ARTI_DATA_MIN_BID]                  = 30;
     $r->[ARTI_DATA_VP]                       = 2;
     $r->[ARTI_DATA_DECK_LETTER]              = 'B';
-    $r->[ARTI_DATA_OWN_ONLY_1]               = 1;
+    $r->[ARTI_DATA_OWN_ONLY_ONE]             = 1;
     $r->[ARTI_DATA_GEM_SLOTS]                = 2;
 
     $r = $Artifact_data[ARTI_MAGIC_MIRROR];
@@ -369,7 +391,7 @@ BEGIN {
     $r->[ARTI_DATA_MIN_BID]                  = 60;
     $r->[ARTI_DATA_VP]                       = 3;
     $r->[ARTI_DATA_DECK_LETTER]              = 'C';
-    $r->[ARTI_DATA_OWN_ONLY_1]               = 1;
+    $r->[ARTI_DATA_OWN_ONLY_ONE]             = 1;
     $r->[ARTI_DATA_GEM_SLOTS]                = 2;
     $r->[ARTI_DATA_HAND_LIMIT]               = 3;
 
@@ -392,17 +414,6 @@ BEGIN {
     $r->[ARTI_DATA_VP]                       = 8;
     $r->[ARTI_DATA_DECK_LETTER]              = 'D';
     $r->[ARTI_DATA_KNOWLEDGE_CHIP]           = 2;
-
-    # XXX
-    @Config_by_num_players = (
-    	undef, # 0
-    	[1], # XXX undef, # 1
-    	[1], # 2
-    	[2], # 3
-    	[2], # 4
-    	[3], # 5
-    	[3], # 6
-    );
 
 # real limits are only on fox and tomcat I think
 #
