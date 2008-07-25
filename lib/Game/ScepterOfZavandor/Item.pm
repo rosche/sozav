@@ -1,10 +1,13 @@
-# $Id: Item.pm,v 1.5 2008-07-25 00:56:13 roderick Exp $
+# $Id: Item.pm,v 1.6 2008-07-25 17:39:35 roderick Exp $
 
 use strict;
 
 package Game::ScepterOfZavandor::Item;
 
-use overload '""' => "as_string";
+use overload (
+    '""'  => "as_string",
+    '<=>' => "spaceship",
+);
 
 use Game::Util  	qw($Debug add_array_indices debug
 			    make_ro_accessor make_rw_accessor);
@@ -86,6 +89,19 @@ sub as_string {
     return sprintf "%s(%s)",
 	$Item_type[$self->[ITEM_TYPE]],
 	join " ", $self->as_string_fields;
+}
+
+# - XXX name
+# - XXX caller shouldn't have to test item type first because of more
+#   specific spaceship operators
+
+sub spaceship {
+    @_ == 3 || badinvo;
+    my ($a, $b) = @_;
+
+    return $a->[ITEM_TYPE] <=> $b->[ITEM_TYPE]
+    	    or $b->[ITEM_VP] <=> $a->[ITEM_VP];
+	    # XXX name?
 }
 
 sub allows_player_to_enchant_gem_type {
