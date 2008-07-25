@@ -1,4 +1,4 @@
-# $Id: Stdio.pm,v 1.3 2008-07-23 00:51:42 roderick Exp $
+# $Id: Stdio.pm,v 1.4 2008-07-25 01:07:55 roderick Exp $
 
 use strict;
 
@@ -89,6 +89,21 @@ sub one_action {
     return $ret;
 }
 
+sub action_buy_auctionable {
+    @_ == 2 || badinvo;
+    my $self = shift;
+    my $aix  = shift;
+
+    my @a = $self->a_player->a_game->artifacts_on_auction;
+    $aix >= 1 && $aix <= @a
+    	or die "invalid artifact index ", dstr $aix;
+
+    my $arti = $a[$aix - 1];
+    $self->a_player->buy_auctionable($arti, $arti->a_min_bid);
+    return 1;
+}
+*action_b = \&action_buy_auctionable;
+
 sub action_done {
     @_ == 1 || badinvo;
     my $self = shift;
@@ -129,6 +144,19 @@ sub action_help {
 sub action_items {
     @_ == 1 || badinvo;
     my $self = shift;
+
+    $self->out("artifacts on auction:\n");
+    if (my @a = $self->a_player->a_game->artifacts_on_auction) {
+	for (0..$#a) {
+	    my $n = $_ + 1;
+	    $self->out("  $n $a[$_]\n");
+	}
+    }
+    else {
+	$self->out("  none\n");
+    }
+
+    $self->out_char("score: ", $self->a_player->score, "\n");
 
     my @e = $self->a_player->current_energy;
     $self->out_char(sprintf "energy: %d total %d liquid (%d + %d) %d active\n",
@@ -186,7 +214,9 @@ sub action_sell_gem {
 	die "you don't own a $gname"; # XXX grammar
     }
 
-    $self->a_player->remove_items($gem);
+    $self->a_player->add_items(
+	Game::ScepterOfZavandor::Item::Energy::Dust->make_dust(
+	    $self->a_player->spend($gem)));
 
     # XXX don't automatically activate
 
