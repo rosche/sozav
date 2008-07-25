@@ -1,4 +1,4 @@
-# $Id: Game.pm,v 1.4 2008-07-25 01:09:38 roderick Exp $
+# $Id: Game.pm,v 1.5 2008-07-25 17:30:40 roderick Exp $
 
 use strict;
 
@@ -22,6 +22,7 @@ use Game::ScepterOfZavandor::Constant	qw(
     %Option
 );
 use Game::ScepterOfZavandor::Item::Artifact	();
+use Game::ScepterOfZavandor::Item::Sentinel	();
 use Game::ScepterOfZavandor::Deck		();
 use Game::ScepterOfZavandor::Player		();
 
@@ -33,6 +34,7 @@ BEGIN {
 	'GEM_DECKS',
 	'ARTIFACT_DECK',
 	'ARTIFACTS_ON_AUCTION',
+	'ARTIFACTS_AT_ONCE',
 	'SENTINEL',
 	'TURN_NUM',
 	'PLAYER_ORDER',
@@ -117,7 +119,8 @@ sub init {
     if (!$num_players_config) {
 	xconfess "invalid number of players $num_players";
     }
-    my $num_artifacts = $num_players_config->[0];
+    my ($artifacts_at_once, $artifact_copies) = @$num_players_config;
+    $self->[GAME_ARTIFACTS_AT_ONCE] = $artifacts_at_once;
 
     # add 1 dust if desired
 
@@ -136,9 +139,12 @@ sub init {
     # initialize artifact deck
 
     $self->[GAME_ARTIFACT_DECK]
-	= Game::ScepterOfZavandor::Item::Artifact->new_deck($num_artifacts);
+	= Game::ScepterOfZavandor::Item::Artifact->new_deck($artifact_copies);
     #print "artifact deck:\n";
     #print $_, "\n" while $_ = $self->[GAME_ARTIFACT_DECK]->draw;
+
+    $self->[GAME_SENTINEL]
+	= [Game::ScepterOfZavandor::Item::Sentinel->new_deck];
 
     # assign characters and initialize players
 
@@ -166,7 +172,7 @@ sub play {
 
 	# phase 1. refill artifacts
 
-	while (@{ $self->[GAME_ARTIFACTS_ON_AUCTION] } < $self->num_players) {
+	while (@{ $self->[GAME_ARTIFACTS_ON_AUCTION] } < $self->[GAME_ARTIFACTS_AT_ONCE]) {
 	    my $i = $self->[GAME_ARTIFACT_DECK]->draw
 		or last;
 	    # XXX info output
@@ -199,10 +205,22 @@ sub play {
 
 #------------------------------------------------------------------------------
 
-sub artifacts_on_auction {
+sub auction_all {
+    @_ == 1 || badinvo;
+    my ($self) = @_;
+    return $self->auction_artifacts, $self->auction_sentinels;
+}
+
+sub auction_artifacts {
     @_ == 1 || badinvo;
     my ($self) = @_;
     return @{ $self->[GAME_ARTIFACTS_ON_AUCTION] };
+}
+
+sub auction_sentinels {
+    @_ == 1 || badinvo;
+    my ($self) = @_;
+    return @{ $self->[GAME_SENTINEL] };
 }
 
 sub auctionable_sold {
@@ -244,11 +262,6 @@ sub num_players {
     return scalar $self->players;
 }
 
-sub sentinels_available {
-    @_ == 1 || badinvo;
-    my ($self) = @_;
-    return @{ $self->[GAME_SENTINEL] };
-}
 
 #------------------------------------------------------------------------------
 
