@@ -1,4 +1,4 @@
-# $Id: Stdio.pm,v 1.4 2008-07-25 01:07:55 roderick Exp $
+# $Id: Stdio.pm,v 1.5 2008-07-25 17:39:00 roderick Exp $
 
 use strict;
 
@@ -94,12 +94,12 @@ sub action_buy_auctionable {
     my $self = shift;
     my $aix  = shift;
 
-    my @a = $self->a_player->a_game->artifacts_on_auction;
+    my @a = $self->a_player->a_game->auction_all;
     $aix >= 1 && $aix <= @a
-    	or die "invalid artifact index ", dstr $aix;
+    	or die "invalid auction index ", dstr $aix;
 
-    my $arti = $a[$aix - 1];
-    $self->a_player->buy_auctionable($arti, $arti->a_min_bid);
+    my $auc = $a[$aix - 1];
+    $self->a_player->buy_auctionable($auc, $auc->get_min_bid);
     return 1;
 }
 *action_b = \&action_buy_auctionable;
@@ -145,8 +145,8 @@ sub action_items {
     @_ == 1 || badinvo;
     my $self = shift;
 
-    $self->out("artifacts on auction:\n");
-    if (my @a = $self->a_player->a_game->artifacts_on_auction) {
+    $self->out("on auction:\n");
+    if (my @a = $self->a_player->a_game->auction_all) {
 	for (0..$#a) {
 	    my $n = $_ + 1;
 	    $self->out("  $n $a[$_]\n");
@@ -166,7 +166,10 @@ sub action_items {
 			CUR_ENERGY_INACTIVE_GEMS,
 			CUR_ENERGY_ACTIVE_GEMS]);
     $self->out_char("items:\n");
-    $self->out("  $_\n") for $self->a_player->items;
+    for (sort { $a->a_item_type <=> $b->a_item_type
+    	    	    or $a <=> $b } $self->a_player->items) {
+	$self->out("  $_\n")
+    }
     return 1;
 }
 *action_i = \&action_items;
