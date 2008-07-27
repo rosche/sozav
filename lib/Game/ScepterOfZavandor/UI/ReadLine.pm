@@ -1,4 +1,4 @@
-# $Id: ReadLine.pm,v 1.2 2008-07-22 20:57:11 roderick Exp $
+# $Id: ReadLine.pm,v 1.3 2008-07-27 13:23:38 roderick Exp $
 
 use strict;
 
@@ -15,6 +15,8 @@ BEGIN {
     add_array_index 'UI', $_ for map { "READLINE_$_" } qw(OBJ);
 }
 
+my $Readline;
+
 sub new {
     @_ == 3 || badinvo;
     my ($class, $in_fh, $out_fh) = @_;
@@ -22,9 +24,12 @@ sub new {
     $in_fh  = qualify_to_ref $in_fh , scalar caller;
     $out_fh = qualify_to_ref $out_fh, scalar caller;
 
-    my $self = $class->SUPER::new($in_fh, $out_fh);
-    $self->[UI_READLINE_OBJ] = Term::ReadLine->new('zavandor', $in_fh, $out_fh)
+    # XXX only 1 readline obj allowed with whatever module I'm using
+    $Readline ||= Term::ReadLine->new('zavandor', $in_fh, $out_fh)
 	or xcroak "can't initialize Term::ReadLine";
+
+    my $self = $class->SUPER::new($in_fh, $out_fh);
+    $self->[UI_READLINE_OBJ] = $Readline;
 
     # XXX completion
 
