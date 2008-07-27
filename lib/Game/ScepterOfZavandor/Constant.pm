@@ -1,4 +1,4 @@
-# $Id: Constant.pm,v 1.5 2008-07-25 17:45:07 roderick Exp $
+# $Id: Constant.pm,v 1.6 2008-07-27 13:21:05 roderick Exp $
 
 use strict;
 
@@ -13,7 +13,7 @@ use RS::Handy		qw(badinvo data_dump dstr xcroak);
 
 use vars qw($VERSION @EXPORT @EXPORT_OK);
 BEGIN {
-    $VERSION = q$Revision: 1.5 $ =~ /(\d\S+)/ ? $1 : '?';
+    $VERSION = q$Revision: 1.6 $ =~ /(\d\S+)/ ? $1 : '?';
     @EXPORT_OK = qw(
 	$Base_gem_slots
 	$Base_hand_limit
@@ -154,9 +154,9 @@ BEGIN {
     @Artifact_data_field = (
     	@Auctionable_data_field,
 	'DECK_LETTER',			# A-D, S for sentinels
-	'DISCOUNT_ARTIFACT',		# XXX artifact you get a discount on
-	'DISCOUNT_ARTIFACT_AMOUNT',	# XXX discount of N on specified artifact
-	'DISCOUNT_SENTINELS',		# XXX discount of N on sentinels
+	'DISCOUNT_ARTIFACT',		# artifact you get a discount on
+	'DISCOUNT_ARTIFACT_AMOUNT',	# discount of N on specified artifact
+	'DISCOUNT_SENTINELS',		# discount of N on sentinels
 	'OWN_ONLY_ONE',			# can only own 1 of these
 	'KNOWLEDGE_CHIP',		# XXX stage N knowledge chips
 	'ADVANCE_KNOWLEDGE',		# XXX advance N knowledge stages
