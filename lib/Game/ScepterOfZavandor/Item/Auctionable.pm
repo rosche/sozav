@@ -1,10 +1,10 @@
-# $Id: Auctionable.pm,v 1.3 2008-07-25 17:41:18 roderick Exp $
+# $Id: Auctionable.pm,v 1.4 2008-07-27 13:12:21 roderick Exp $
 
 use strict;
 
 package Game::ScepterOfZavandor::Item::Auctionable;
 
-use base qw(Exporter Game::ScepterOfZavandor::Item);
+use base qw(Game::ScepterOfZavandor::Item);
 
 use Carp	qw(confess);
 use Game::Util	qw(add_array_index debug make_ro_accessor make_rw_accessor);
@@ -13,36 +13,35 @@ use RS::Handy	qw(badinvo data_dump dstr xconfess);
 use Game::ScepterOfZavandor::Constant qw(
     /^ITEM_/
     /^AUC_/
+    @Auctionable
     @Auctionable_data_field
+    @Sentinel
 );
-
-use vars qw($VERSION @EXPORT @EXPORT_OK);
-BEGIN {
-    $VERSION = q$Revision: 1.3 $ =~ /(\d\S+)/ ? $1 : '?';
-    @EXPORT_OK = qw(
-	auc_type_is_artifact
-	auc_type_is_sentinel
-    );
-}
-use subs grep { /^[a-z]/    } @EXPORT, @EXPORT_OK;
-use vars grep { /^[\$\@\%]/ } @EXPORT, @EXPORT_OK;
 
 BEGIN {
     add_array_index 'ITEM', $_ for map { "AUC_$_" } qw(TYPE PLAYER DATA);
 }
 
-#sub auc_type_is_artifact {
-#    @_ == 1 || badinvo;
-#    my ($auc_type) = @_;
-#    return !auc_type_is_sentinel $auc_type;
-#}
+# function
+# XXX class method?
 
-#sub auc_type_is_sentinel {
-#    @_ == 1 || badinvo;
-#    my ($auc_type) = @_;
-#    defined $auc_type or xconfess;
-#    return $Auctionable_data[$auc_type][AUC_DATA_DECK_LETTER] eq 'S';
-#}
+sub auc_type_is_artifact {
+    @_ == 1 || badinvo;
+    my ($auc_type) = @_;
+    return !auc_type_is_sentinel($auc_type);
+}
+
+# function
+# XXX class method?
+
+sub auc_type_is_sentinel {
+    @_ == 1 || badinvo;
+    my ($auc_type) = @_;
+
+    defined $auc_type && $auc_type <= $#Auctionable
+	or xconfess;
+    return defined $Sentinel[$auc_type];
+}
 
 sub new {
     @_ == 4 || badinvo;
@@ -99,7 +98,6 @@ sub data {
 
     return @r == 1 ? $r[0] : @r;
 }
-
 
 sub free_items {
 }
