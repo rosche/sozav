@@ -1,4 +1,4 @@
-# $Id: Artifact.pm,v 1.3 2008-07-25 17:41:40 roderick Exp $
+# $Id: Artifact.pm,v 1.4 2008-07-27 13:16:08 roderick Exp $
 
 use strict;
 
@@ -78,6 +78,25 @@ sub allows_player_to_enchant_gem_type {
 #     - knowledge of artifacts
 #     - turn order
 #     - other artifacts
+
+sub discount_on_auc_type {
+    @_ == 2 || badinvo;
+    my $self     = shift;
+    my $auc_type = shift;
+
+    if (Game::ScepterOfZavandor::Item::Auctionable::auc_type_is_artifact $auc_type) {
+	my $discount_auc_type = $self->data(ARTI_DATA_DISCOUNT_ARTIFACT);
+	return (!defined $discount_auc_type || $discount_auc_type != $auc_type)
+	    ? 0
+	    : $self->data(ARTI_DATA_DISCOUNT_ARTIFACT_AMOUNT);
+    }
+
+    if (Game::ScepterOfZavandor::Item::Auctionable::auc_type_is_sentinel $auc_type) {
+	return $self->data(ARTI_DATA_DISCOUNT_SENTINELS);
+    }
+
+    return 0;
+}
 
 sub free_items {
     @_ == 1 || badinvo;
