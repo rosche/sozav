@@ -1,4 +1,4 @@
-# $Id: Item.pm,v 1.6 2008-07-25 17:39:35 roderick Exp $
+# $Id: Item.pm,v 1.7 2008-07-27 13:21:53 roderick Exp $
 
 use strict;
 
@@ -112,14 +112,11 @@ sub allows_player_to_enchant_gem_type {
     return 0;
 }
 
-sub discount_on {
-    @_ == 2 || badinvo;
-    my $self = shift;
-    # XXX sentinel
-    my $auc_type = shift;
+# XXX make a global item type, then use the same function for auctionables
+# and gems?
 
-    # XXX
-    #return $_[0]->isa(Game::ScepterOfZavandor::Item::Artifact::);
+sub discount_on_auc_type {
+    return 0;
 }
 
 sub energy {
@@ -153,26 +150,3 @@ sub vp {
 }
 
 1
-
-__END__
-
-- item objects
-
-    - item
-	- VP
-
-    - item::energy (card or chit)
-	- value
-	- hand limit count
-
-    - item::knowledge
-
-    - item::gem
-    	- active/inactive?
-	- limit (5 for ruby)
-
-    - item::auctionable
-
-    - item::auctionable::artifact
-
-    - item::auctionable::sentinel
