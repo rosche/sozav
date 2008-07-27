@@ -1,4 +1,4 @@
-# $Id: Stdio.pm,v 1.5 2008-07-25 17:39:00 roderick Exp $
+# $Id: Stdio.pm,v 1.6 2008-07-27 13:27:36 roderick Exp $
 
 use strict;
 
@@ -69,7 +69,9 @@ sub one_action {
     my $liquid = $self->a_player->current_energy_liquid;
     my $hc = $self->a_player->current_hand_count;
     my $hl = $self->a_player->hand_limit;
-    $self->out_char("action? ($liquid liquid, $hc/$hl hand limit) ");
+    my $ag = $self->a_player->active_gems;
+    my $gs = $self->a_player->num_gem_slots;
+    $self->out_char("action? ($liquid liquid, $hc/$hl hand limit, $ag/$gs gems) ");
     my $s = $self->in;
     return unless defined $s && $s ne '';
     my ($cmd, @arg) = split ' ', $s;
@@ -148,8 +150,11 @@ sub action_items {
     $self->out("on auction:\n");
     if (my @a = $self->a_player->a_game->auction_all) {
 	for (0..$#a) {
+	    my $a = $a[$_];
 	    my $n = $_ + 1;
-	    $self->out("  $n $a[$_]\n");
+	    my $discount = $self->a_player->auctionable_discount($a);
+	    $self->out(sprintf "  %2d %s%s\n", $n, $a,
+		       $discount != 0 ? " (discount $discount)" : "");
 	}
     }
     else {
