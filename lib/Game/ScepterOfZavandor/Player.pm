@@ -1,4 +1,4 @@
-# $Id: Player.pm,v 1.5 2008-07-25 17:44:29 roderick Exp $
+# $Id: Player.pm,v 1.6 2008-07-27 13:22:24 roderick Exp $
 
 use strict;
 
@@ -220,16 +220,16 @@ sub score {
 
 sub auctionable_discount {
     @_ == 2 || badinvo;
-    my $self         = shift;
-    my $arti_or_type = shift;
+    my $self        = shift;
+    my $auc_or_type = shift;
 
-    my $arti_type = ref $arti_or_type
-			? $arti_or_type->a_arti_type
-			: $arti_or_type;
-    # XXX validate
+    my $auc_type = ref $auc_or_type
+			? $auc_or_type->a_auc_type
+			: $auc_or_type;
 
-    my $discount = 0;
-    # XXX
+    my $discount = sum map { $_->discount_on_auc_type($auc_type) } $self->items;
+    #debug "$discount discount on $auc_or_type";
+    return $discount
 }
 
 sub auto_activate_gems {
@@ -271,7 +271,7 @@ sub buy_auctionable {
 	die "$price < $cost";
     }
 
-    my $discount = 0; # XXX
+    my $discount = $self->auctionable_discount($auc);
     my $cash = $self->current_energy_liquid;
     $cash + $discount >= $price
 	or die "not enough liquid cash, $cash + $discount < $price";
@@ -294,6 +294,8 @@ sub enchant_gem {
 	# XXY ungrammatical
 	die "not allowed to enchant $Gem[$gtype]";
     }
+
+    # XXX 5-ruby limit
 
     my $cost = $self->gem_cost($gtype);
     my $cash = $self->current_energy_liquid;
@@ -512,7 +514,6 @@ sub pay_energy {
     for my $i (@cash) {
 	my $v = $i->energy;
 	push @to_use, $i;
-print "value $v from $i\n";
 	$tot -= $v;
 	last if $tot <= 0;
     }
