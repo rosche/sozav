@@ -1,4 +1,4 @@
-# $Id: Deck.pm,v 1.4 2008-07-24 00:02:03 roderick Exp $
+# $Id: Deck.pm,v 1.5 2008-07-28 12:55:43 roderick Exp $
 
 use strict;
 
@@ -6,7 +6,7 @@ package Game::ScepterOfZavandor::Deck;
 
 use base qw(Game::Util::Deck);
 
-use Game::Util	qw(add_array_index debug);
+use Game::Util	qw(add_array_index debug make_ro_accessor);
 use RS::Handy	qw(badinvo data_dump dstr xcroak);
 
 use Game::ScepterOfZavandor::Constant qw(
@@ -35,6 +35,10 @@ sub new {
 
     return $self;
 }
+
+make_ro_accessor (
+    a_gtype => DECK_GTYPE,
+);
 
 sub draw {
     my $self = shift;
