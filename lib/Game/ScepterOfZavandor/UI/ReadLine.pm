@@ -1,4 +1,4 @@
-# $Id: ReadLine.pm,v 1.3 2008-07-27 13:23:38 roderick Exp $
+# $Id: ReadLine.pm,v 1.4 2008-07-28 17:58:37 roderick Exp $
 
 use strict;
 
@@ -40,7 +40,8 @@ sub in {
     @_ == 1 || badinvo;
     my $self = shift;
 
-    return $self->[UI_READLINE_OBJ]->readline;
+    return $self->[UI_READLINE_OBJ]->readline(
+    	    $self->a_player->name . " action? ");
 }
 
 1
