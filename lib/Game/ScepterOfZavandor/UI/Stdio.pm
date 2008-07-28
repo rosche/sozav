@@ -1,4 +1,4 @@
-# $Id: Stdio.pm,v 1.6 2008-07-27 13:27:36 roderick Exp $
+# $Id: Stdio.pm,v 1.7 2008-07-28 19:06:45 roderick Exp $
 
 use strict;
 
@@ -6,14 +6,20 @@ package Game::ScepterOfZavandor::UI::Stdio;
 
 use base qw(Game::ScepterOfZavandor::UI);
 
-use Game::Util 	qw(add_array_index debug);
-use RS::Handy	qw(badinvo data_dump dstr xcroak);
-use Symbol	qw(qualify_to_ref);
+use Game::Util 		qw(add_array_index debug);
+use List::Util		qw(first);
+use List::MoreUtils	qw(natatime);
+use RS::Handy		qw(badinvo data_dump dstr xcroak);
+use Scalar::Util	qw(looks_like_number);
+use Symbol		qw(qualify_to_ref);
+use Term::ANSIColor	qw(color);
 
 use Game::ScepterOfZavandor::Constant qw(
     /^CUR_ENERGY_/
     @Gem
     %Gem
+    @Knowledge
+    %Knowledge
 );
 
 BEGIN {
@@ -66,12 +72,8 @@ sub one_action {
     @_ == 1 || badinvo;
     my $self = shift;
 
-    my $liquid = $self->a_player->current_energy_liquid;
-    my $hc = $self->a_player->current_hand_count;
-    my $hl = $self->a_player->hand_limit;
-    my $ag = $self->a_player->active_gems;
-    my $gs = $self->a_player->num_gem_slots;
-    $self->out_char("action? ($liquid liquid, $hc/$hl hand limit, $ag/$gs gems) ");
+    $self->status_short;
+
     my $s = $self->in;
     return unless defined $s && $s ne '';
     my ($cmd, @arg) = split ' ', $s;
@@ -91,20 +93,132 @@ sub one_action {
     return $ret;
 }
 
+sub status_short {
+    @_ == 1 || badinvo;
+    my $self  = shift;
+
+    $self->out("\n");
+    $self->out("On auction:\n");
+    if (my @a = $self->a_player->a_game->auction_all) {
+	for (0..$#a) {
+	    my $a = $a[$_];
+	    next if $a->is_sentinel;
+	    my $n = $_ + 1;
+	    my $discount = $self->a_player->auctionable_discount($a);
+	    $self->out(sprintf "  %2d %s%s\n", $n, $a,
+		       $discount != 0 ? " (discount $discount)" : "");
+	}
+    }
+    else {
+	$self->out("  none\n");
+    }
+
+    $self->out("Players:\n");
+    my $il = 2;
+    for my $p ($self->a_player->a_game->players) {
+    	my $knowledge = '';
+	for my $ktype (0..$#Knowledge) {
+	    my $k = first { $_->ktype_is($ktype) } $p->knowledge_chips;
+	    $knowledge .= !$k
+			    ? '-'
+			    : $k->maxed_out
+				? '*'
+				: $k->user_level;
+	}
+
+    	my @spec = (
+	    "%-6s"               => [$p->name],
+	    "score %2d (%d)"     => [$p->score, $p->user_turn_order],
+	    "energy %3d"         => [$p->current_energy_liquid],
+	    "hand %2d/%2d"       => [$p->current_hand_count, $p->hand_limit],
+	    "gems %2d/%2d"       => [0+$p->active_gems, $p->num_gem_slots],
+	    "know %s"            => [$knowledge],
+    	);
+
+    	my $it = natatime 2, @spec;
+	my ($fmt, @arg);
+	while (my ($this_fmt, $r) = $it->()) {
+	    if (!defined $fmt) {
+		$fmt = ($p == $self->a_player
+			? color('bold') . ">"
+			: " ") . " ";
+	    }
+	    else {
+		$fmt .= "   ";
+	    }
+	    $fmt .= $this_fmt;
+	    push @arg, @$r;
+	}
+    	$self->out(sprintf "$fmt%s\n", @arg, color 'reset');
+    }
+}
+
+#------------------------------------------------------------------------------
+
+sub action_advance_knowledge {
+    @_ == 1 || @_ == 2 || badinvo;
+    my $self  = shift;
+    my $kname_or_type = shift;
+
+    my $ktype;
+    if (!defined $kname_or_type) {
+	my @k = $self->a_player->knowledge_chips_advancable;
+	if (@k == 0) {
+	    die "no advancable knowledge chips";
+	}
+	elsif (@k > 1) {
+	    die "multiple advancable knowledge chips";
+	}
+	$ktype = $k[0]->a_type;
+    }
+    else {
+	$ktype = looks_like_number($kname_or_type)
+    	    	    ? $kname_or_type - 1
+		    : $Knowledge{$kname_or_type};
+    }
+
+    $self->a_player->advance_knowledge($ktype, 0);
+    return 1;
+}
+*action_a = \&action_advance_knowledge;
+
 sub action_buy_auctionable {
-    @_ == 2 || badinvo;
-    my $self = shift;
-    my $aix  = shift;
+    @_ == 2 || @_ == 3 || badinvo;
+    my $self  = shift;
+    my $aix   = shift;
+    my $price = shift;
+    # XXX allow specifying price
 
     my @a = $self->a_player->a_game->auction_all;
     $aix >= 1 && $aix <= @a
     	or die "invalid auction index ", dstr $aix;
 
     my $auc = $a[$aix - 1];
-    $self->a_player->buy_auctionable($auc, $auc->get_min_bid);
+    $price = $auc->get_min_bid
+    	if !defined $price;
+    $self->a_player->buy_auctionable($auc, $price);
     return 1;
 }
 *action_b = \&action_buy_auctionable;
+
+sub action_buy_knowledge_chip {
+    @_ == 1 || @_ == 2 || badinvo;
+    my $self = shift;
+    my $cost = shift;
+
+    my $kchip;
+    if (defined $cost) {
+	$kchip = first { $_->a_cost == $cost }
+		$self->a_player->knowledge_chips_unbought
+	    or die "no unbought chip with cost $cost";
+    }
+    else {
+	($kchip) = $self->a_player->knowledge_chips_unbought
+	    or die "no unbought chips";
+    }
+    $self->a_player->buy_knowledge_chip($kchip, 0);
+}
+*action_k = \&action_buy_knowledge_chip;
 
 sub action_done {
     @_ == 1 || badinvo;
@@ -122,9 +236,11 @@ sub action_gem_info {
     for my $gtype (0..$#Gem) {
     	my $cost = $self->a_player->gem_cost($gtype);
     	my $val  = $self->a_player->gem_value($gtype);
-	$self->out(sprintf "  %8s  cost %2d  value %2d  avg income %4.2f\n",
+	$self->out(sprintf "  %8s  cost %2d  value %2d\n",
 			    $Gem[$gtype], $cost, $val);
+	# XXX min, max, average value
     }
+    return 1;
 }
 
 sub action_help {
@@ -147,6 +263,7 @@ sub action_items {
     @_ == 1 || badinvo;
     my $self = shift;
 
+    # XXX how many of each kind of card left
     $self->out("on auction:\n");
     if (my @a = $self->a_player->a_game->auction_all) {
 	for (0..$#a) {
@@ -232,5 +349,7 @@ sub action_sell_gem {
 
     return 1;
 }
+
+#------------------------------------------------------------------------------
 
 1
