@@ -1,4 +1,4 @@
-# $Id: Constant.pm,v 1.6 2008-07-27 13:21:05 roderick Exp $
+# $Id: Constant.pm,v 1.7 2008-07-28 02:13:28 roderick Exp $
 
 use strict;
 
@@ -13,7 +13,7 @@ use RS::Handy		qw(badinvo data_dump dstr xcroak);
 
 use vars qw($VERSION @EXPORT @EXPORT_OK);
 BEGIN {
-    $VERSION = q$Revision: 1.6 $ =~ /(\d\S+)/ ? $1 : '?';
+    $VERSION = q$Revision: 1.7 $ =~ /(\d\S+)/ ? $1 : '?';
     @EXPORT_OK = qw(
 	$Base_gem_slots
 	$Base_hand_limit
@@ -41,6 +41,10 @@ BEGIN {
 	%Item_type
 	@Knowledge
 	%Knowledge
+	@Knowledge_chip_cost
+	@Knowledge_data
+	@Knowledge_data_field
+	$Knowledge_top_vp
 	@Option
 	%Option
 	@Sentinel
@@ -83,6 +87,7 @@ BEGIN {
     add_array_indices 'GEM_DATA', (
     	'COST',
 	'VP',
+	'LIMIT',
     	'CARD_LIST',
     	'CARD_MIN',
     	'CARD_MAX',
@@ -97,6 +102,11 @@ BEGIN {
     @Knowledge = qw(gems eflow fire 9sages artifacts accum);
     %Knowledge = map { $Knowledge[$_] => $_ } 0..$#Knowledge;
     add_array_indices 'KNOW', @Knowledge;
+    add_array_indices 'KNOW_DATA', qw(
+    	HAND_LIMIT
+    	LEVEL_COST
+	DETAIL
+    );
 
     @Option = (
     	'1 dust',
@@ -182,16 +192,40 @@ BEGIN {
     $Concentrated_card_count      = 4;
     $Concentrated_additional_dust = 2;
     $Concentrated_hand_count      = 3;
+    @Knowledge_chip_cost          = qw(20 25 30 35 40);
+    $Knowledge_top_vp             = 2;
 }
 
 BEGIN {
+    $Knowledge_data[KNOW_GEMS     ][KNOW_DATA_LEVEL_COST] = [qw(2  4  8 16)];
+    $Knowledge_data[KNOW_EFLOW    ][KNOW_DATA_LEVEL_COST] = [qw(3  6 12 24)];
+    $Knowledge_data[KNOW_FIRE     ][KNOW_DATA_LEVEL_COST] = [qw(5 10 15 20)];
+    $Knowledge_data[KNOW_9SAGES   ][KNOW_DATA_LEVEL_COST] = [qw(3  6 12 24)];
+    $Knowledge_data[KNOW_ARTIFACTS][KNOW_DATA_LEVEL_COST] = [qw(2  4  8 16)];
+    $Knowledge_data[KNOW_ACCUM    ][KNOW_DATA_LEVEL_COST] = [qw(2  4  8 16)];
+
+    $Knowledge_data[KNOW_GEMS     ][KNOW_DATA_HAND_LIMIT] = -1;
+    $Knowledge_data[KNOW_EFLOW    ][KNOW_DATA_HAND_LIMIT] = -1;
+    $Knowledge_data[KNOW_FIRE     ][KNOW_DATA_HAND_LIMIT] =  0;
+    $Knowledge_data[KNOW_9SAGES   ][KNOW_DATA_HAND_LIMIT] =  0;
+    $Knowledge_data[KNOW_ARTIFACTS][KNOW_DATA_HAND_LIMIT] =  1;
+    $Knowledge_data[KNOW_ACCUM    ][KNOW_DATA_HAND_LIMIT] =  1;
+
+    $Knowledge_data[KNOW_GEMS     ][KNOW_DATA_DETAIL] = [qw(0.9 0.8 0.7 0.6)];
+    $Knowledge_data[KNOW_EFLOW    ][KNOW_DATA_DETAIL] = [qw(0 2 5 10)];
+    $Knowledge_data[KNOW_FIRE     ][KNOW_DATA_DETAIL] = [qw(0 0 0 1)];
+    # XXX knowledge implemntation
+    $Knowledge_data[KNOW_9SAGES   ][KNOW_DATA_DETAIL] = [GEM_SAPPHIRE, GEM_EMERALD, GEM_DIAMOND, GEM_RUBY];
+    $Knowledge_data[KNOW_ARTIFACTS][KNOW_DATA_DETAIL] = [qw(0 5 5 10)];
+    $Knowledge_data[KNOW_ACCUM    ][KNOW_DATA_DETAIL] = [qw(0 1 1 2)];
+
     my $i = CHAR_DATA_KNOWLEDGE_TRACK;
-    $Character_data[CHAR_WITCH ][$i] = KNOW_GEMS;
-    $Character_data[CHAR_ELF   ][$i] = KNOW_EFLOW;
-    $Character_data[CHAR_DRUID ][$i] = KNOW_FIRE;
-    $Character_data[CHAR_FAIRY ][$i] = KNOW_9SAGES;
-    $Character_data[CHAR_MAGE  ][$i] = KNOW_ARTIFACTS;
-    $Character_data[CHAR_KOBOLD][$i] = KNOW_ACCUM;
+    $Character_data[CHAR_WITCH ][$i] = KNOW_GEMS;	# XXX
+    $Character_data[CHAR_ELF   ][$i] = KNOW_EFLOW;	# XXX
+    $Character_data[CHAR_DRUID ][$i] = KNOW_FIRE;	# XXX
+    $Character_data[CHAR_FAIRY ][$i] = KNOW_9SAGES;	# XXX
+    $Character_data[CHAR_MAGE  ][$i] = KNOW_ARTIFACTS;	# XXX
+    $Character_data[CHAR_KOBOLD][$i] = KNOW_ACCUM;	# XXX
 
     $i = CHAR_DATA_START_DUST;
     $Character_data[CHAR_WITCH ][$i] = 10;
@@ -249,6 +283,8 @@ BEGIN {
     $Gem_data[GEM_EMERALD ][GEM_DATA_COST] = 30;
     $Gem_data[GEM_DIAMOND ][GEM_DATA_COST] = 40;
     $Gem_data[GEM_RUBY    ][GEM_DATA_COST] = 60;
+
+    $Gem_data[GEM_RUBY    ][GEM_DATA_LIMIT] = 5;
 
     my $i = GEM_DATA_CARD_LIST;
     $Gem_data[GEM_SAPPHIRE][$i] = [( 3, 7)x3,( 4, 6)x6,( 5  )x12];
