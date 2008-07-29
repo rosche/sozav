@@ -1,4 +1,4 @@
-# $Id: Item.pm,v 1.7 2008-07-27 13:21:53 roderick Exp $
+# $Id: Item.pm,v 1.8 2008-07-29 18:07:22 roderick Exp $
 
 use strict;
 
@@ -11,7 +11,8 @@ use overload (
 
 use Game::Util  	qw($Debug add_array_indices debug
 			    make_ro_accessor make_rw_accessor);
-use RS::Handy		qw(badinvo data_dump dstr xcroak);
+use RS::Handy		qw(badinvo data_dump dstr xconfess);
+use Scalar::Util	qw(weaken);
 
 use Game::ScepterOfZavandor::Constant qw(
     /^ITEM_/
@@ -21,6 +22,8 @@ use Game::ScepterOfZavandor::Constant qw(
 BEGIN {
     add_array_indices 'ITEM', qw(
     	TYPE
+	DATA
+	PLAYER
 	VP
 	GEM_SLOTS
 	HAND_COUNT
@@ -29,14 +32,21 @@ BEGIN {
 }
 
 sub new {
-    @_ == 2 || badinvo;
-    my ($class, $itype) = @_;
+    (@_ >= 2 || @_ <= 4) || badinvo;
+    my ($class, $itype, $player, $rdata) = @_;
 
     defined $itype && $itype >= 0 && $itype <= $#Item_type
-	or die;
+	or xconfess;
+
+    !defined $player
+    	# XXX quoting on class name
+	or eval { $player->isa("Game::ScepterOfZavandor::Player") }
+	or xconfess;
 
     my $self = bless [], $class;
     $self->[ITEM_TYPE] = $itype;
+    $self->a_player($player);
+    $self->a_data($rdata);
     $self->a_vp(0);
     $self->a_hand_count(0);
     $self->a_hand_limit_modifier(0);
@@ -52,14 +62,14 @@ make_ro_accessor (
 make_rw_accessor (
     # XXX maybe a ITEM_STATIC_VP, if that isn't set use a method (for
     # sentinels, gems)
+    a_data                => ITEM_DATA,
     a_vp                  => ITEM_VP,
-    # XXX pass these to ->new and make them read only?
     a_hand_count          => ITEM_HAND_COUNT,
     a_hand_limit_modifier => ITEM_HAND_LIMIT_MODIFIER,
     a_gem_slots           => ITEM_GEM_SLOTS,
 );
 
-for (qw(Artifact Auctionable Energy Gem Sentinel)) {
+for (qw(Artifact Auctionable Energy Gem Knowledge Sentinel TurnOrder)) {
     my $pkg = __PACKAGE__ . "::$_";
     my $method = "is_" . lc $_;
     my $sub = sub {
@@ -69,6 +79,47 @@ for (qw(Artifact Auctionable Energy Gem Sentinel)) {
     no strict 'refs';
     *$method = $sub;
 }
+
+sub a_player {
+    @_ == 1 || @_ == 2 || badinvo;
+    my $self = shift;
+
+    my $old = $self->[ITEM_PLAYER];
+    if (@_) {
+	my $new = shift;
+	$self->[ITEM_PLAYER] = $new;
+	if ($new) {
+	    weaken $self->[ITEM_PLAYER];
+	}
+    }
+    return $old;
+}
+
+sub data {
+    @_ >= 2 || badinvo;
+    my $self = shift;
+    my @ix   = @_;
+
+    my $rd = $self->[ITEM_DATA]
+    	or xconfess "no data list for $self";
+
+    my @r;
+    for my $ix (@ix) {
+	$ix >= 0 && $ix <= $#{ $rd } || xconfess dstr $ix;
+	push @r, $rd->[$ix];
+    }
+
+    return @r == 1 ? $r[0] : @r;
+}
+
+# XXX somethign like this but generic
+#for my $i (0..$#Auctionable_data_field) {
+#    no strict 'refs';
+#    *{ "get_data_" . lc $Auctionable_data_field[$i] } = sub {
+#	@_ == 1 || badinvo;
+#	return $_[0]->data($i);
+#    }
+#}
 
 sub as_string_fields {
     @_ || badinvo;
