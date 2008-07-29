@@ -1,4 +1,4 @@
-# $Id: Constant.pm,v 1.7 2008-07-28 02:13:28 roderick Exp $
+# $Id: Constant.pm,v 1.8 2008-07-29 18:20:30 roderick Exp $
 
 use strict;
 
@@ -13,7 +13,7 @@ use RS::Handy		qw(badinvo data_dump dstr xcroak);
 
 use vars qw($VERSION @EXPORT @EXPORT_OK);
 BEGIN {
-    $VERSION = q$Revision: 1.7 $ =~ /(\d\S+)/ ? $1 : '?';
+    $VERSION = q$Revision: 1.8 $ =~ /(\d\S+)/ ? $1 : '?';
     @EXPORT_OK = qw(
 	$Base_gem_slots
 	$Base_hand_limit
@@ -34,6 +34,7 @@ BEGIN {
 	@Current_energy
 	@Dust_data
 	$Dust_data_val_1
+	$Game_end_sentinels_sold_count
 	@Gem
 	%Gem
 	@Gem_data
@@ -43,7 +44,7 @@ BEGIN {
 	%Knowledge
 	@Knowledge_chip_cost
 	@Knowledge_data
-	@Knowledge_data_field
+	$Knowledge_9sages_card_count
 	$Knowledge_top_vp
 	@Option
 	%Option
@@ -52,6 +53,8 @@ BEGIN {
     	%Sentinel
 	@Sentinel_data
 	@Sentinel_data_field
+	@Turn_order
+	@Turn_order_data
     );
 }
 use subs grep { /^[a-z]/    } @EXPORT, @EXPORT_OK;
@@ -72,7 +75,11 @@ BEGIN {
 	    'liquid',		# liquid = cards+dust + inactive gems
 		'cards+dust',	# XXY better name
 		'inactive gems',
-	    'active gems');
+	    'active gems',
+    	'min',			# publically visible minimum
+    	'max',			# publically visible maximum
+    	'avg',			# publically visible average
+    );
     add_array_indices 'CUR_ENERGY', @Current_energy;
 
     add_array_indices 'DUST_DATA', (
@@ -95,7 +102,8 @@ BEGIN {
     	'CONCENTRATED',
     );
 
-    @Item_type = qw(knowledge sentinel artifact gem concentrated card dust);
+    @Item_type = qw(turn_order knowledge sentinel artifact gem
+		    concentrated card dust);
     %Item_type = map { $Item_type[$_] => $_ } 0..$#Item_type;
     add_array_indices 'ITEM_TYPE', @Item_type;
 
@@ -103,6 +111,7 @@ BEGIN {
     %Knowledge = map { $Knowledge[$_] => $_ } 0..$#Knowledge;
     add_array_indices 'KNOW', @Knowledge;
     add_array_indices 'KNOW_DATA', qw(
+	NAME
     	HAND_LIMIT
     	LEVEL_COST
 	DETAIL
@@ -168,14 +177,14 @@ BEGIN {
 	'DISCOUNT_ARTIFACT_AMOUNT',	# discount of N on specified artifact
 	'DISCOUNT_SENTINELS',		# discount of N on sentinels
 	'OWN_ONLY_ONE',			# can only own 1 of these
-	'KNOWLEDGE_CHIP',		# XXX stage N knowledge chips
-	'ADVANCE_KNOWLEDGE',		# XXX advance N knowledge stages
+	'KNOWLEDGE_CHIP',		# stage N knowledge chips
+	'ADVANCE_KNOWLEDGE',		# advance N knowledge stages
 	'GEM_SLOTS',			# add N gem slots
     	'HAND_LIMIT',			# add N to hand limit
 	'CAN_BUY_GEM',			# you can by gem type GTYPE
     	'FREE_GEM',			# you get a free gem of type GTYPE
 	'GEM_ENERGY_PRODUCTION',	# produces an energy card of type GTYPE
-	'DESTROY_GEM',			# XXX destroy N gems of each other player
+	'DESTROY_GEM',			# destroy N gems of each other player
     );
     add_array_indices 'ARTI_DATA', @Artifact_data_field;
 
@@ -184,48 +193,96 @@ BEGIN {
 	'MAX_BONUS_VP',
     );
     add_array_indices 'SENT_DATA', @Sentinel_data_field;
+
+    @Turn_order = (1..6);
+    add_array_indices 'TURN', @Turn_order;
+    add_array_indices 'TURN_DATA', qw(
+    	NAME
+	ACTIVE_IF_MY_VP_GE
+	ACTIVE_IF_ANY_VP_GE
+    	ARTIFACT_COST_DISCOUNT
+    	SENTINEL_COST_DISCOUNT
+    );
 }
 
 BEGIN {
-    $Base_gem_slots               = 5;
-    $Base_hand_limit              = 5;
-    $Concentrated_card_count      = 4;
-    $Concentrated_additional_dust = 2;
-    $Concentrated_hand_count      = 3;
-    @Knowledge_chip_cost          = qw(20 25 30 35 40);
-    $Knowledge_top_vp             = 2;
+    $Base_gem_slots                = 5;
+    $Base_hand_limit               = 5;
+    $Concentrated_card_count       = 4;
+    $Concentrated_additional_dust  = 2;
+    $Concentrated_hand_count       = 3;
+    $Game_end_sentinels_sold_count = 5;
+    @Knowledge_chip_cost           = qw(20 25 30 35 40);
+    $Knowledge_9sages_card_count   = 2;
+    $Knowledge_top_vp              = 2;
 }
 
 BEGIN {
-    $Knowledge_data[KNOW_GEMS     ][KNOW_DATA_LEVEL_COST] = [qw(2  4  8 16)];
-    $Knowledge_data[KNOW_EFLOW    ][KNOW_DATA_LEVEL_COST] = [qw(3  6 12 24)];
-    $Knowledge_data[KNOW_FIRE     ][KNOW_DATA_LEVEL_COST] = [qw(5 10 15 20)];
-    $Knowledge_data[KNOW_9SAGES   ][KNOW_DATA_LEVEL_COST] = [qw(3  6 12 24)];
-    $Knowledge_data[KNOW_ARTIFACTS][KNOW_DATA_LEVEL_COST] = [qw(2  4  8 16)];
-    $Knowledge_data[KNOW_ACCUM    ][KNOW_DATA_LEVEL_COST] = [qw(2  4  8 16)];
+    my $i;
 
-    $Knowledge_data[KNOW_GEMS     ][KNOW_DATA_HAND_LIMIT] = -1;
-    $Knowledge_data[KNOW_EFLOW    ][KNOW_DATA_HAND_LIMIT] = -1;
-    $Knowledge_data[KNOW_FIRE     ][KNOW_DATA_HAND_LIMIT] =  0;
-    $Knowledge_data[KNOW_9SAGES   ][KNOW_DATA_HAND_LIMIT] =  0;
-    $Knowledge_data[KNOW_ARTIFACTS][KNOW_DATA_HAND_LIMIT] =  1;
-    $Knowledge_data[KNOW_ACCUM    ][KNOW_DATA_HAND_LIMIT] =  1;
+    for (0..$#Turn_order) {
+	$Turn_order_data[$_][TURN_DATA_NAME]                   = $_ + 1;
+	$Turn_order_data[$_][TURN_DATA_ARTIFACT_COST_DISCOUNT] = 0;
+	$Turn_order_data[$_][TURN_DATA_SENTINEL_COST_DISCOUNT] = 0;
+    }
 
-    $Knowledge_data[KNOW_GEMS     ][KNOW_DATA_DETAIL] = [qw(0.9 0.8 0.7 0.6)];
-    $Knowledge_data[KNOW_EFLOW    ][KNOW_DATA_DETAIL] = [qw(0 2 5 10)];
-    $Knowledge_data[KNOW_FIRE     ][KNOW_DATA_DETAIL] = [qw(0 0 0 1)];
-    # XXX knowledge implemntation
-    $Knowledge_data[KNOW_9SAGES   ][KNOW_DATA_DETAIL] = [GEM_SAPPHIRE, GEM_EMERALD, GEM_DIAMOND, GEM_RUBY];
-    $Knowledge_data[KNOW_ARTIFACTS][KNOW_DATA_DETAIL] = [qw(0 5 5 10)];
-    $Knowledge_data[KNOW_ACCUM    ][KNOW_DATA_DETAIL] = [qw(0 1 1 2)];
+    $Turn_order_data[TURN_1][TURN_DATA_ACTIVE_IF_MY_VP_GE]     =  10;
+    $Turn_order_data[TURN_1][TURN_DATA_ARTIFACT_COST_DISCOUNT] = -10;
+    $Turn_order_data[TURN_1][TURN_DATA_SENTINEL_COST_DISCOUNT] = -20;
 
-    my $i = CHAR_DATA_KNOWLEDGE_TRACK;
-    $Character_data[CHAR_WITCH ][$i] = KNOW_GEMS;	# XXX
-    $Character_data[CHAR_ELF   ][$i] = KNOW_EFLOW;	# XXX
-    $Character_data[CHAR_DRUID ][$i] = KNOW_FIRE;	# XXX
-    $Character_data[CHAR_FAIRY ][$i] = KNOW_9SAGES;	# XXX
-    $Character_data[CHAR_MAGE  ][$i] = KNOW_ARTIFACTS;	# XXX
-    $Character_data[CHAR_KOBOLD][$i] = KNOW_ACCUM;	# XXX
+    $Turn_order_data[TURN_2][TURN_DATA_ACTIVE_IF_MY_VP_GE]     =  10;
+    $Turn_order_data[TURN_2][TURN_DATA_ARTIFACT_COST_DISCOUNT] =  -5;
+    $Turn_order_data[TURN_2][TURN_DATA_SENTINEL_COST_DISCOUNT] = -10;
+
+    $Turn_order_data[TURN_5][TURN_DATA_ACTIVE_IF_ANY_VP_GE]    =  10;
+    $Turn_order_data[TURN_5][TURN_DATA_ARTIFACT_COST_DISCOUNT] =   5;
+    $Turn_order_data[TURN_5][TURN_DATA_SENTINEL_COST_DISCOUNT] =  10;
+
+    $Turn_order_data[TURN_6][TURN_DATA_ACTIVE_IF_ANY_VP_GE]    =  10;
+    $Turn_order_data[TURN_6][TURN_DATA_ARTIFACT_COST_DISCOUNT] =  10;
+    $Turn_order_data[TURN_6][TURN_DATA_SENTINEL_COST_DISCOUNT] =  20;
+
+    $i = KNOW_DATA_NAME;
+    my $k = 'Knowledge of';
+    $Knowledge_data[KNOW_GEMS     ][$i] = "$k Gems";
+    $Knowledge_data[KNOW_EFLOW    ][$i] = "$k Energy Flow";
+    $Knowledge_data[KNOW_FIRE     ][$i] = "$k Fire";
+    $Knowledge_data[KNOW_9SAGES   ][$i] = "$k the 9 Sages";
+    $Knowledge_data[KNOW_ARTIFACTS][$i] = "$k Artifacts";
+    $Knowledge_data[KNOW_ACCUM    ][$i] = "$k Accumulation";
+
+    $i = KNOW_DATA_LEVEL_COST;
+    $Knowledge_data[KNOW_GEMS     ][$i] = [qw(2  4  8 16)];
+    $Knowledge_data[KNOW_EFLOW    ][$i] = [qw(3  6 12 24)];
+    $Knowledge_data[KNOW_FIRE     ][$i] = [qw(5 10 15 20)];
+    $Knowledge_data[KNOW_9SAGES   ][$i] = [qw(3  6 12 24)];
+    $Knowledge_data[KNOW_ARTIFACTS][$i] = [qw(2  4  8 16)];
+    $Knowledge_data[KNOW_ACCUM    ][$i] = [qw(2  4  8 16)];
+
+    $i = KNOW_DATA_HAND_LIMIT;
+    $Knowledge_data[KNOW_GEMS     ][$i] = -1;
+    $Knowledge_data[KNOW_EFLOW    ][$i] = -1;
+    $Knowledge_data[KNOW_FIRE     ][$i] =  0;
+    $Knowledge_data[KNOW_9SAGES   ][$i] =  0;
+    $Knowledge_data[KNOW_ARTIFACTS][$i] =  1;
+    $Knowledge_data[KNOW_ACCUM    ][$i] =  1;
+
+    $i = KNOW_DATA_DETAIL;
+    $Knowledge_data[KNOW_GEMS     ][$i] = [qw(0.9 0.8 0.7 0.6)];
+    $Knowledge_data[KNOW_EFLOW    ][$i] = [qw(0 2 5 10)];
+    $Knowledge_data[KNOW_FIRE     ][$i] = [qw(0 0 0 1)];
+    $Knowledge_data[KNOW_9SAGES   ][$i] = [GEM_SAPPHIRE, GEM_EMERALD,
+					    GEM_DIAMOND, GEM_RUBY];
+    $Knowledge_data[KNOW_ARTIFACTS][$i] = [qw(0 5 5 10)];
+    $Knowledge_data[KNOW_ACCUM    ][$i] = [qw(0 1 1 2)];
+
+    $i = CHAR_DATA_KNOWLEDGE_TRACK;
+    $Character_data[CHAR_WITCH ][$i] = KNOW_GEMS;
+    $Character_data[CHAR_ELF   ][$i] = KNOW_EFLOW;
+    $Character_data[CHAR_DRUID ][$i] = KNOW_FIRE;
+    $Character_data[CHAR_FAIRY ][$i] = KNOW_9SAGES;
+    $Character_data[CHAR_MAGE  ][$i] = KNOW_ARTIFACTS;
+    $Character_data[CHAR_KOBOLD][$i] = KNOW_ACCUM;
 
     $i = CHAR_DATA_START_DUST;
     $Character_data[CHAR_WITCH ][$i] = 10;
@@ -259,6 +316,9 @@ BEGIN {
     }
 
     # 1-value dust isn't normally present, it can be added via an option.
+
+    # XXX modifying the global means you can't have to $game objects at
+    # once
 
     $Dust_data_val_1 = pop @Dust_data;
 }
@@ -449,7 +509,7 @@ BEGIN {
     $r->[ARTI_DATA_MIN_BID]                  = 100;
     $r->[ARTI_DATA_VP]                       = 8;
     $r->[ARTI_DATA_DECK_LETTER]              = 'D';
-    $r->[ARTI_DATA_KNOWLEDGE_CHIP]           = 2;
+    $r->[ARTI_DATA_ADVANCE_KNOWLEDGE]        = 2;
 
 # real limits are only on fox and tomcat I think
 #
@@ -475,21 +535,27 @@ sub start_items_common {
 
     require Game::ScepterOfZavandor::Item::Gem;
     for (GEM_OPAL, GEM_OPAL, GEM_SAPPHIRE) {
-    	push @i, Game::ScepterOfZavandor::Item::Gem->new($_, $player);
+    	push @i, Game::ScepterOfZavandor::Item::Gem->new($player, $_);
     }
 
     my $char = $player->a_char;
     push @i, Game::ScepterOfZavandor::Item::Energy::Dust->make_dust(
     	    	$Character_data[$char][CHAR_DATA_START_DUST]);
 
-    # XXX knowledge
+    # XXX do knowledge here?
 
     return @i;
 }
 
 1
 
-# XXX use $ix instead of $i for indexes, $i for items
-# XXX use confess for assertions
-# XXX limit to 5 rubies
-# XXX POE to facilitate multiple clients
+# - XXX use $ix instead of $i for indexes, $i for items
+# - XXX use confess for assertions
+# - XXX POE to facilitate multiple clients
+# - XXX can't put magic mirror/shadow cloak up for auction unless you
+#   have an active gem
+# - XXX you can combine purchases to avoid losing 1 dust (except you
+#   have to pay before opening an auction)
+# - XXX The phases 3a, 3b and 3c may be done in any order, although you
+#   may NOT split any of the phases, like selling gems (3a), increase
+#   gems knowledge (3b) and then buy gems (3a again).
