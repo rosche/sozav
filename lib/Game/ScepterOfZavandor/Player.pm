@@ -1,4 +1,4 @@
-# $Id: Player.pm,v 1.6 2008-07-27 13:22:24 roderick Exp $
+# $Id: Player.pm,v 1.7 2008-07-29 18:26:14 roderick Exp $
 
 use strict;
 
@@ -6,15 +6,18 @@ package Game::ScepterOfZavandor::Player;
 
 use List::Util	qw(first sum);
 use Game::Util  qw($Debug add_array_indices debug debug_var
-		    make_ro_accessor make_rw_accessor);
-use RS::Handy	qw(badinvo data_dump dstr xcroak);
+		    info make_ro_accessor make_rw_accessor);
+use RS::Handy	qw(badinvo data_dump dstr xconfess);
 use Scalar::Util qw(refaddr weaken);
+
+use Game::ScepterOfZavandor::Item::Knowledge ();
 
 use Game::ScepterOfZavandor::Constant qw(
     /^CHAR_/
     /^CUR_ENERGY_/
-    /^GEM_/
     /^DUST_DATA_/
+    /^GEM_/
+    /^KNOW_/
     $Base_gem_slots
     $Base_hand_limit
     @Character
@@ -25,10 +28,14 @@ use Game::ScepterOfZavandor::Constant qw(
     @Dust_data
     @Gem
     @Gem_data
+    @Knowledge
+    @Knowledge_chip_cost
+    @Knowledge_data
 );
 
 BEGIN {
-    add_array_indices 'PLAYER', qw(GAME UI CHAR ITEM);
+    add_array_indices 'PLAYER',
+	qw(GAME UI CHAR ITEM ADVANCED_KNOWLEDGE SCORE_AT_TURN_START);
 }
 
 # - items are sub of item class which has default methods which do nothing
@@ -60,7 +67,9 @@ make_ro_accessor (
 );
 
 make_rw_accessor (
-    a_char => PLAYER_CHAR,
+    a_char               => PLAYER_CHAR,
+    a_advanced_knowledge => PLAYER_ADVANCED_KNOWLEDGE,
+    a_score_at_turn_start => PLAYER_SCORE_AT_TURN_START,
 );
 
 sub init {
@@ -74,6 +83,13 @@ sub init {
     	$Character_data[$char][CHAR_DATA_START_ITEMS]->($self));
     for ($self->gems) {
 	$_->activate;
+    }
+
+    my $k = Game::ScepterOfZavandor::Item::Knowledge->new($self, 0);
+    $k->set_type($Character_data[$char][CHAR_DATA_KNOWLEDGE_TRACK]);
+    $self->add_items($k);
+    for (@Knowledge_chip_cost) {
+	$self->add_items(Game::ScepterOfZavandor::Item::Knowledge->new($self, $_));
     }
 
     debug "$Character[$char] items ", join " ", $self->items;
@@ -143,36 +159,6 @@ sub auctionables {
     return grep { $_->is_auctionable } $self->items;
 }
 
-sub current_energy {
-    @_ == 1 || badinvo;
-    my $self = shift;
-
-    # unused gems
-
-    my @e = (0) x @Current_energy;
-
-    for my $i ($self->items) {
-	my $this_e = $i->energy;
-	next unless $this_e;
-
-    	$e[CUR_ENERGY_TOTAL] += $this_e;
-	if ($i->is_gem && $i->is_active) {
-	    $e[CUR_ENERGY_ACTIVE_GEMS] += $this_e;
-	}
-	else {
-	    $e[CUR_ENERGY_LIQUID] += $this_e;
-	    if ($i->is_gem) {
-		$e[CUR_ENERGY_INACTIVE_GEMS] += $this_e;
-	    }
-	    else {
-		$e[CUR_ENERGY_CARDS_DUST] += $this_e;
-	    }
-	}
-    }
-
-    return @e;
-}
-
 sub current_energy_liquid {
     @_ == 1 || badinvo;
     my $self = shift;
@@ -198,9 +184,29 @@ sub hand_limit {
 		map { $_->a_hand_limit_modifier } $self->items;
 }
 
+sub knowledge_chips {
+    @_ == 1 || badinvo;
+    my $self = shift;
+    return grep { $_->is_knowledge } $self->items;
+}
+
+sub knowledge_chips_advancable {
+    @_ == 1 || badinvo;
+    my $self = shift;
+
+    return grep { $_->is_advancable } $self->knowledge_chips;
+}
+
+sub knowledge_chips_unbought {
+    @_ == 1 || badinvo;
+    my $self = shift;
+
+    return grep { $_->is_unbought } $self->knowledge_chips;
+}
+
 sub name {
     @_ == 1 || badinvo;
-    return $Character[$_->[PLAYER_CHAR]];
+    return $Character[$_[0]->[PLAYER_CHAR]];
 }
 
 sub num_gem_slots {
@@ -216,7 +222,72 @@ sub score {
     return sum map { $_->vp } $self->items;
 }
 
+sub score_from_gems {
+    @_ == 1 || badinvo;
+    my $self = shift;
+    return sum map { $_->vp } $self->gems;
+}
+
+sub turn_order_card {
+    @_ == 1 || badinvo;
+    my $self = shift;
+    my @t = grep { $_->is_turnorder } $self->items;
+    @t > 1 and xconfess;
+    return $t[0];
+}
+
+sub user_turn_order {
+    @_ == 1 || badinvo;
+    my $self = shift;
+
+    return $self->turn_order_card->name;
+}
+
 #------------------------------------------------------------------------------
+
+sub advance_knowledge {
+    @_ == 3 || badinvo;
+    my $self  = shift;
+    my $ktype = shift;
+    my $free  = shift;	# true if from an artifact or at startup or such
+
+    if (!$free && $self->a_advanced_knowledge) {
+	die "already advanced knowledge this turn";
+    }
+
+    my $cost = 0;
+    my $k = first { $_->ktype_is($ktype) } $self->knowledge_chips;
+    if (!$k) {
+	$k = first { $_->is_unassigned } $self->knowledge_chips
+	    or die "not on $Knowledge[$ktype] knowledge track and no unassigned chips";
+	# XXX
+	$cost = $Knowledge_data[$ktype][KNOW_DATA_LEVEL_COST][0];
+    }
+    else {
+	$k->maxed_out
+	    and die "$k already maxed out";
+	$cost = $k->next_level_cost;
+    }
+
+    if ($free) {
+	$cost = 0;
+    }
+
+    if ($cost > $self->current_energy_liquid) {
+	die "not enough liquid energy (need $cost)";
+    }
+
+    $self->pay_energy($cost)
+	if $cost;
+    if ($k->is_unassigned) {
+	$k->set_type($ktype);
+    }
+    else {
+	$k->advance;
+    }
+    $self->a_advanced_knowledge(1);
+    info $self->name, " advanced ", $k->name, " to level ", $k->user_level;
+}
 
 sub auctionable_discount {
     @_ == 2 || badinvo;
@@ -231,6 +302,11 @@ sub auctionable_discount {
     #debug "$discount discount on $auc_or_type";
     return $discount
 }
+
+# XXX sub for user-visible discount amount, made positive and called
+# "penalty" if appropriate
+#
+# Or maybe just reverse it, store discounts as -, penalties as +
 
 sub auto_activate_gems {
     @_ == 1 || badinvo;
@@ -275,14 +351,72 @@ sub buy_auctionable {
     my $cash = $self->current_energy_liquid;
     $cash + $discount >= $price
 	or die "not enough liquid cash, $cash + $discount < $price";
+    # XXX using active gems
 
     $self->pay_energy($price - $discount);
     $self->a_game->auctionable_sold($auc);
     # XXX weaken
     $auc->a_player($self);
     $self->add_items($auc, $auc->free_items);
-    # XXX
+    $auc->bought;
+    # XXX do this manually
+    # XXX if bought by a non-active player, it goes into their reserve,
+    # only moved to active on their turn
     $self->auto_activate_gems;
+}
+
+sub buy_knowledge_chip {
+    @_ == 3 || badinvo;
+    my $self  = shift;
+    my $kchip = shift;	# will auto-select if not given
+    my $free  = shift;	# true if from an artifact or at startup or such
+
+    if (!$kchip) {
+	my @kc = sort { $a->a_cost <=> $b->a_cost}
+		    $self->knowledge_chips_unbought
+	    or die "no unbought knowledge chips";
+	$kchip = $kc[$free ? -1 : 0];
+    }
+
+    my $cost = $free ? 0 : $kchip->a_cost;
+    if ($cost > $self->current_energy_liquid) {
+	die "not enough liquid energy (need $cost)";
+    }
+
+    $self->pay_energy($cost)
+	if !$free;
+    info $self->name, " ",
+	    $free ? "acquired" : "bought",
+	    " knowledge chip ", $kchip->a_cost;
+    $kchip->bought;
+}
+
+sub current_energy {
+    @_ == 1 || badinvo;
+    my $self = shift;
+
+    my @e = (0) x @Current_energy;
+
+    for my $i ($self->items) {
+	my $this_e = $i->energy;
+	next unless $this_e;
+
+    	$e[CUR_ENERGY_TOTAL] += $this_e;
+	if ($i->is_gem && $i->is_active) {
+	    $e[CUR_ENERGY_ACTIVE_GEMS] += $this_e;
+	}
+	else {
+	    $e[CUR_ENERGY_LIQUID] += $this_e;
+	    if ($i->is_gem) {
+		$e[CUR_ENERGY_INACTIVE_GEMS] += $this_e;
+	    }
+	    else {
+		$e[CUR_ENERGY_CARDS_DUST] += $this_e;
+	    }
+	}
+    }
+
+    return @e;
 }
 
 sub enchant_gem {
@@ -290,12 +424,10 @@ sub enchant_gem {
     my $self = shift;
     my ($gtype) = @_;
 
-    if (!$self->can_enchant_gem_type($gtype)) {
+    if (!$self->can_enchant_gem_type_right_now($gtype)) {
 	# XXY ungrammatical
-	die "not allowed to enchant $Gem[$gtype]";
+	die "not allowed to enchant $Gem[$gtype] right now";
     }
-
-    # XXX 5-ruby limit
 
     my $cost = $self->gem_cost($gtype);
     my $cash = $self->current_energy_liquid;
@@ -303,14 +435,14 @@ sub enchant_gem {
     	die "not enough liquid cash";
     }
 
-    my $g = Game::ScepterOfZavandor::Item::Gem->new($gtype, $self);
+    my $g = Game::ScepterOfZavandor::Item::Gem->new($self, $gtype);
     $self->pay_energy($cost);
     $self->add_items($g);
 
     return $g;
 }
 
-sub can_enchant_gem_type {
+sub can_enchant_gem_type_right_now {
     @_ == 2 || badinvo;
     my $self = shift;
     my $gtype = shift;
@@ -321,6 +453,17 @@ sub can_enchant_gem_type {
 	return 1;
     }
 
+    if (my $limit =  $Gem_data[$gtype][GEM_DATA_LIMIT]) {
+    	info "gtype $gtype limit $limit";
+	my @g = grep { $_->a_gem_type == $gtype } $self->gems;
+	if (@g > $limit) {
+	    xconfess 0+@g, " > $limit";
+	}
+	if (@g == $limit) {
+	    return 0;
+	}
+    }
+
     if (first { $_->allows_player_to_enchant_gem_type($gtype) } $self->items) {
 	return 1;
     }
@@ -328,6 +471,22 @@ sub can_enchant_gem_type {
     # XXX level 3 druid ruby
 
     return 0;
+}
+
+sub destroy_active_gem {
+    @_ == 1 || badinvo;
+    my $self = shift;
+
+    # XXX prompt user about which to destroy
+    my @g = sort { $a <=> $b } $self->active_gems;
+
+    if (!@g) {
+    	info $self->name, " doesn't have any active gems to destroy";
+	return;
+    }
+
+    info $self->name, " destroys $g[0]";
+    $self->remove_items($g[0]);
 }
 
 sub enforce_hand_limit {
@@ -387,8 +546,7 @@ sub enforce_hand_limit {
     $new_hc == $hl or die "$new_hc != $hl";
 
     if ($tot_discarded_energy) {
-	# XXX info output
-	print "lost $tot_discarded_energy energy to hand limit\n";
+	info $self->name, " lost $tot_discarded_energy energy to hand limit";
     }
 }
 
@@ -442,8 +600,14 @@ sub gem_cost {
     my $self = shift;
     my $gtype = shift;
 
-    my $cost = $Gem_data[$gtype][GEM_DATA_COST];
-    # XXX knowledge of gems
+    my $cost = my $orig_cost = $Gem_data[$gtype][GEM_DATA_COST];
+    for ($self->knowledge_chips) {
+	$cost = $_->modify_gem_cost($cost);
+    }
+    if ($cost != $orig_cost) {
+	debug "gem cost modified $orig_cost -> $cost"
+	    if $Debug > 2;
+    }
     return $cost;
 }
 
@@ -551,6 +715,7 @@ sub actions {
     @_ == 1 || badinvo;
     my $self = shift;
 
+    $self->a_advanced_knowledge(0);
     while ($self->a_ui->one_action) {
 	;
     }
