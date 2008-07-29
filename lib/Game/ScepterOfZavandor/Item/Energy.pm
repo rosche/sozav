@@ -1,4 +1,4 @@
-# $Id: Energy.pm,v 1.5 2008-07-25 17:36:34 roderick Exp $
+# $Id: Energy.pm,v 1.6 2008-07-29 16:54:03 roderick Exp $
 
 use strict;
 
@@ -9,7 +9,7 @@ package Game::ScepterOfZavandor::Item::Energy;
 use base qw(Game::ScepterOfZavandor::Item);
 
 use Game::Util		qw(add_array_index debug make_ro_accessor);
-use RS::Handy		qw(badinvo data_dump dstr xcroak);
+use RS::Handy		qw(badinvo data_dump dstr xconfess);
 
 #use Game::ScepterOfZavandor::Constant qw(
 #);
@@ -27,12 +27,12 @@ BEGIN {
 }
 
 sub new {
-    @_ == 4 || badinvo;
-    my ($class, $itype, $value, $hand_count) = @_;
+    @_ == 5 || badinvo;
+    my ($class, $itype, $player, $value, $hand_count) = @_;
 
-    $value >= 1 or die dstr $value;
+    $value >= 1 or xconfess dstr $value;
 
-    my $self = $class->SUPER::new($itype);
+    my $self = $class->SUPER::new($itype, $player);
     $self->[ITEM_ENERGY_VALUE] = $value;
     $self->a_hand_count($hand_count);
 
@@ -83,12 +83,13 @@ package Game::ScepterOfZavandor::Item::Energy::Card;
 
 use base qw(Game::ScepterOfZavandor::Item::Energy);
 
-use Game::Util		qw(add_array_index debug);
-use RS::Handy		qw(badinvo data_dump dstr xcroak);
+use Game::Util		qw(add_array_index debug make_ro_accessor);
+use RS::Handy		qw(badinvo data_dump dstr xconfess);
 use Scalar::Util	qw(weaken);
 
 use Game::ScepterOfZavandor::Constant qw(
     /^ITEM_/
+    @Gem
 );
 
 BEGIN {
@@ -99,12 +100,25 @@ sub new {
     @_ == 3 || badinvo;
     my ($class, $deck, $value) = @_;
 
-    my $self = $class->SUPER::new(ITEM_TYPE_CARD, $value, 1);
+    my $self = $class->SUPER::new(ITEM_TYPE_CARD, undef, $value, 1);
 
     $self->[ITEM_ENERGY_CARD_DECK] = $deck;
     weaken $self->[ITEM_ENERGY_CARD_DECK];
 
     return $self;
+}
+
+make_ro_accessor (
+    a_deck => ITEM_ENERGY_CARD_DECK,
+);
+
+sub as_string_fields {
+    @_ || badinvo;
+    my $self = shift;
+    my @r = $self->SUPER::as_string_fields(@_);
+    push @r,
+    	$Gem[$self->a_deck->a_gtype];
+    return @r;
 }
 
 sub use_up {
@@ -121,7 +135,7 @@ package Game::ScepterOfZavandor::Item::Energy::Dust;
 use base qw(Game::ScepterOfZavandor::Item::Energy);
 
 use Game::Util	qw(debug);
-use RS::Handy	qw(badinvo data_dump dstr xcroak);
+use RS::Handy	qw(badinvo data_dump dstr xconfess);
 
 use Game::ScepterOfZavandor::Constant qw(
     /^DUST_/
@@ -131,24 +145,30 @@ use Game::ScepterOfZavandor::Constant qw(
 
 {
 
-my %dust_to_hand_count
-    = map { $_->[DUST_DATA_VALUE] => $_->[DUST_DATA_HAND_COUNT] } @Dust_data;
+my %dust_to_hand_count;
 
 sub new {
     @_ == 2 || badinvo;
     my ($class, $value) = @_;
 
-    my $hl = $dust_to_hand_count{$value};
-    defined $hl or die dstr $value;
+    if (!%dust_to_hand_count) {
+	# wait until run time as options can change it
+	%dust_to_hand_count
+	    = map { $_->[DUST_DATA_VALUE] => $_->[DUST_DATA_HAND_COUNT] }
+		@Dust_data;
+    }
 
-    return $class->SUPER::new(ITEM_TYPE_DUST, $value, $hl);
+    my $hl = $dust_to_hand_count{$value};
+    defined $hl or xconfess dstr $value;
+
+    return $class->SUPER::new(ITEM_TYPE_DUST, undef, $value, $hl);
 } }
 
 sub make_dust {
     @_ == 2 || badinvo;
     my ($class, $tot_value) = @_;
 
-    $tot_value > 0 or die dstr $tot_value;
+    $tot_value > 0 or xconfess dstr $tot_value;
 
     # XXX this can cheat you if there's no 1 dust:  6 energy -> 5 dust
     # chit, could be 2+2+2 chits
@@ -168,7 +188,7 @@ sub make_dust_from_opals {
     @_ == 2 || badinvo;
     my ($class, $opal_count) = @_;
 
-    $opal_count > 0 or die dstr $opal_count;
+    $opal_count > 0 or xconfess dstr $opal_count;
 
     my $tot_value = 0;
     for (@Dust_data) {
@@ -191,7 +211,7 @@ package Game::ScepterOfZavandor::Item::Energy::Concentrated;
 use base qw(Game::ScepterOfZavandor::Item::Energy);
 
 use Game::Util	qw(debug);
-use RS::Handy	qw(badinvo data_dump dstr xcroak);
+use RS::Handy	qw(badinvo data_dump dstr xconfess);
 
 use Game::ScepterOfZavandor::Constant qw(
     /^GEM_/
@@ -205,6 +225,7 @@ sub new {
     my ($class, $gtype) = @_;
 
     return $class->SUPER::new(ITEM_TYPE_CONCENTRATED,
+    	    	    	    	undef,
 				$Gem_data[$gtype][GEM_DATA_CONCENTRATED],
     	    	    	    	$Concentrated_hand_count);
 }
