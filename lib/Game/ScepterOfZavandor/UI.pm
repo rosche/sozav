@@ -1,4 +1,4 @@
-# $Id: UI.pm,v 1.3 2008-07-25 12:38:33 roderick Exp $
+# $Id: UI.pm,v 1.4 2008-07-29 16:19:47 roderick Exp $
 
 use strict;
 
@@ -25,7 +25,7 @@ sub new {
 #    a_player => UI_PLAYER,
 #);
 
-# XXX custom for weaken
+# XXX duplicate of Item->a_player, move to a util lib?
 sub a_player {
     @_ == 1 || @_ == 2 || badinvo;
     my $self = shift;
