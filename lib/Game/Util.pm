@@ -1,4 +1,4 @@
-# $Id: Util.pm,v 1.5 2008-07-24 21:31:29 roderick Exp $
+# $Id: Util.pm,v 1.6 2008-07-29 17:05:52 roderick Exp $
 
 package Game::Util;
 
@@ -6,11 +6,11 @@ use strict;
 
 use base qw(Exporter);
 
-use RS::Handy	qw(badinvo data_dump dstr xcroak);
+use RS::Handy	qw(badinvo data_dump dstr xconfess);
 
 use vars qw($VERSION @EXPORT @EXPORT_OK);
 
-$VERSION = q$Revision: 1.5 $ =~ /(\d\S+)/ ? $1 : '?';
+$VERSION = q$Revision: 1.6 $ =~ /(\d\S+)/ ? $1 : '?';
 
 BEGIN {
     @EXPORT = qw(
@@ -20,6 +20,7 @@ BEGIN {
 	add_array_indices
 	debug
 	debug_var
+	info
 	make_ro_accessor
 	make_rw_accessor
 	make_accessor_pkg
@@ -49,6 +50,13 @@ sub debug_var {
     }
 }
 
+# XXX callers of this have to be modified to do something more formal
+
+sub info {
+    @_ || badinvo;
+    print @_, "\n";
+}
+
 # XXX beef this up
 #
 #{
@@ -65,14 +73,14 @@ sub debug_var {
 #    my $full_name = join '_', @iname;
 #
 #    if ($used_index_name{$full_name}++) {
-#	xcroak "index name $full_name has already been used\n";
+#	xconfess "index name $full_name has already been used\n";
 #    }
 #
 #    my $r = \%Index;
 #    while (@iname) {
 #    	my $this_part = shift @iname;
 #	if ($this_part !~ /^\w+\z/) {
-#	    xcroak "invalid index name part ", dstr $this_part;
+#	    xconfess "invalid index name part ", dstr $this_part;
 #	}
 #
 #	my $next_r = $r->{$this_part};
@@ -117,7 +125,7 @@ sub add_array_index_type {
     my ($itype) = map { uc } @_;
 
     if ($Index{$itype}) {
-	xcroak "index type $itype already exists";
+	xconfess "index type $itype already exists";
     }
     $Index{$itype} = [];
 }
@@ -133,11 +141,11 @@ sub add_array_index {
     $iname =~ tr/ +-/_/;
 
     if (!$r) {
-	xcroak "invalid index type ", dstr $itype;
+	xconfess "invalid index type ", dstr $itype;
     }
 
     if (grep { $_ eq $iname } @$r) {
-	xcroak "key $iname already exists in index for $itype";
+	xconfess "key $iname already exists in index for $itype";
     }
 
     push @$r, $iname;
