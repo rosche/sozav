@@ -1,4 +1,4 @@
-# $Id: Auctionable.pm,v 1.4 2008-07-27 13:12:21 roderick Exp $
+# $Id: Auctionable.pm,v 1.5 2008-07-29 17:14:56 roderick Exp $
 
 use strict;
 
@@ -19,7 +19,7 @@ use Game::ScepterOfZavandor::Constant qw(
 );
 
 BEGIN {
-    add_array_index 'ITEM', $_ for map { "AUC_$_" } qw(TYPE PLAYER DATA);
+    add_array_index 'ITEM', $_ for map { "AUC_$_" } qw(TYPE);
 }
 
 # function
@@ -45,14 +45,14 @@ sub auc_type_is_sentinel {
 
 sub new {
     @_ == 4 || badinvo;
-    my ($class, $itype, $auc_type, $rauc_data) = @_;
+    my ($class, $itype, $rauc_data, $auc_type) = @_;
 
+    # XXX validate with sub
     $rauc_data->[$auc_type]
 	or xconfess $auc_type;
 
-    my $self = $class->SUPER::new($itype);
+    my $self = $class->SUPER::new($itype, undef, $rauc_data->[$auc_type]);
     $self->[ITEM_AUC_TYPE] = $auc_type;
-    $self->[ITEM_AUC_DATA] = $rauc_data->[$auc_type];
     $self->a_vp($self->data(AUC_DATA_VP));
 
     return $self;
@@ -62,10 +62,7 @@ make_ro_accessor (
     a_auc_type => ITEM_AUC_TYPE,
 );
 
-make_rw_accessor (
-    a_player => ITEM_AUC_PLAYER,
-);
-
+# XXX do this generically, use these instead of ->data
 for my $i (0..$#Auctionable_data_field) {
     no strict 'refs';
     *{ "get_" . lc $Auctionable_data_field[$i] } = sub {
@@ -79,24 +76,12 @@ sub as_string_fields {
     my $self = shift;
     my @r = $self->SUPER::as_string_fields(@_);
     push @r,
-	$self->data(AUC_DATA_NAME),
-	sprintf("min=%3d", $self->get_min_bid);
+	sprintf("min=%3d", $self->get_min_bid),
+	$self->data(AUC_DATA_NAME);
     return @r;
 }
 
-sub data {
-    @_ >= 2 || badinvo;
-    my $self = shift;
-    my @ix   = @_;
-
-    my $rd = $self->[ITEM_AUC_DATA];
-    my @r;
-    for my $ix (@ix) {
-	$ix >= 0 && $ix <= $#{ $rd } || xconfess dstr $ix;
-	push @r, $rd->[$ix];
-    }
-
-    return @r == 1 ? $r[0] : @r;
+sub bought {
 }
 
 sub free_items {
