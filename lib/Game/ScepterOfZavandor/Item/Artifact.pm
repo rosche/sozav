@@ -1,4 +1,4 @@
-# $Id: Artifact.pm,v 1.4 2008-07-27 13:16:08 roderick Exp $
+# $Id: Artifact.pm,v 1.5 2008-07-29 16:54:03 roderick Exp $
 
 use strict;
 
@@ -6,7 +6,7 @@ package Game::ScepterOfZavandor::Item::Artifact;
 
 use base qw(Game::ScepterOfZavandor::Item::Auctionable);
 
-use Game::Util	qw(add_array_index debug make_ro_accessor);
+use Game::Util	qw(add_array_index debug info make_ro_accessor);
 use RS::Handy	qw(badinvo data_dump dstr shuffle xcroak);
 
 use Game::ScepterOfZavandor::Constant qw(
@@ -21,7 +21,7 @@ sub new {
     my ($class, $arti_type) = @_;
 
     my $self = $class->SUPER::new(ITEM_TYPE_ARTIFACT,
-				    $arti_type, \@Artifact_data);
+				    \@Artifact_data, $arti_type);
 
     $self->a_gem_slots($self->data(ARTI_DATA_GEM_SLOTS));
     $self->a_hand_limit_modifier($self->data(ARTI_DATA_HAND_LIMIT));
@@ -33,7 +33,7 @@ sub as_string_fields {
     @_ || badinvo;
     my $self = shift;
     my @r = $self->SUPER::as_string_fields(@_);
-    unshift @r,
+    push @r,
 	$self->data(ARTI_DATA_DECK_LETTER);
     return @r;
 }
@@ -64,7 +64,6 @@ sub new_deck {
 
 #------------------------------------------------------------------------------
 
-
 sub allows_player_to_enchant_gem_type {
     @_ == 2 || badinvo;
     my $self = shift;
@@ -72,6 +71,38 @@ sub allows_player_to_enchant_gem_type {
 
     my $got_gtype = $self->data(ARTI_DATA_CAN_BUY_GEM);
     return defined $got_gtype && $got_gtype == $want_gtype;
+}
+
+sub bought {
+    @_ == 1 || badinvo;
+    my $self = shift;
+
+    for (1..$self->data(ARTI_DATA_DESTROY_GEM)) {
+    	for my $p ($self->a_player->a_game->players) {
+	    next if $p == $self->a_player;
+	    $p->destroy_active_gem;
+	}
+    }
+
+    for (1..$self->data(ARTI_DATA_KNOWLEDGE_CHIP)) {
+	$self->a_player->knowledge_chips_unbought
+	    or last;
+	$self->a_player->buy_knowledge_chip(undef, 1);
+    }
+
+    for (1..$self->data(ARTI_DATA_ADVANCE_KNOWLEDGE)) {
+	# XXX let user advance an unassigned chip
+    	# XXX let user not advance if desired?
+	my @k = $self->a_player->knowledge_chips_advancable;
+	if (!@k) {
+	    info $self->a_player->name, " lost knowledge advance, no track to advance";
+	}
+	else {
+	    # XXX ask user which to advance
+	    @k = sort { $a->next_level_cost <=> $b->next_level_cost } @k;
+	    $self->a_player->advance_knowledge($k[-1]->a_type, 1);
+	}
+    }
 }
 
 # cost modifiers
@@ -104,7 +135,7 @@ sub free_items {
 
     my $gtype = $self->data(ARTI_DATA_FREE_GEM);
     return unless defined $gtype;
-    return Game::ScepterOfZavandor::Item::Gem->new($gtype, $self->a_player);
+    return Game::ScepterOfZavandor::Item::Gem->new($self->a_player, $gtype);
 }
 
 sub own_only_one {
