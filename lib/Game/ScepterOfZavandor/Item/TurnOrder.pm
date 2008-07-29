@@ -1,4 +1,4 @@
-# $Id: TurnOrder.pm,v 1.2 2008-07-29 18:38:37 roderick Exp $
+# $Id: TurnOrder.pm,v 1.3 2008-07-29 18:55:20 roderick Exp $
 
 use strict;
 
@@ -31,8 +31,8 @@ sub as_string_fields {
     my $self = shift;
 
     my @r = ($self->name);
-    for ([arti => TURN_DATA_ARTIFACT_COST_DISCOUNT],
-	    [sent => TURN_DATA_SENTINEL_COST_DISCOUNT]) {
+    for ([arti => TURN_DATA_ARTIFACT_COST_MOD],
+	    [sent => TURN_DATA_SENTINEL_COST_MOD]) {
     	my ($desc, $ix) = @$_;
 	my $n = $self->data($ix)
 	    or next;
@@ -67,7 +67,7 @@ sub name {
     return $self->data(TURN_DATA_NAME);
 }
 
-sub discount_on_auc_type {
+sub cost_mod_on_auc_type {
     @_ == 2 || badinvo;
     my $self     = shift;
     my $auc_type = shift;
@@ -77,11 +77,11 @@ sub discount_on_auc_type {
     }
 
     if (Game::ScepterOfZavandor::Item::Auctionable::auc_type_is_artifact $auc_type) {
-    	return $self->data(TURN_DATA_ARTIFACT_COST_DISCOUNT);
+    	return $self->data(TURN_DATA_ARTIFACT_COST_MOD);
     }
 
     if (Game::ScepterOfZavandor::Item::Auctionable::auc_type_is_sentinel $auc_type) {
-	return $self->data(TURN_DATA_SENTINEL_COST_DISCOUNT);
+	return $self->data(TURN_DATA_SENTINEL_COST_MOD);
     }
 
     return 0;
