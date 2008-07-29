@@ -1,4 +1,4 @@
-# $Id: Stdio.pm,v 1.7 2008-07-28 19:06:45 roderick Exp $
+# $Id: Stdio.pm,v 1.8 2008-07-29 18:24:38 roderick Exp $
 
 use strict;
 
@@ -98,19 +98,23 @@ sub status_short {
     my $self  = shift;
 
     $self->out("\n");
-    $self->out("On auction:\n");
+
+    $self->out("Turn ", $self->a_player->a_game->a_turn_num,
+	       ", on auction:\n");
     if (my @a = $self->a_player->a_game->auction_all) {
 	for (0..$#a) {
 	    my $a = $a[$_];
 	    next if $a->is_sentinel;
 	    my $n = $_ + 1;
-	    my $discount = $self->a_player->auctionable_discount($a);
+	    my $d = $self->a_player->auctionable_discount($a);
 	    $self->out(sprintf "  %2d %s%s\n", $n, $a,
-		       $discount != 0 ? " (discount $discount)" : "");
+			$d < 0 ? " (penalty " . (0-$d) . ")"
+			: $d > 0 ? " (discount $d)"
+			: "");
 	}
     }
     else {
-	$self->out("  none\n");
+	$self->out("  nothing\n");
     }
 
     $self->out("Players:\n");
@@ -126,12 +130,23 @@ sub status_short {
 				: $k->user_level;
 	}
 
+	my $rel = sub {
+	    my ($desc, $cur, $max) = @_;
+	    my $fmt = "%s %2d";
+	    my @arg = ($desc, $cur);
+	    $fmt .= sprintf "%-5s",
+			$cur == $max
+    	    	    	    ? ""
+    	    	    	    : sprintf "(%+d)", $cur - $max;
+    	    return $fmt => \@arg;
+    	};
+
     	my @spec = (
 	    "%-6s"               => [$p->name],
-	    "score %2d (%d)"     => [$p->score, $p->user_turn_order],
+	    "score %2d(%d)"     => [$p->score, $p->user_turn_order],
 	    "energy %3d"         => [$p->current_energy_liquid],
-	    "hand %2d/%2d"       => [$p->current_hand_count, $p->hand_limit],
-	    "gems %2d/%2d"       => [0+$p->active_gems, $p->num_gem_slots],
+	    $rel->("hand", $p->current_hand_count, $p->hand_limit),
+	    $rel->("gems", 0+$p->active_gems,      $p->num_gem_slots),
 	    "know %s"            => [$knowledge],
     	);
 
@@ -233,6 +248,7 @@ sub action_gem_info {
     my $self = shift;
 
     $self->out_char("gem info:\n");
+    # XXX show gem knowledge level
     for my $gtype (0..$#Gem) {
     	my $cost = $self->a_player->gem_cost($gtype);
     	my $val  = $self->a_player->gem_value($gtype);
@@ -279,6 +295,8 @@ sub action_items {
     }
 
     $self->out_char("score: ", $self->a_player->score, "\n");
+
+    # XXX hand limit, gem slots
 
     my @e = $self->a_player->current_energy;
     $self->out_char(sprintf "energy: %d total %d liquid (%d + %d) %d active\n",
