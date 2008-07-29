@@ -1,4 +1,4 @@
-# $Id: Gem.pm,v 1.5 2008-07-25 17:36:23 roderick Exp $
+# $Id: Gem.pm,v 1.6 2008-07-29 16:18:18 roderick Exp $
 
 use strict;
 
@@ -7,7 +7,7 @@ package Game::ScepterOfZavandor::Item::Gem;
 use base qw(Game::ScepterOfZavandor::Item);
 
 use Game::Util	qw(add_array_index debug make_ro_accessor);
-use RS::Handy	qw(badinvo data_dump dstr xcroak);
+use RS::Handy	qw(badinvo data_dump dstr xconfess);
 use Scalar::Util qw(weaken);
 
 use Game::ScepterOfZavandor::Constant qw(
@@ -16,27 +16,25 @@ use Game::ScepterOfZavandor::Constant qw(
     @Gem
     @Gem_data
 );
-use Game::ScepterOfZavandor::Player ();
 
 BEGIN {
     add_array_index 'ITEM', $_ for map { "GEM_$_" }
-	qw(TYPE PLAYER DECK ACTIVE_VP ACTIVE);
+	qw(TYPE DECK ACTIVE_VP ACTIVE);
 }
 
 sub new {
     @_ == 3 || badinvo;
-    my ($class, $gtype, $player) = @_;
+    my ($class, $player, $gtype) = @_;
 
-    defined $Gem[$gtype] or xcroak;;
-    $player->isa(Game::ScepterOfZavandor::Player::) or xcroak;
+    defined $Gem[$gtype] or xconfess;;
 
-    my $self = $class->SUPER::new(ITEM_TYPE_GEM);
+    my $self = $class->SUPER::new(ITEM_TYPE_GEM, $player, $Gem_data[$gtype]);
     $self->[ITEM_GEM_TYPE]      = $gtype;
-    $self->[ITEM_GEM_PLAYER]    = $player;
-    weaken $self->[ITEM_GEM_PLAYER];
+    # XXX lose this, always go through links?
     $self->[ITEM_GEM_DECK]      = $player->a_game->a_gem_decks->[$gtype];
     weaken $self->[ITEM_GEM_DECK];
-    $self->[ITEM_GEM_ACTIVE_VP] = $Gem_data[$gtype][GEM_DATA_VP];
+    # XXX lose this field, get it from data directly
+    $self->[ITEM_GEM_ACTIVE_VP] = $self->data(GEM_DATA_VP);
     $self->[ITEM_GEM_ACTIVE]    = 0;
 
     return $self;
@@ -44,7 +42,6 @@ sub new {
 
 make_ro_accessor (
     a_gem_type => ITEM_GEM_TYPE,
-    a_player   => ITEM_GEM_PLAYER,
 );
 
 sub as_string_fields {
