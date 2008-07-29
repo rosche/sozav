@@ -1,4 +1,4 @@
-# $Id: Sentinel.pm,v 1.2 2008-07-25 16:56:22 roderick Exp $
+# $Id: Sentinel.pm,v 1.3 2008-07-29 17:15:16 roderick Exp $
 
 use strict;
 
@@ -22,7 +22,7 @@ sub new {
     my ($class, $auc_type) = @_;
 
     my $self = $class->SUPER::new(ITEM_TYPE_SENTINEL,
-				    $auc_type, \@Sentinel_data);
+				    \@Sentinel_data, $auc_type);
 
     return $self;
 }
