@@ -1,4 +1,4 @@
-# $Id: Stdio.pm,v 1.8 2008-07-29 18:24:38 roderick Exp $
+# $Id: Stdio.pm,v 1.9 2008-07-30 15:00:04 roderick Exp $
 
 use strict;
 
@@ -101,23 +101,20 @@ sub status_short {
 
     $self->out("Turn ", $self->a_player->a_game->a_turn_num,
 	       ", on auction:\n");
-    if (my @a = $self->a_player->a_game->auction_all) {
+    if (my @a = grep { !$_->is_sentinel } $self->a_player->a_game->auction_all) {
 	for (0..$#a) {
 	    my $a = $a[$_];
-	    next if $a->is_sentinel;
 	    my $n = $_ + 1;
-	    my $d = $self->a_player->auctionable_discount($a);
+	    my $mod = $self->a_player->auctionable_cost_mod($a);
 	    $self->out(sprintf "  %2d %s%s\n", $n, $a,
-			$d < 0 ? " (penalty " . (0-$d) . ")"
-			: $d > 0 ? " (discount $d)"
-			: "");
+	    	    	$mod == 0 ? "" : sprintf " (%+d)", $mod);
 	}
     }
     else {
 	$self->out("  nothing\n");
     }
 
-    $self->out("Players:\n");
+    $self->out(sprintf "%-10s %61s %s\n", "Players:", "", "gef9aa");
     my $il = 2;
     for my $p ($self->a_player->a_game->players) {
     	my $knowledge = '';
@@ -141,6 +138,7 @@ sub status_short {
     	    return $fmt => \@arg;
     	};
 
+    	# XXX show average income
     	my @spec = (
 	    "%-6s"               => [$p->name],
 	    "score %2d(%d)"     => [$p->score, $p->user_turn_order],
@@ -154,9 +152,8 @@ sub status_short {
 	my ($fmt, @arg);
 	while (my ($this_fmt, $r) = $it->()) {
 	    if (!defined $fmt) {
-		$fmt = ($p == $self->a_player
-			? color('bold') . ">"
-			: " ") . " ";
+		$fmt = ($p == $self->a_player ? color('bold') . ">" : " ")
+			. " ";
 	    }
 	    else {
 		$fmt .= "   ";
@@ -285,13 +282,13 @@ sub action_items {
 	for (0..$#a) {
 	    my $a = $a[$_];
 	    my $n = $_ + 1;
-	    my $discount = $self->a_player->auctionable_discount($a);
+	    my $mod = $self->a_player->auctionable_cost_mod($a);
 	    $self->out(sprintf "  %2d %s%s\n", $n, $a,
-		       $discount != 0 ? " (discount $discount)" : "");
+	    	    	$mod == 0 ? "" : sprintf " (%+d)", $mod);
 	}
     }
     else {
-	$self->out("  none\n");
+	$self->out("  nothing\n");
     }
 
     $self->out_char("score: ", $self->a_player->score, "\n");
