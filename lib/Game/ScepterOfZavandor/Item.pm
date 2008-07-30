@@ -1,4 +1,4 @@
-# $Id: Item.pm,v 1.8 2008-07-29 18:07:22 roderick Exp $
+# $Id: Item.pm,v 1.9 2008-07-30 15:47:53 roderick Exp $
 
 use strict;
 
@@ -12,7 +12,7 @@ use overload (
 use Game::Util  	qw($Debug add_array_indices debug
 			    make_ro_accessor make_rw_accessor);
 use RS::Handy		qw(badinvo data_dump dstr xconfess);
-use Scalar::Util	qw(weaken);
+use Scalar::Util	qw(refaddr weaken);
 
 use Game::ScepterOfZavandor::Constant qw(
     /^ITEM_/
@@ -60,8 +60,7 @@ make_ro_accessor (
 );
 
 make_rw_accessor (
-    # XXX maybe a ITEM_STATIC_VP, if that isn't set use a method (for
-    # sentinels, gems)
+    # XXX maybe a ITEM_STATIC_VP, then use extra_vp method
     a_data                => ITEM_DATA,
     a_vp                  => ITEM_VP,
     a_hand_count          => ITEM_HAND_COUNT,
@@ -142,17 +141,18 @@ sub as_string {
 	join " ", $self->as_string_fields;
 }
 
-# - XXX name
 # - XXX caller shouldn't have to test item type first because of more
-#   specific spaceship operators
+#   specific spaceship operators (don't know what this means)
 
 sub spaceship {
     @_ == 3 || badinvo;
     my ($a, $b) = @_;
 
-    return $a->[ITEM_TYPE] <=> $b->[ITEM_TYPE]
-    	    or $b->[ITEM_VP] <=> $a->[ITEM_VP];
-	    # XXX name?
+    0
+	or $a->[ITEM_TYPE] <=> $b->[ITEM_TYPE]
+	or $b->vp          <=> $a->vp
+	# XXX compare name?
+	or refaddr($a)     <=> refaddr($b)
 }
 
 sub allows_player_to_enchant_gem_type {
@@ -166,7 +166,7 @@ sub allows_player_to_enchant_gem_type {
 # XXX make a global item type, then use the same function for auctionables
 # and gems?
 
-sub discount_on_auc_type {
+sub cost_mod_on_auc_type {
     return 0;
 }
 
