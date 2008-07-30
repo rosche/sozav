@@ -1,4 +1,4 @@
-# $Id: Util.pm,v 1.6 2008-07-29 17:05:52 roderick Exp $
+# $Id: Util.pm,v 1.7 2008-07-30 14:07:22 roderick Exp $
 
 package Game::Util;
 
@@ -10,7 +10,7 @@ use RS::Handy	qw(badinvo data_dump dstr xconfess);
 
 use vars qw($VERSION @EXPORT @EXPORT_OK);
 
-$VERSION = q$Revision: 1.6 $ =~ /(\d\S+)/ ? $1 : '?';
+$VERSION = q$Revision: 1.7 $ =~ /(\d\S+)/ ? $1 : '?';
 
 BEGIN {
     @EXPORT = qw(
@@ -24,6 +24,7 @@ BEGIN {
 	make_ro_accessor
 	make_rw_accessor
 	make_accessor_pkg
+	same_object
     );
     @EXPORT_OK = qw(
     	%Index
@@ -199,6 +200,13 @@ sub make_ro_accessor {
 
 sub make_rw_accessor {
     return make_accessor_pkg scalar caller, 1, @_;
+}
+
+sub same_referent {
+    # 3-args used by overload.pm
+    @_ == 2 || @_ == 3 || badinvo;
+
+    return ref($_[0]) && ref($_[1]) && refaddr($_[0]) == refaddr($_[1]);
 }
 
 1
