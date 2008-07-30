@@ -1,4 +1,4 @@
-# $Id: Constant.pm,v 1.9 2008-07-30 15:45:27 roderick Exp $
+# $Id: Constant.pm,v 1.10 2008-07-30 17:05:44 roderick Exp $
 
 use strict;
 
@@ -13,7 +13,7 @@ use RS::Handy		qw(badinvo data_dump dstr xcroak);
 
 use vars qw($VERSION @EXPORT @EXPORT_OK);
 BEGIN {
-    $VERSION = q$Revision: 1.9 $ =~ /(\d\S+)/ ? $1 : '?';
+    $VERSION = q$Revision: 1.10 $ =~ /(\d\S+)/ ? $1 : '?';
     @EXPORT_OK = qw(
 	$Base_gem_slots
 	$Base_hand_limit
@@ -34,6 +34,7 @@ BEGIN {
 	@Current_energy
 	@Dust_data
 	$Dust_data_val_1
+	@Energy_estimate
 	$Game_end_sentinels_sold_count
 	@Gem
 	%Gem
@@ -70,16 +71,20 @@ BEGIN {
 	'START_ITEMS',
     );
 
+    @Energy_estimate = (
+    	'min',			# publically visible minimum
+    	'max',			# publically visible maximum
+    	'avg',			# publically visible average
+    );
+    add_array_indices 'ENERGY_EST', @Energy_estimate;
+
     @Current_energy = (
     	'total',		# total = liquid + active gems
 	    'liquid',		# liquid = cards+dust + inactive gems
 		'cards+dust',	# XXY better name
 		'inactive gems',
 	    'active gems',
-    	'min',			# publically visible minimum
-    	'max',			# publically visible maximum
-    	'avg',			# publically visible average
-    );
+    	@Energy_estimate,
     add_array_indices 'CUR_ENERGY', @Current_energy;
 
     add_array_indices 'DUST_DATA', (
@@ -88,6 +93,7 @@ BEGIN {
 	'OPAL_COUNT',
     );
 
+    add_array_indices 'CUR_ENERGY', @Current_energy;
     @Gem = qw(opal sapphire emerald diamond ruby);
     %Gem = map { $Gem[$_] => $_ } 0..$#Gem;
     add_array_indices 'GEM', @Gem;
