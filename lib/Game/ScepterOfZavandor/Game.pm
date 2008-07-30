@@ -1,4 +1,4 @@
-# $Id: Game.pm,v 1.6 2008-07-29 18:16:32 roderick Exp $
+# $Id: Game.pm,v 1.7 2008-07-30 14:35:41 roderick Exp $
 
 use strict;
 
@@ -6,10 +6,9 @@ package Game::ScepterOfZavandor::Game;
 
 # XXY class::makemethods
 
-use Game::Util	qw(add_array_indices debug debug_var info make_ro_accessor
-		    make_rw_accessor);
+use Game::Util	qw(add_array_indices debug debug_var info
+		    make_ro_accessor make_rw_accessor);
 use RS::Handy	qw(badinvo create_constant_subs data_dump dstr shuffle xconfess);
-use Scalar::Util qw(refaddr);
 
 use Game::ScepterOfZavandor::Constant	qw(
     /^GEM_/
@@ -285,7 +284,7 @@ sub auctionable_sold {
 		    : xconfess "auctionable_sold $auc";
 
     my @old = @$r;
-    my @new = grep { refaddr($_) != refaddr($auc) } @old;
+    my @new = grep { $_ != $auc } @old;
     @new == @old - 1
 	or xconfess "$auc not available for purchase";
     @$r = @new;
