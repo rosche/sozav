@@ -1,4 +1,4 @@
-# $Id: Constant.pm,v 1.8 2008-07-29 18:20:30 roderick Exp $
+# $Id: Constant.pm,v 1.9 2008-07-30 15:45:27 roderick Exp $
 
 use strict;
 
@@ -13,7 +13,7 @@ use RS::Handy		qw(badinvo data_dump dstr xcroak);
 
 use vars qw($VERSION @EXPORT @EXPORT_OK);
 BEGIN {
-    $VERSION = q$Revision: 1.8 $ =~ /(\d\S+)/ ? $1 : '?';
+    $VERSION = q$Revision: 1.9 $ =~ /(\d\S+)/ ? $1 : '?';
     @EXPORT_OK = qw(
 	$Base_gem_slots
 	$Base_hand_limit
@@ -155,8 +155,8 @@ BEGIN {
     ));
     @Sentinel_real_ix_xxx = grep { defined $Sentinel[$_] } 0..$#Sentinel;
     %Sentinel = map { $Sentinel[$_] => $_ } @Sentinel_real_ix_xxx;
-    #add_array_indices 'SENT', @Sentinel;
-    RS::Handy::create_index_subs 'SENT', undef, @Sentinel;
+    #XXX add_array_indices 'SENT', @Sentinel;
+    push @EXPORT_OK, RS::Handy::create_index_subs 'SENT', undef, @Sentinel;
 
     # XXX
     @Auctionable = (@Artifact, @Sentinel[@Sentinel_real_ix_xxx]);
@@ -172,10 +172,10 @@ BEGIN {
 
     @Artifact_data_field = (
     	@Auctionable_data_field,
-	'DECK_LETTER',			# A-D, S for sentinels
-	'DISCOUNT_ARTIFACT',		# artifact you get a discount on
-	'DISCOUNT_ARTIFACT_AMOUNT',	# discount of N on specified artifact
-	'DISCOUNT_SENTINELS',		# discount of N on sentinels
+	'DECK_LETTER',			# A-D
+	'COST_MOD_ARTIFACT',		# artifact you get a cost_mod on
+	'COST_MOD_ARTIFACT_AMOUNT',	# cost_mod of N on specified artifact
+	'COST_MOD_SENTINELS',		# cost_mod of N on sentinels
 	'OWN_ONLY_ONE',			# can only own 1 of these
 	'KNOWLEDGE_CHIP',		# stage N knowledge chips
 	'ADVANCE_KNOWLEDGE',		# advance N knowledge stages
@@ -191,6 +191,9 @@ BEGIN {
     @Sentinel_data_field = (
     	@Auctionable_data_field,
 	'MAX_BONUS_VP',
+	'VP_PER',
+	'BONUS_GEM',
+	'BONUS_AUC_TYPE',
     );
     add_array_indices 'SENT_DATA', @Sentinel_data_field;
 
@@ -200,8 +203,8 @@ BEGIN {
     	NAME
 	ACTIVE_IF_MY_VP_GE
 	ACTIVE_IF_ANY_VP_GE
-    	ARTIFACT_COST_DISCOUNT
-    	SENTINEL_COST_DISCOUNT
+    	ARTIFACT_COST_MOD
+    	SENTINEL_COST_MOD
     );
 }
 
@@ -221,26 +224,26 @@ BEGIN {
     my $i;
 
     for (0..$#Turn_order) {
-	$Turn_order_data[$_][TURN_DATA_NAME]                   = $_ + 1;
-	$Turn_order_data[$_][TURN_DATA_ARTIFACT_COST_DISCOUNT] = 0;
-	$Turn_order_data[$_][TURN_DATA_SENTINEL_COST_DISCOUNT] = 0;
+	$Turn_order_data[$_][TURN_DATA_NAME]                = $_ + 1;
+	$Turn_order_data[$_][TURN_DATA_ARTIFACT_COST_MOD]   = 0;
+	$Turn_order_data[$_][TURN_DATA_SENTINEL_COST_MOD]   = 0;
     }
 
-    $Turn_order_data[TURN_1][TURN_DATA_ACTIVE_IF_MY_VP_GE]     =  10;
-    $Turn_order_data[TURN_1][TURN_DATA_ARTIFACT_COST_DISCOUNT] = -10;
-    $Turn_order_data[TURN_1][TURN_DATA_SENTINEL_COST_DISCOUNT] = -20;
+    $Turn_order_data[TURN_1][TURN_DATA_ACTIVE_IF_MY_VP_GE]  =  10;
+    $Turn_order_data[TURN_1][TURN_DATA_ARTIFACT_COST_MOD]   =  10;
+    $Turn_order_data[TURN_1][TURN_DATA_SENTINEL_COST_MOD]   =  20;
 
-    $Turn_order_data[TURN_2][TURN_DATA_ACTIVE_IF_MY_VP_GE]     =  10;
-    $Turn_order_data[TURN_2][TURN_DATA_ARTIFACT_COST_DISCOUNT] =  -5;
-    $Turn_order_data[TURN_2][TURN_DATA_SENTINEL_COST_DISCOUNT] = -10;
+    $Turn_order_data[TURN_2][TURN_DATA_ACTIVE_IF_MY_VP_GE]  =  10;
+    $Turn_order_data[TURN_2][TURN_DATA_ARTIFACT_COST_MOD]   =   5;
+    $Turn_order_data[TURN_2][TURN_DATA_SENTINEL_COST_MOD]   =  10;
 
-    $Turn_order_data[TURN_5][TURN_DATA_ACTIVE_IF_ANY_VP_GE]    =  10;
-    $Turn_order_data[TURN_5][TURN_DATA_ARTIFACT_COST_DISCOUNT] =   5;
-    $Turn_order_data[TURN_5][TURN_DATA_SENTINEL_COST_DISCOUNT] =  10;
+    $Turn_order_data[TURN_5][TURN_DATA_ACTIVE_IF_ANY_VP_GE] =  10;
+    $Turn_order_data[TURN_5][TURN_DATA_ARTIFACT_COST_MOD]   =  -5;
+    $Turn_order_data[TURN_5][TURN_DATA_SENTINEL_COST_MOD]   = -10;
 
-    $Turn_order_data[TURN_6][TURN_DATA_ACTIVE_IF_ANY_VP_GE]    =  10;
-    $Turn_order_data[TURN_6][TURN_DATA_ARTIFACT_COST_DISCOUNT] =  10;
-    $Turn_order_data[TURN_6][TURN_DATA_SENTINEL_COST_DISCOUNT] =  20;
+    $Turn_order_data[TURN_6][TURN_DATA_ACTIVE_IF_ANY_VP_GE] =  10;
+    $Turn_order_data[TURN_6][TURN_DATA_ARTIFACT_COST_MOD]   = -10;
+    $Turn_order_data[TURN_6][TURN_DATA_SENTINEL_COST_MOD]   = -20;
 
     $i = KNOW_DATA_NAME;
     my $k = 'Knowledge of';
@@ -273,7 +276,7 @@ BEGIN {
     $Knowledge_data[KNOW_FIRE     ][$i] = [qw(0 0 0 1)];
     $Knowledge_data[KNOW_9SAGES   ][$i] = [GEM_SAPPHIRE, GEM_EMERALD,
 					    GEM_DIAMOND, GEM_RUBY];
-    $Knowledge_data[KNOW_ARTIFACTS][$i] = [qw(0 5 5 10)];
+    $Knowledge_data[KNOW_ARTIFACTS][$i] = [qw(0 -5 -5 -10)];
     $Knowledge_data[KNOW_ACCUM    ][$i] = [qw(0 1 1 2)];
 
     $i = CHAR_DATA_KNOWLEDGE_TRACK;
@@ -317,7 +320,7 @@ BEGIN {
 
     # 1-value dust isn't normally present, it can be added via an option.
 
-    # XXX modifying the global means you can't have to $game objects at
+    # XXX modifying the global means you can't have two $game objects at
     # once
 
     $Dust_data_val_1 = pop @Dust_data;
@@ -402,16 +405,20 @@ BEGIN {
     }
 
     for (@Sentinel_real_ix_xxx) {
-    	$Sentinel_data[$_][AUC_DATA_MIN_BID]     = 120;
-    	$Sentinel_data[$_][AUC_DATA_VP]          = 5;
+    	$Sentinel_data[$_][AUC_DATA_MIN_BID        ] = 120;
+    	$Sentinel_data[$_][AUC_DATA_VP             ] = 5;
+	$Sentinel_data[$_][SENT_DATA_MAX_BONUS_VP  ] = undef;
+	$Sentinel_data[$_][SENT_DATA_VP_PER        ] = undef;
+	$Sentinel_data[$_][SENT_DATA_BONUS_GEM     ] = undef;
+	$Sentinel_data[$_][SENT_DATA_BONUS_AUC_TYPE] = undef;
     }
 
     for (0..$#Artifact) {
     	my $r = $Artifact_data[$_];
 	$r->[ARTI_DATA_DECK_LETTER]              = undef;
-	$r->[ARTI_DATA_DISCOUNT_ARTIFACT]        = undef;
-	$r->[ARTI_DATA_DISCOUNT_ARTIFACT_AMOUNT] = 0;
-	$r->[ARTI_DATA_DISCOUNT_SENTINELS]       = 0;
+	$r->[ARTI_DATA_COST_MOD_ARTIFACT]        = undef;
+	$r->[ARTI_DATA_COST_MOD_ARTIFACT_AMOUNT] = 0;
+	$r->[ARTI_DATA_COST_MOD_SENTINELS]       = 0;
 	$r->[ARTI_DATA_OWN_ONLY_ONE]             = 0;
 	$r->[ARTI_DATA_KNOWLEDGE_CHIP]           = 0;
 	$r->[ARTI_DATA_ADVANCE_KNOWLEDGE]        = 0;
@@ -423,30 +430,33 @@ BEGIN {
 	$r->[ARTI_DATA_DESTROY_GEM]              = 0;
     }
 
+    # A deck
+
     $r = $Artifact_data[ARTI_CRYSTAL_BALL];
     $r->[ARTI_DATA_MIN_BID]                  = 20;
     $r->[ARTI_DATA_VP]                       = 1;
     $r->[ARTI_DATA_DECK_LETTER]              = 'A';
-    $r->[ARTI_DATA_DISCOUNT_ARTIFACT]        = ARTI_ELIXIR;
-    $r->[ARTI_DATA_DISCOUNT_ARTIFACT_AMOUNT] = 5;
+    $r->[ARTI_DATA_COST_MOD_ARTIFACT]        = ARTI_ELIXIR;
+    $r->[ARTI_DATA_COST_MOD_ARTIFACT_AMOUNT] = -5;
     $r->[ARTI_DATA_HAND_LIMIT]               = 3;
 
     $r = $Artifact_data[ARTI_RUNESTONE];
     $r->[ARTI_DATA_MIN_BID]                  = 20;
     $r->[ARTI_DATA_VP]                       = 1;
     $r->[ARTI_DATA_DECK_LETTER]              = 'A';
-    $r->[ARTI_DATA_DISCOUNT_ARTIFACT]        = ARTI_CHALICE_OF_FIRE;
-    $r->[ARTI_DATA_DISCOUNT_ARTIFACT_AMOUNT] = 10;
+    $r->[ARTI_DATA_COST_MOD_ARTIFACT]        = ARTI_CHALICE_OF_FIRE;
+    $r->[ARTI_DATA_COST_MOD_ARTIFACT_AMOUNT] = -10;
     $r->[ARTI_DATA_ADVANCE_KNOWLEDGE]        = 1;
 
     $r = $Artifact_data[ARTI_SPELLBOOK];
     $r->[ARTI_DATA_MIN_BID]                  = 20;
     $r->[ARTI_DATA_VP]                       = 1;
     $r->[ARTI_DATA_DECK_LETTER]              = 'A';
-    $r->[ARTI_DATA_DISCOUNT_ARTIFACT]        = ARTI_SHADOW_CLOAK;
-    $r->[ARTI_DATA_DISCOUNT_ARTIFACT_AMOUNT] = 15;
+    $r->[ARTI_DATA_COST_MOD_ARTIFACT]        = ARTI_SHADOW_CLOAK;
+    $r->[ARTI_DATA_COST_MOD_ARTIFACT_AMOUNT] = -15;
     $r->[ARTI_DATA_CAN_BUY_GEM]              = GEM_EMERALD;
 
+    # B deck
 
     $r = $Artifact_data[ARTI_MAGIC_BELT];
     $r->[ARTI_DATA_MIN_BID]                  = 30;
@@ -475,12 +485,13 @@ BEGIN {
     $r->[ARTI_DATA_DECK_LETTER]              = 'B';
     $r->[ARTI_DATA_GEM_ENERGY_PRODUCTION]    = GEM_EMERALD;
 
+    # C deck
 
     $r = $Artifact_data[ARTI_MASK_OF_CHARISMA];
     $r->[ARTI_DATA_MIN_BID]                  = 50;
     $r->[ARTI_DATA_VP]                       = 3;
     $r->[ARTI_DATA_DECK_LETTER]              = 'C';
-    $r->[ARTI_DATA_DISCOUNT_SENTINELS]       = 20;
+    $r->[ARTI_DATA_COST_MOD_SENTINELS]       = -20;
     $r->[ARTI_DATA_ADVANCE_KNOWLEDGE]        = 1;
 
     $r = $Artifact_data[ARTI_MAGIC_WAND];
@@ -497,6 +508,7 @@ BEGIN {
     $r->[ARTI_DATA_DECK_LETTER]              = 'C';
     $r->[ARTI_DATA_GEM_ENERGY_PRODUCTION]    = GEM_RUBY;
 
+    # D deck
 
     $r = $Artifact_data[ARTI_SHADOW_CLOAK];
     $r->[ARTI_DATA_MIN_BID]                  = 80;
@@ -511,18 +523,45 @@ BEGIN {
     $r->[ARTI_DATA_DECK_LETTER]              = 'D';
     $r->[ARTI_DATA_ADVANCE_KNOWLEDGE]        = 2;
 
-# real limits are only on fox and tomcat I think
-#
-# Phoenix * 120 5 2 per kind of active gem 10
-# Owl 120 5 2 per top-level knowledge 12
-# Fox 120 5 2 per active sapphire 12
-# Toad 120 5 2 for each Runestone, Protective Crystal, Spellbook, Elixir -
-# Unicorn 120 5 1 for each active diamond 11
-# Tomcat 120 5 2 for each active opal 12
-# Scarab * 120 5 1 for each active emerald 11
-# Raven 120 5 2 for each Crystal Ball, Charismatic Mask, Magic Belt, Magic Wand -
-# Salamander * 120 5 2 for each active ruby 10
+    # Sentinels
 
+    $Sentinel_data[SENT_PHOENIX   ][SENT_DATA_VP_PER      ] = 2; # type of gem
+    $Sentinel_data[SENT_OWL       ][SENT_DATA_VP_PER      ] = 2; # knowledge
+
+    $Sentinel_data[SENT_TOAD      ][SENT_DATA_VP_PER      ] = 2;
+    $Sentinel_data[SENT_TOAD      ][SENT_DATA_BONUS_AUC_TYPE]
+    	= { map { $_ => 1 } (
+	    AUC_RUNESTONE,
+	    AUC_CRYSTAL_OF_PROTECTION,
+	    AUC_SPELLBOOK,
+	    AUC_ELIXIR,
+	) };
+
+    $Sentinel_data[SENT_RAVEN     ][SENT_DATA_VP_PER      ] = 2;
+    $Sentinel_data[SENT_RAVEN     ][SENT_DATA_BONUS_AUC_TYPE]
+    	= { map { $_ => 1 } (
+    	    AUC_CRYSTAL_BALL,
+    	    AUC_MASK_OF_CHARISMA,
+    	    AUC_MAGIC_BELT,
+    	    AUC_MAGIC_WAND,
+	) };
+
+    $Sentinel_data[SENT_TOMCAT    ][SENT_DATA_BONUS_GEM   ] = GEM_OPAL;
+    $Sentinel_data[SENT_TOMCAT    ][SENT_DATA_VP_PER      ] = 2;
+    $Sentinel_data[SENT_TOMCAT    ][SENT_DATA_MAX_BONUS_VP] = 12;
+
+    $Sentinel_data[SENT_FOX       ][SENT_DATA_BONUS_GEM   ] = GEM_SAPPHIRE;
+    $Sentinel_data[SENT_FOX       ][SENT_DATA_VP_PER      ] = 2;
+    $Sentinel_data[SENT_FOX       ][SENT_DATA_MAX_BONUS_VP] = 12;
+
+    $Sentinel_data[SENT_SCARAB    ][SENT_DATA_BONUS_GEM   ] = GEM_EMERALD;
+    $Sentinel_data[SENT_SCARAB    ][SENT_DATA_VP_PER      ] = 1;
+
+    $Sentinel_data[SENT_UNICORN   ][SENT_DATA_BONUS_GEM   ] = GEM_DIAMOND;
+    $Sentinel_data[SENT_UNICORN   ][SENT_DATA_VP_PER      ] = 1;
+
+    $Sentinel_data[SENT_SALAMANDER][SENT_DATA_BONUS_GEM   ] = GEM_RUBY;
+    $Sentinel_data[SENT_SALAMANDER][SENT_DATA_VP_PER      ] = 2;
 }
 
 
@@ -549,6 +588,8 @@ sub start_items_common {
 
 1
 
+__END__
+
 # - XXX use $ix instead of $i for indexes, $i for items
 # - XXX use confess for assertions
 # - XXX POE to facilitate multiple clients
@@ -559,3 +600,14 @@ sub start_items_common {
 # - XXX The phases 3a, 3b and 3c may be done in any order, although you
 #   may NOT split any of the phases, like selling gems (3a), increase
 #   gems knowledge (3b) and then buy gems (3a again).
+
+XXX
+    - manually activate/disactivate gems
+    - ask user about which gem to destroy
+    - ask user about what to pay with
+    - ask user about which knowledge to advance
+    - combine purchases where possible
+    	- maybe always allow 1 dust, then remove it when appropriate
+	- but this likely wouldn't let you do everything you could by
+	  combining purchases for real
+    - auto-activate gem on your own turn after having one destroyed
