@@ -1,8 +1,13 @@
-# $Id: Player.pm,v 1.7 2008-07-29 18:26:14 roderick Exp $
+# $Id: Player.pm,v 1.8 2008-07-30 15:06:45 roderick Exp $
 
 use strict;
 
 package Game::ScepterOfZavandor::Player;
+
+use overload (
+    '""' => "as_string",
+    '<=>' => "spaceship",
+);
 
 use List::Util	qw(first sum);
 use Game::Util  qw($Debug add_array_indices debug debug_var
@@ -43,14 +48,14 @@ BEGIN {
 # - get_items method returns all items from all lists
 # - when doing something iterate through items offering each of them the
 #   opportunity to modify it
-#     - need to know discount on an item when bidding so you know how
+#     - need to know cost_mod on an item when bidding so you know how
 #       high you can bid
 
 sub new {
     @_ == 3 || badinvo;
     my ($class, $game, $ui) = @_;
 
-    $ui or die;
+    $ui or xconfess;
 
     my $self = bless [], $class;
     $self->[PLAYER_GAME] = $game;
@@ -71,6 +76,15 @@ make_rw_accessor (
     a_advanced_knowledge => PLAYER_ADVANCED_KNOWLEDGE,
     a_score_at_turn_start => PLAYER_SCORE_AT_TURN_START,
 );
+
+sub spaceship {
+    @_ == 3 || badinvo;
+    my ($a, $b) = @_;
+
+    0
+	or $a->a_char  <=> $b->a_char
+    	or refaddr($a) <=> refaddr($b)
+}
 
 sub init {
     @_ == 2 || badinvo;
@@ -95,6 +109,12 @@ sub init {
     debug "$Character[$char] items ", join " ", $self->items;
 }
 
+sub as_string {
+    @_ == 3 || badinvo;
+    my $self = shift;
+    return $self->name;
+}
+
 #------------------------------------------------------------------------------
 
 # XXX standard list accessors?
@@ -104,7 +124,7 @@ sub add_items {
     my ($self, @item) = @_;
 
     for (@item) {
-    	$_ or die;
+    	$_ or xconfess;
 	debug "$Character[$self->[PLAYER_CHAR]] add item $_";
 	push @{ $self->[PLAYER_ITEM] }, $_;
     }
@@ -126,11 +146,11 @@ sub remove_items {
     my @new;
     for my $old (@old) {
 	push @new, $old
-	    unless grep { refaddr($old) == refaddr($_) } @remove_item;
+	    unless grep { $old == $_ } @remove_item;
     }
 
     if (@new + @remove_item != @old) {
-	die "remove_items missing something",
+	xconfess "remove_items missing something",
 	    "\n",
 	    "(new=", 0+@new, " old=", 0+@old, ")\n",
 	    "new: @new\n",
@@ -252,20 +272,20 @@ sub advance_knowledge {
     my $free  = shift;	# true if from an artifact or at startup or such
 
     if (!$free && $self->a_advanced_knowledge) {
-	die "already advanced knowledge this turn";
+	die "already advanced knowledge this turn\n";
     }
 
     my $cost = 0;
     my $k = first { $_->ktype_is($ktype) } $self->knowledge_chips;
     if (!$k) {
-	$k = first { $_->is_unassigned } $self->knowledge_chips
-	    or die "not on $Knowledge[$ktype] knowledge track and no unassigned chips";
+	$k = first { $_->is_bought && $_->is_unassigned } $self->knowledge_chips
+	    or die "not on $Knowledge[$ktype] knowledge track and no unassigned chips\n";
 	# XXX
 	$cost = $Knowledge_data[$ktype][KNOW_DATA_LEVEL_COST][0];
     }
     else {
 	$k->maxed_out
-	    and die "$k already maxed out";
+	    and die "$k already maxed out\n";
 	$cost = $k->next_level_cost;
     }
 
@@ -274,7 +294,7 @@ sub advance_knowledge {
     }
 
     if ($cost > $self->current_energy_liquid) {
-	die "not enough liquid energy (need $cost)";
+	die "not enough liquid energy (need $cost)\n";
     }
 
     $self->pay_energy($cost)
@@ -289,7 +309,7 @@ sub advance_knowledge {
     info $self->name, " advanced ", $k->name, " to level ", $k->user_level;
 }
 
-sub auctionable_discount {
+sub auctionable_cost_mod {
     @_ == 2 || badinvo;
     my $self        = shift;
     my $auc_or_type = shift;
@@ -298,15 +318,10 @@ sub auctionable_discount {
 			? $auc_or_type->a_auc_type
 			: $auc_or_type;
 
-    my $discount = sum map { $_->discount_on_auc_type($auc_type) } $self->items;
-    #debug "$discount discount on $auc_or_type";
-    return $discount
+    my $cost_mod = sum map { $_->cost_mod_on_auc_type($auc_type) } $self->items;
+    #debug "$cost_mod cost_mod on $auc_or_type";
+    return $cost_mod
 }
-
-# XXX sub for user-visible discount amount, made positive and called
-# "penalty" if appropriate
-#
-# Or maybe just reverse it, store discounts as -, penalties as +
 
 sub auto_activate_gems {
     @_ == 1 || badinvo;
@@ -340,20 +355,22 @@ sub buy_auctionable {
     if ($auc->own_only_one
 	    && grep { $_->a_auc_type == $auc->a_auc_type }
 		    $self->auctionables) {
-    	die "you can only own one $auc";
+    	die "you can only own one $auc\n";
     }
 
     if ($price < (my $cost = $auc->get_min_bid)) {
-	die "$price < $cost";
+	xconfess "$price < $cost";
     }
 
-    my $discount = $self->auctionable_discount($auc);
+    my $cost_mod = $self->auctionable_cost_mod($auc);
+    my $net = $price + $cost_mod;
     my $cash = $self->current_energy_liquid;
-    $cash + $discount >= $price
-	or die "not enough liquid cash, $cash + $discount < $price";
+    $cash >= $net
+	or die "not enough liquid cash, $cash < $price + $cost_mod\n";
     # XXX using active gems
 
-    $self->pay_energy($price - $discount);
+    $self->pay_energy($net);
+    info "$self bought $auc for $net energy";
     $self->a_game->auctionable_sold($auc);
     # XXX weaken
     $auc->a_player($self);
@@ -374,13 +391,13 @@ sub buy_knowledge_chip {
     if (!$kchip) {
 	my @kc = sort { $a->a_cost <=> $b->a_cost}
 		    $self->knowledge_chips_unbought
-	    or die "no unbought knowledge chips";
+	    or die "no unbought knowledge chips\n";
 	$kchip = $kc[$free ? -1 : 0];
     }
 
     my $cost = $free ? 0 : $kchip->a_cost;
     if ($cost > $self->current_energy_liquid) {
-	die "not enough liquid energy (need $cost)";
+	die "not enough liquid energy (need $cost)\n";
     }
 
     $self->pay_energy($cost)
@@ -426,17 +443,19 @@ sub enchant_gem {
 
     if (!$self->can_enchant_gem_type_right_now($gtype)) {
 	# XXY ungrammatical
-	die "not allowed to enchant $Gem[$gtype] right now";
+	die "not allowed to enchant $Gem[$gtype] right now\n";
     }
 
     my $cost = $self->gem_cost($gtype);
     my $cash = $self->current_energy_liquid;
     if ($cost > $cash) {
-    	die "not enough liquid cash";
+    	die "not enough liquid cash ($cost > $cash)\n";
     }
 
-    my $g = Game::ScepterOfZavandor::Item::Gem->new($self, $gtype);
     $self->pay_energy($cost);
+
+    my $g = Game::ScepterOfZavandor::Item::Gem->new($self, $gtype);
+    info "$self enchanted a $g"; # XXX grammar
     $self->add_items($g);
 
     return $g;
@@ -447,14 +466,14 @@ sub can_enchant_gem_type_right_now {
     my $self = shift;
     my $gtype = shift;
 
-    defined $Gem[$gtype] or die dstr $gtype;
+    defined $Gem[$gtype] or xconfess dstr $gtype;
 
     if ($gtype == GEM_OPAL || $gtype == GEM_SAPPHIRE) {
 	return 1;
     }
 
     if (my $limit =  $Gem_data[$gtype][GEM_DATA_LIMIT]) {
-    	info "gtype $gtype limit $limit";
+    	debug "gtype $gtype limit $limit";
 	my @g = grep { $_->a_gem_type == $gtype } $self->gems;
 	if (@g > $limit) {
 	    xconfess 0+@g, " > $limit";
@@ -543,7 +562,7 @@ sub enforce_hand_limit {
 	}
     }
 
-    $new_hc == $hl or die "$new_hc != $hl";
+    $new_hc == $hl or xconfess "$new_hc != $hl";
 
     if ($tot_discarded_energy) {
 	info $self->name, " lost $tot_discarded_energy energy to hand limit";
@@ -569,7 +588,7 @@ sub gain_energy {
 	    $self->add_items($i->produce_energy);
 	}
     }
-    $active_gems <= $self->num_gem_slots or die;
+    $active_gems <= $self->num_gem_slots or xconfess;
 
     # opals
 
@@ -663,7 +682,7 @@ sub pay_energy {
     # more realistically because you might want to sell gems early
     # knowing you'll be going up the gem track
 
-    $tot > 0 or die;
+    $tot > 0 or xconfess;
 
     # XXX proper algorithm for choosing what to pay with, 0-1 knapsack
     # problem?
@@ -683,7 +702,7 @@ sub pay_energy {
     }
 
     if ($tot > 0) {
-    	die "short by $tot energy";
+    	xconfess "short by $tot energy";
     }
 
     # XXX removing an inactive gem causes it to add the dust back in,
