@@ -1,4 +1,4 @@
-# $Id: Gem.pm,v 1.6 2008-07-29 16:18:18 roderick Exp $
+# $Id: Gem.pm,v 1.7 2008-07-30 14:52:33 roderick Exp $
 
 use strict;
 
@@ -56,9 +56,12 @@ sub as_string_fields {
 
 sub spaceship {
     @_ == 3 || badinvo;
-    my ($a, $b) = @_;
+    my ($a, $b, $rev) = @_;
 
-    return $a->[ITEM_GEM_TYPE] <=> $b->[ITEM_GEM_TYPE];
+    ($a->a_item_type == $b->a_item_type)
+	    ? $a->[ITEM_GEM_TYPE] <=> $b->[ITEM_GEM_TYPE]
+	    : 0
+    	or $a->SUPER::spaceship($b, $rev)
 }
 
 sub activate {
