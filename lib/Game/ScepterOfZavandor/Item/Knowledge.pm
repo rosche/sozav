@@ -1,4 +1,4 @@
-# $Id: Knowledge.pm,v 1.2 2008-07-29 16:54:21 roderick Exp $
+# $Id: Knowledge.pm,v 1.3 2008-07-30 02:52:03 roderick Exp $
 
 use strict;
 
@@ -166,7 +166,7 @@ sub detail {
 	    : undef;
 }
 
-sub discount_on_auc_type {
+sub cost_mod_on_auc_type {
     @_ == 2 || badinvo;
     my $self     = shift;
     my $auc_type = shift;
@@ -175,12 +175,12 @@ sub discount_on_auc_type {
 	return 0;
     }
 
-    my $disc = $self->detail;
-    $disc *= 2
+    my $cost_mod = $self->detail;
+    $cost_mod *= 2
 	if Game::ScepterOfZavandor::Item::Auctionable::auc_type_is_sentinel $auc_type;
 
-    debug "knowledge of artifacts discount $disc" if $Debug > 2;
-    return $disc;
+    debug "knowledge of artifacts cost_mod $cost_mod" if $Debug > 2;
+    return $cost_mod;
 }
 
 sub ktype_is {
@@ -198,26 +198,40 @@ sub is_advancable {
     return defined $self->a_type && !$self->maxed_out;
 }
 
+sub is_assigned {
+    @_ == 1 || badinvo;
+    my $self = shift;
+
+    return defined $self->a_type;
+}
+
+sub is_bought {
+    @_ == 1 || badinvo;
+    my $self = shift;
+
+    return $self->a_cost == 0;
+}
+
 sub is_unbought {
     @_ == 1 || badinvo;
     my $self = shift;
 
-    return $self->a_cost > 0;
+    return !$self->is_bought;
 }
 
 sub is_unassigned {
     @_ == 1 || badinvo;
     my $self = shift;
 
-    return !$self->is_unbought && !defined $self->a_type;
+    return !$self->is_assigned;
 }
 
 sub maxed_out {
     @_ || badinvo;
     my $self = shift;
 
-    return $self->a_level
-		== $#{ $self->data(KNOW_DATA_LEVEL_COST) };
+    return $self->is_assigned &&
+	    $self->a_level == $#{ $self->data(KNOW_DATA_LEVEL_COST) };
 }
 
 sub modify_gem_cost {
