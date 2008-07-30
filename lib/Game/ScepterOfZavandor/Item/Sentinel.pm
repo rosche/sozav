@@ -1,4 +1,4 @@
-# $Id: Sentinel.pm,v 1.3 2008-07-29 17:15:16 roderick Exp $
+# $Id: Sentinel.pm,v 1.4 2008-07-30 15:36:32 roderick Exp $
 
 use strict;
 
@@ -7,9 +7,10 @@ package Game::ScepterOfZavandor::Item::Sentinel;
 use base qw(Game::ScepterOfZavandor::Item::Auctionable);
 
 use Game::Util	qw(add_array_index debug make_ro_accessor);
-use RS::Handy	qw(badinvo data_dump dstr shuffle xcroak);
+use RS::Handy	qw(badinvo data_dump dstr shuffle xconfess);
 
 use Game::ScepterOfZavandor::Constant qw(
+    /^GEM_/
     /^ITEM_/
     /^SENT_/
     @Sentinel
@@ -27,6 +28,15 @@ sub new {
     return $self;
 }
 
+sub as_string_fields {
+    @_ || badinvo;
+    my $self = shift;
+    my @r = $self->SUPER::as_string_fields(@_);
+    push @r,
+	defined $self->vp_bonus ? "bonus=" . $self->vp_bonus : ();
+    return @r;
+}
+
 # XXX name
 sub new_deck {
     @_ == 1 || badinvo;
@@ -37,6 +47,70 @@ sub new_deck {
 	push @a, __PACKAGE__->new($_);
     }
     return @a;
+}
+
+sub vp {
+    @_ == 1 || badinvo;
+    my $self = shift;
+    return $self->a_vp + $self->vp_bonus;
+}
+
+sub vp_bonus {
+    @_ == 1 || badinvo;
+    my $self = shift;
+
+    if (!$self->a_player) {
+	return 0;
+    }
+
+    my $auc_type  = $self->a_auc_type;
+    my $ct        = $self->a_auc_type;
+    my $p         = $self->a_player;
+
+    if (0) {
+
+    } elsif (defined(my $bonus_gem = $self->data(SENT_DATA_BONUS_GEM))) {
+
+	# per active gem of some type
+
+	$ct = grep { $_->a_gem_type == $bonus_gem } $p->active_gems;
+
+    } elsif (defined(my $bonus_auc = $self->data(SENT_DATA_BONUS_AUC_TYPE))) {
+
+    	$ct = grep { $bonus_auc->{$_->a_auc_type} } $p->auctionables;
+
+    } elsif ($auc_type == SENT_PHOENIX) {
+
+	# per kind of active gem
+
+    	my %g;
+	for ($p->active_gems) {
+	    $g{$_->a_gem_type} = 1;
+	}
+	$ct = scalar keys %g;
+
+    } elsif ($auc_type == SENT_OWL) {
+
+	# per top-level knowledge
+
+	$ct = grep { $_->maxed_out } $p->knowledge_chips;
+
+    } else {
+	xconfess "auc_type $auc_type";
+    }
+
+    defined $ct
+	or xconfess $auc_type;
+
+    my $bvp = $ct * $self->data(SENT_DATA_VP_PER);
+
+    my $max_bvp = $self->data(SENT_DATA_MAX_BONUS_VP);
+    if (defined $max_bvp && $bvp > $max_bvp) {
+	debug "clamping bonus vp to $max_bvp";
+	$bvp = $max_bvp;
+    }
+
+    return $bvp;
 }
 
 1

@@ -1,4 +1,4 @@
-# $Id: Energy.pm,v 1.6 2008-07-29 16:54:03 roderick Exp $
+# $Id: Energy.pm,v 1.7 2008-07-30 15:32:09 roderick Exp $
 
 use strict;
 
@@ -63,11 +63,14 @@ sub energy {
 
 sub spaceship {
     @_ == 3 || badinvo;
-    my ($a, $b) = @_;
+    my ($a, $b, $rev) = @_;
 
     # Prefer cards with a higher value:hand-count ratio.
 
-    return(($a->a_value/$a->a_hand_count) <=> ($b->a_value/$b->a_hand_count));
+    ($a->a_item_type == $b->a_item_type)
+	    ? ($a->a_value/$a->a_hand_count) <=> ($b->a_value/$b->a_hand_count)
+	    : 0
+    	or $a->SUPER::spaceship($b, $rev)
 }
 
 sub use_up {
@@ -229,6 +232,16 @@ sub new {
 				$Gem_data[$gtype][GEM_DATA_CONCENTRATED],
     	    	    	    	$Concentrated_hand_count);
 }
+
+# XXX include gem type
+#sub as_string_fields {
+#    @_ || badinvo;
+#    my $self = shift;
+#    my @r = $self->SUPER::as_string_fields(@_);
+#    push @r,
+#    	$Gem[$self->a_deck->a_gtype];
+#    return @r;
+#}
 
 #------------------------------------------------------------------------------
 
