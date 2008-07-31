@@ -1,4 +1,4 @@
-# $Id: Item.pm,v 1.12 2008-07-31 18:09:03 roderick Exp $
+# $Id: Item.pm,v 1.13 2008-07-31 18:48:19 roderick Exp $
 
 use strict;
 
@@ -81,9 +81,12 @@ make_rw_accessor (
     a_gem_slots           => ITEM_GEM_SLOTS,
 );
 
-for (qw(Artifact Auctionable Energy Gem Knowledge Sentinel TurnOrder)) {
+for (qw(Artifact Auctionable
+	Energy Energy::Card Energy::Dust Energy::Concentrated
+	Gem Knowledge Sentinel TurnOrder)) {
     my $pkg = __PACKAGE__ . "::$_";
     my $method = "is_" . lc $_;
+    $method =~ s/::/_/g;
     my $sub = sub {
 	@_ == 1 || badinvo;
 	return $_[0]->isa($pkg);

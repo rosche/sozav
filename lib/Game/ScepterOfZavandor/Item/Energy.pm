@@ -1,4 +1,4 @@
-# $Id: Energy.pm,v 1.9 2008-07-31 18:09:04 roderick Exp $
+# $Id: Energy.pm,v 1.10 2008-07-31 18:48:22 roderick Exp $
 
 use strict;
 
@@ -148,6 +148,7 @@ use Game::ScepterOfZavandor::Constant qw(
 
 {
 
+# XXX needs to be in game object
 my %dust_to_hand_count;
 
 sub new {
@@ -191,7 +192,8 @@ sub make_dust_from_opals {
     @_ == 3 || badinvo;
     my ($class, $player, $opal_count) = @_;
 
-    return $class->make_dust($player, $class->opal_count_to_energy_value($opal_count));
+    return $class->make_dust($player,
+			      $class->opal_count_to_energy_value($opal_count));
 }
 
 sub opal_count_to_energy_value {

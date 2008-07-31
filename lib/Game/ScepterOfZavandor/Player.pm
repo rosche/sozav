@@ -1,4 +1,4 @@
-# $Id: Player.pm,v 1.10 2008-07-31 18:09:03 roderick Exp $
+# $Id: Player.pm,v 1.11 2008-07-31 18:48:20 roderick Exp $
 
 use strict;
 
@@ -41,8 +41,15 @@ use Game::ScepterOfZavandor::Constant qw(
 );
 
 BEGIN {
-    add_array_indices 'PLAYER',
-	qw(GAME UI CHAR ITEM ADVANCED_KNOWLEDGE SCORE_AT_TURN_START);
+    add_array_indices 'PLAYER', qw(
+	GAME
+	UI
+	CHAR
+	ITEM
+	ENCHANTED_RUBY
+	SCORE_AT_TURN_START
+	ADVANCED_KNOWLEDGE_THIS_TURN
+    );
 }
 
 # - items are sub of item class which has default methods which do nothing
@@ -74,9 +81,10 @@ make_ro_accessor (
 );
 
 make_rw_accessor (
-    a_char               => PLAYER_CHAR,
-    a_advanced_knowledge => PLAYER_ADVANCED_KNOWLEDGE,
-    a_score_at_turn_start => PLAYER_SCORE_AT_TURN_START,
+    a_char                         => PLAYER_CHAR,
+    a_enchanted_ruby               => PLAYER_ENCHANTED_RUBY,
+    a_advanced_knowledge_this_turn => PLAYER_ADVANCED_KNOWLEDGE_THIS_TURN,
+    a_score_at_turn_start          => PLAYER_SCORE_AT_TURN_START,
 );
 
 sub spaceship {
@@ -273,7 +281,7 @@ sub advance_knowledge {
     my $ktype = shift;
     my $free  = shift;	# true if from an artifact or at startup or such
 
-    if (!$free && $self->a_advanced_knowledge) {
+    if (!$free && $self->a_advanced_knowledge_this_turn) {
 	die "already advanced knowledge this turn\n";
     }
 
@@ -307,7 +315,7 @@ sub advance_knowledge {
     else {
 	$k->advance;
     }
-    $self->a_advanced_knowledge(1);
+    $self->a_advanced_knowledge_this_turn(1);
     $self->a_game->info($self->name, " advanced ", $k->name, " to level ", $k->user_level);
 }
 
@@ -460,6 +468,10 @@ sub enchant_gem {
     $self->a_game->info("$self enchanted a $g"); # XXX grammar
     $self->add_items($g);
 
+    if ($gtype == GEM_RUBY) {
+	$self->a_enchanted_ruby(1);
+    }
+
     return $g;
 }
 
@@ -474,13 +486,14 @@ sub can_enchant_gem_type_right_now {
 	return 1;
     }
 
-    if (my $limit =  $Gem_data[$gtype][GEM_DATA_LIMIT]) {
+    if (my $limit = $Gem_data[$gtype][GEM_DATA_LIMIT]) {
     	debug "gtype $gtype limit $limit";
 	my @g = grep { $_->a_gem_type == $gtype } $self->gems;
 	if (@g > $limit) {
 	    xconfess 0+@g, " > $limit";
 	}
 	if (@g == $limit) {
+	    die "can't enchant another $Gem[$gtype], at limit\n";
 	    return 0;
 	}
     }
@@ -489,7 +502,17 @@ sub can_enchant_gem_type_right_now {
 	return 1;
     }
 
-    # XXX level 3 druid ruby
+    # Druids can enchant 1 ruby at knowledge of fire level 3.
+
+    if ($gtype == GEM_RUBY
+    	    && $self->a_char == CHAR_DRUID
+    	    && grep { $_->ktype_is(KNOW_FIRE) && $_->a_level >= 2 }
+		    $self->knowledge_chips) {
+    	if ($self->a_enchanted_ruby) {
+	    die "druid already enchanted special level 3 ruby\n";
+	}
+	return 1;
+    }
 
     return 0;
 }
@@ -779,7 +802,16 @@ sub pay_energy {
 	    Game::ScepterOfZavandor::Item::Energy::Dust->make_dust($self, 0 - $tot))
 	if $tot < 0;
 
-    # XXX consolidate dust so your hand count is accurate
+    # consolidate dust so your hand count is accurate
+
+    # XXX inefficient
+
+    if (my @dust = grep { $_->is_energy_dust } $self->items) {
+	my $e = sum map { $_->energy } @dust;
+	$self->remove_items(@dust);
+	$self->add_items(
+	    Game::ScepterOfZavandor::Item::Energy::Dust->make_dust($self, $e));
+    }
 }
 
 # Take some things out of your inventory.  Return the amount of energy
@@ -801,7 +833,7 @@ sub actions {
     @_ == 1 || badinvo;
     my $self = shift;
 
-    $self->a_advanced_knowledge(0);
+    $self->a_advanced_knowledge_this_turn(0);
     $self->a_ui->start_actions;
     while ($self->a_ui->one_action) {
 	;

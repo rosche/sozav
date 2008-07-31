@@ -1,4 +1,4 @@
-# $Id: Knowledge.pm,v 1.5 2008-07-31 18:09:04 roderick Exp $
+# $Id: Knowledge.pm,v 1.6 2008-07-31 18:48:22 roderick Exp $
 
 use strict;
 
@@ -11,9 +11,10 @@ use RS::Handy	qw(badinvo data_dump dstr xconfess);
 use Scalar::Util qw(looks_like_number weaken);
 
 use Game::ScepterOfZavandor::Constant qw(
+    /^ENERGY_EST_/
     /^GEM_/
-    /^KNOW_/
     /^ITEM_/
+    /^KNOW_/
     @Knowledge
     @Knowledge_data
     $Knowledge_9sages_card_count
@@ -139,8 +140,6 @@ sub allows_player_to_enchant_gem_type {
     	debug "testing kfire detail=", $self->detail;
     	return $self->detail;
     }
-
-    # XXX druid level 3 ruby
 
     return 0;
 }
@@ -275,6 +274,21 @@ sub produce_energy {
 	    push @item, $_;
 	}
 	return @item;
+    }
+
+    return;
+}
+
+sub produce_energy_estimate {
+    @_ == 1 || badinvo;
+    my $self = shift;
+
+    if ($self->ktype_is(KNOW_EFLOW) && (my $dust = $self->detail)) {
+    	my @ee;
+	$ee[ENERGY_EST_MIN] = $dust;
+	$ee[ENERGY_EST_AVG] = $dust;
+	$ee[ENERGY_EST_MAX] = $dust;
+	return @ee;
     }
 
     return;
