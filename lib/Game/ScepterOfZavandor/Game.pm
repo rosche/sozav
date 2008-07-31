@@ -1,4 +1,4 @@
-# $Id: Game.pm,v 1.8 2008-07-31 15:02:18 roderick Exp $
+# $Id: Game.pm,v 1.9 2008-07-31 18:09:03 roderick Exp $
 
 use strict;
 
@@ -6,7 +6,7 @@ package Game::ScepterOfZavandor::Game;
 
 # XXY class::makemethods
 
-use Game::Util	qw(add_array_indices debug debug_var info
+use Game::Util	qw(add_array_indices debug debug_var
 		    make_ro_accessor make_rw_accessor);
 use RS::Handy	qw(badinvo create_constant_subs data_dump dstr shuffle xconfess);
 
@@ -115,8 +115,8 @@ sub init {
 
     $self->die_if_initialized;
 
-    info "options: ", join(" ",
-	map { ($self->option($_) ? "" : "!") . $Option[$_] } 0..$#Option);
+    $self->info("options: ", join(" ",
+	map { ($self->option($_) ? "" : "!") . $Option[$_] } 0..$#Option));
 
     my $num_players = $self->num_players;
     debug_var num_players => $num_players;
@@ -138,25 +138,26 @@ sub init {
     $self->[GAME_GEM_DECKS] = [];
     for my $i (0..$#Gem) {
     	next if $i == GEM_OPAL;
-	$self->[GAME_GEM_DECKS][$i] = Game::ScepterOfZavandor::Deck->new($i);
+	$self->[GAME_GEM_DECKS][$i]
+	    = Game::ScepterOfZavandor::Deck->new($self, $i);
     }
 
     # initialize artifact deck
 
     $self->[GAME_ARTIFACT_DECK]
-	= Game::ScepterOfZavandor::Item::Artifact->new_deck($artifact_copies);
+	= Game::ScepterOfZavandor::Item::Artifact->new_deck($self, $artifact_copies);
     #print "artifact deck:\n";
     #print $_, "\n" while $_ = $self->[GAME_ARTIFACT_DECK]->draw;
 
     $self->[GAME_SENTINEL]
-	= [Game::ScepterOfZavandor::Item::Sentinel->new_deck];
+	= [Game::ScepterOfZavandor::Item::Sentinel->new_deck($self)];
 
     # create turn order markers
 
     $self->[GAME_TURN_ORDER] = [];
     for (0 .. $num_players-1) {
     	push @{ $self->[GAME_TURN_ORDER] },
-	    Game::ScepterOfZavandor::Item::TurnOrder->new(undef, $_);
+	    Game::ScepterOfZavandor::Item::TurnOrder->new($self, $_);
     }
 
     # assign characters and initialize players
@@ -233,7 +234,7 @@ sub play {
 	}
     }
 
-    info "Game over";
+    $self->info("Game over");
     my $place         = 0;
     my $nominal_place = 0;
     my $prev_score    = undef;
@@ -243,10 +244,10 @@ sub play {
 	$place = (defined $prev_score && $this_score == $prev_score)
     	    	    	? $place
 			: $nominal_place;
-	info sprintf "  %s. %3d %s",
-	    $place,
-	    $_->score,
-	    $_->name;
+	$self->info(sprintf "  %s. %3d %s",
+		    $place,
+		    $_->score,
+		    $_->name);
 	$prev_score = $this_score;
     }
 }
@@ -294,6 +295,22 @@ sub draw_from_deck {
     my ($self, $gtype, $ct) = @_;
 
     return $self->[GAME_GEM_DECKS][$gtype]->draw($ct);
+}
+
+# XXX
+sub log {
+    @_ > 1 || badinvo;
+    my $self = shift;
+
+    print "log: ", @_, "\n";
+}
+
+# XXX
+sub info {
+    @_ > 1 || badinvo;
+    my $self = shift;
+
+    print @_, "\n";
 }
 
 sub players {

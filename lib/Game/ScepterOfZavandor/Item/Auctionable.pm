@@ -1,4 +1,4 @@
-# $Id: Auctionable.pm,v 1.6 2008-07-31 15:02:24 roderick Exp $
+# $Id: Auctionable.pm,v 1.7 2008-07-31 18:09:04 roderick Exp $
 
 use strict;
 
@@ -44,14 +44,14 @@ sub auc_type_is_sentinel {
 }
 
 sub new {
-    @_ == 4 || badinvo;
-    my ($class, $itype, $rauc_data, $auc_type) = @_;
+    @_ == 5 || badinvo;
+    my ($class, $game, $itype, $rauc_data, $auc_type) = @_;
 
     # XXX validate with sub
     $rauc_data->[$auc_type]
 	or xconfess $auc_type;
 
-    my $self = $class->SUPER::new($itype, undef, $rauc_data->[$auc_type]);
+    my $self = $class->SUPER::new($game, $itype, $rauc_data->[$auc_type]);
     $self->[ITEM_AUC_TYPE] = $auc_type;
     $self->a_static_vp($self->data(AUC_DATA_VP));
 
@@ -76,7 +76,7 @@ sub as_string_fields {
     my $self = shift;
     my @r = $self->SUPER::as_string_fields(@_);
     push @r,
-	sprintf("min=%3d", $self->get_min_bid),
+	"min=" . $self->get_min_bid,
 	$self->data(AUC_DATA_NAME);
     return @r;
 }

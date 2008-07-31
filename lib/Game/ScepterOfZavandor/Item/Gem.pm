@@ -1,4 +1,4 @@
-# $Id: Gem.pm,v 1.9 2008-07-31 15:02:25 roderick Exp $
+# $Id: Gem.pm,v 1.10 2008-07-31 18:09:04 roderick Exp $
 
 use strict;
 
@@ -28,7 +28,7 @@ sub new {
 
     defined $Gem[$gtype] or xconfess;;
 
-    my $self = $class->SUPER::new(ITEM_TYPE_GEM, $player, $Gem_data[$gtype]);
+    my $self = $class->SUPER::new($player, ITEM_TYPE_GEM, $Gem_data[$gtype]);
     $self->[ITEM_GEM_TYPE]      = $gtype;
     # XXX lose this, always go through links?
     $self->[ITEM_GEM_DECK]      = $player->a_game->a_gem_decks->[$gtype];

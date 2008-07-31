@@ -1,4 +1,4 @@
-# $Id: Constant.pm,v 1.12 2008-07-31 15:02:17 roderick Exp $
+# $Id: Constant.pm,v 1.13 2008-07-31 18:09:03 roderick Exp $
 
 use strict;
 
@@ -13,7 +13,7 @@ use RS::Handy		qw(badinvo data_dump dstr xcroak);
 
 use vars qw($VERSION @EXPORT @EXPORT_OK);
 BEGIN {
-    $VERSION = q$Revision: 1.12 $ =~ /(\d\S+)/ ? $1 : '?';
+    $VERSION = q$Revision: 1.13 $ =~ /(\d\S+)/ ? $1 : '?';
     @EXPORT_OK = qw(
 	$Base_gem_slots
 	$Base_hand_limit
@@ -588,7 +588,7 @@ sub start_items_common {
 
     my $char = $player->a_char;
     push @i, Game::ScepterOfZavandor::Item::Energy::Dust->make_dust(
-    	    	$Character_data[$char][CHAR_DATA_START_DUST]);
+    	    	$player, $Character_data[$char][CHAR_DATA_START_DUST]);
 
     # XXX do knowledge here?
 

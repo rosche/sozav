@@ -1,4 +1,4 @@
-# $Id: Item.pm,v 1.11 2008-07-31 15:02:19 roderick Exp $
+# $Id: Item.pm,v 1.12 2008-07-31 18:09:03 roderick Exp $
 
 use strict;
 
@@ -22,9 +22,10 @@ use Game::ScepterOfZavandor::Constant qw(
 
 BEGIN {
     add_array_indices 'ITEM', qw(
+	GAME
+	PLAYER
     	TYPE
 	DATA
-	PLAYER
 	STATIC_VP
 	GEM_SLOTS
 	HAND_COUNT
@@ -33,20 +34,31 @@ BEGIN {
 }
 
 sub new {
-    (@_ >= 2 || @_ <= 4) || badinvo;
-    my ($class, $itype, $player, $rdata) = @_;
+    (@_ >= 3 || @_ <= 4) || badinvo;
+    my ($class, $player_or_game, $itype, $rdata) = @_;
 
     defined $itype && $itype >= 0 && $itype <= $#Item_type
 	or xconfess;
 
-    !defined $player
-    	# XXX quoting on class name
-	or eval_block { $player->isa("Game::ScepterOfZavandor::Player") }
-	or xconfess;
+    my ($game, $player);
+    if (eval_block { $player_or_game->isa(Game::ScepterOfZavandor::Game::) }) {
+	$game   = $player_or_game;
+	$player = undef;
+    }
+    # XXX required quoting
+    elsif (eval_block { $player_or_game->isa("Game::ScepterOfZavandor::Player") }) {
+	$player = $player_or_game;
+	$game   = $player->a_game;
+    }
+    else {
+	xconfess dstr $player_or_game;
+    }
 
     my $self = bless [], $class;
-    $self->[ITEM_TYPE] = $itype;
+    $self->[ITEM_GAME] = $game;
+    weaken $self->[ITEM_GAME];
     $self->a_player($player);
+    $self->[ITEM_TYPE] = $itype;
     $self->a_data($rdata);
     $self->a_static_vp(0);
     $self->a_hand_count(0);
@@ -57,6 +69,7 @@ sub new {
 }
 
 make_ro_accessor (
+    a_game                => ITEM_GAME,
     a_item_type           => ITEM_TYPE,
 );
 

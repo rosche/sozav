@@ -1,4 +1,4 @@
-# $Id: Deck.pm,v 1.6 2008-07-31 00:52:13 roderick Exp $
+# $Id: Deck.pm,v 1.7 2008-07-31 18:09:03 roderick Exp $
 
 use strict;
 
@@ -18,15 +18,17 @@ use Game::ScepterOfZavandor::Constant qw(
 use Game::ScepterOfZavandor::Item::Energy ();
 
 BEGIN {
-    add_array_index 'DECK', qw(GTYPE);
+    add_array_index 'DECK', 'GAME';
+    add_array_index 'DECK', 'GTYPE';
 }
 
 sub new {
-    @_ == 2 || badinvo;
-    my ($class, $gtype) = @_;
+    @_ == 3 || badinvo;
+    my ($class, $game, $gtype) = @_;
 
     my $self = $class->SUPER::new;
 
+    $self->[DECK_GAME ] = $game;
     $self->[DECK_GTYPE] = $gtype;
 
     $self->discard(
@@ -38,6 +40,7 @@ sub new {
 }
 
 make_ro_accessor (
+    a_game     => DECK_GAME,
     a_gem_type => DECK_GTYPE,
 );
 

@@ -1,4 +1,4 @@
-# $Id: Knowledge.pm,v 1.4 2008-07-31 15:02:25 roderick Exp $
+# $Id: Knowledge.pm,v 1.5 2008-07-31 18:09:04 roderick Exp $
 
 use strict;
 
@@ -37,7 +37,7 @@ sub new {
     defined $cost && looks_like_number($cost) && $cost >= 0
 	or xconfess;
 
-    my $self = $class->SUPER::new(ITEM_TYPE_KNOWLEDGE, $player);
+    my $self = $class->SUPER::new($player, ITEM_TYPE_KNOWLEDGE);
     $self->a_cost($cost);
     $self->[ITEM_KNOW_9SAGES_CARDS] = [];
     return $self;
@@ -264,7 +264,7 @@ sub produce_energy {
     my $self = shift;
 
     if ($self->ktype_is(KNOW_EFLOW) && (my $dust = $self->detail)) {
-	return Game::ScepterOfZavandor::Item::Energy::Dust->make_dust($dust);
+	return Game::ScepterOfZavandor::Item::Energy::Dust->make_dust($self->a_player, $dust);
     }
 
     if (my @card = @{ $self->[ITEM_KNOW_9SAGES_CARDS] }) {

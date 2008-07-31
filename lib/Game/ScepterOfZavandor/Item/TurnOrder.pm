@@ -1,4 +1,4 @@
-# $Id: TurnOrder.pm,v 1.4 2008-07-31 15:02:25 roderick Exp $
+# $Id: TurnOrder.pm,v 1.5 2008-07-31 18:09:05 roderick Exp $
 
 use strict;
 
@@ -18,10 +18,9 @@ use Game::ScepterOfZavandor::Constant qw(
 
 sub new {
     @_ == 3 || badinvo;
-    my ($class, $player, $i) = @_;
+    my ($class, $game, $i) = @_;
 
-    my $self = $class->SUPER::new(ITEM_TYPE_TURN_ORDER,
-				    $player,
+    my $self = $class->SUPER::new($game, ITEM_TYPE_TURN_ORDER,
 				    $Turn_order_data[$i]);
     return $self;
 }

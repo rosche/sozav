@@ -1,4 +1,4 @@
-# $Id: Energy.pm,v 1.8 2008-07-31 00:52:13 roderick Exp $
+# $Id: Energy.pm,v 1.9 2008-07-31 18:09:04 roderick Exp $
 
 use strict;
 
@@ -28,11 +28,11 @@ BEGIN {
 
 sub new {
     @_ == 5 || badinvo;
-    my ($class, $itype, $player, $value, $hand_count) = @_;
+    my ($class, $player_or_game, $itype, $value, $hand_count) = @_;
 
     $value >= 1 or xconfess dstr $value;
 
-    my $self = $class->SUPER::new($itype, $player);
+    my $self = $class->SUPER::new($player_or_game, $itype);
     $self->[ITEM_ENERGY_VALUE] = $value;
     $self->a_hand_count($hand_count);
 
@@ -50,7 +50,7 @@ sub as_string_fields {
     push @r,
 	sprintf("v=%2d", $self->a_value),
 	sprintf("hc=%1d", $self->a_hand_count),
-    	sprintf("hlr=%3.1f", $self->a_value / $self->a_hand_count);
+    	sprintf("hcr=%3.1f", $self->a_value / $self->a_hand_count);
     return @r;
 }
 
@@ -103,7 +103,7 @@ sub new {
     @_ == 3 || badinvo;
     my ($class, $deck, $value) = @_;
 
-    my $self = $class->SUPER::new(ITEM_TYPE_CARD, undef, $value, 1);
+    my $self = $class->SUPER::new($deck->a_game, ITEM_TYPE_CARD, $value, 1);
 
     $self->[ITEM_ENERGY_CARD_DECK] = $deck;
     weaken $self->[ITEM_ENERGY_CARD_DECK];
@@ -151,8 +151,8 @@ use Game::ScepterOfZavandor::Constant qw(
 my %dust_to_hand_count;
 
 sub new {
-    @_ == 2 || badinvo;
-    my ($class, $value) = @_;
+    @_ == 3 || badinvo;
+    my ($class, $player, $value) = @_;
 
     if (!%dust_to_hand_count) {
 	# wait until run time as options can change it
@@ -164,12 +164,12 @@ sub new {
     my $hl = $dust_to_hand_count{$value};
     defined $hl or xconfess dstr $value;
 
-    return $class->SUPER::new(ITEM_TYPE_DUST, undef, $value, $hl);
+    return $class->SUPER::new($player, ITEM_TYPE_DUST, $value, $hl);
 } }
 
 sub make_dust {
-    @_ == 2 || badinvo;
-    my ($class, $tot_value) = @_;
+    @_ == 3 || badinvo;
+    my ($class, $player, $tot_value) = @_;
 
     $tot_value > 0 or xconfess dstr $tot_value;
 
@@ -179,7 +179,7 @@ sub make_dust {
     my @r;
     for my $v (map { $_->[DUST_DATA_VALUE] } @Dust_data) {
 	while ($tot_value >= $v) {
-	    push @r, $class->new($v);
+	    push @r, $class->new($player, $v);
 	    $tot_value -= $v;
 	}
     }
@@ -188,10 +188,10 @@ sub make_dust {
 }
 
 sub make_dust_from_opals {
-    @_ == 2 || badinvo;
-    my ($class, $opal_count) = @_;
+    @_ == 3 || badinvo;
+    my ($class, $player, $opal_count) = @_;
 
-    return $class->make_dust($class->opal_count_to_energy_value($opal_count));
+    return $class->make_dust($player, $class->opal_count_to_energy_value($opal_count));
 }
 
 sub opal_count_to_energy_value {
@@ -231,11 +231,11 @@ use Game::ScepterOfZavandor::Constant qw(
 );
 
 sub new {
-    @_ == 2 || badinvo;
-    my ($class, $gtype) = @_;
+    @_ == 3 || badinvo;
+    my ($class, $player, $gtype) = @_;
 
-    return $class->SUPER::new(ITEM_TYPE_CONCENTRATED,
-    	    	    	    	undef,
+    return $class->SUPER::new($player,
+				ITEM_TYPE_CONCENTRATED,
 				$Gem_data[$gtype][GEM_DATA_CONCENTRATED],
     	    	    	    	$Concentrated_hand_count);
 }

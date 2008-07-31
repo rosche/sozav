@@ -1,4 +1,4 @@
-# $Id: Player.pm,v 1.9 2008-07-31 00:52:13 roderick Exp $
+# $Id: Player.pm,v 1.10 2008-07-31 18:09:03 roderick Exp $
 
 use strict;
 
@@ -11,7 +11,7 @@ use overload (
 
 use List::Util	qw(first sum);
 use Game::Util  qw($Debug add_array_indices debug debug_var
-		    info make_ro_accessor make_rw_accessor);
+		    make_ro_accessor make_rw_accessor);
 use RS::Handy	qw(badinvo data_dump dstr xconfess);
 use Scalar::Util qw(refaddr weaken);
 
@@ -308,7 +308,7 @@ sub advance_knowledge {
 	$k->advance;
     }
     $self->a_advanced_knowledge(1);
-    info $self->name, " advanced ", $k->name, " to level ", $k->user_level;
+    $self->a_game->info($self->name, " advanced ", $k->name, " to level ", $k->user_level);
 }
 
 sub auctionable_cost_mod {
@@ -375,9 +375,9 @@ sub buy_auctionable {
     $self->a_game->auctionable_sold($auc);
     # XXX weaken
     $auc->a_player($self);
-    $self->add_items($auc, $auc->free_items);
+    $self->add_items($auc, $auc->free_items($self->a_game));
     $auc->bought;
-    info "$self bought $auc for $net energy";
+    $self->a_game->info("$self bought $auc for $net energy");
     # XXX do this manually
     # XXX if bought by a non-active player, it goes into their reserve,
     # only moved to active on their turn
@@ -404,9 +404,9 @@ sub buy_knowledge_chip {
 
     $self->pay_energy($cost)
 	if !$free;
-    info $self->name, " ",
+    $self->a_game->info($self->name, " ",
 	    $free ? "acquired" : "bought",
-	    " knowledge chip ", $kchip->a_cost;
+	    " knowledge chip ", $kchip->a_cost);
     $kchip->bought;
 }
 
@@ -457,7 +457,7 @@ sub enchant_gem {
     $self->pay_energy($cost);
 
     my $g = Game::ScepterOfZavandor::Item::Gem->new($self, $gtype);
-    info "$self enchanted a $g"; # XXX grammar
+    $self->a_game->info("$self enchanted a $g"); # XXX grammar
     $self->add_items($g);
 
     return $g;
@@ -502,11 +502,11 @@ sub destroy_active_gem {
     my @g = sort { $a <=> $b } $self->active_gems;
 
     if (!@g) {
-    	info $self->name, " doesn't have any active gems to destroy";
+    	$self->a_game->info($self->name, " doesn't have any active gems to destroy");
 	return;
     }
 
-    info $self->name, " destroys $g[0]";
+    $self->a_game->info($self->name, " destroys $g[0]");
     $self->remove_items($g[0]);
 }
 
@@ -558,7 +558,7 @@ sub enforce_hand_limit {
     	    	&& $new_hc + $dust_hand_count <= $hl) {
 	    $tot_discarded_energy -= $dust_value;
 	    my $dust = Game::ScepterOfZavandor::Item::Energy::Dust->new(
-    	    	    	$dust_value);
+    	    	    	$self, $dust_value);
     	    $new_hc += $dust->a_hand_count;
 	    $self->add_items($dust);
 	}
@@ -567,7 +567,7 @@ sub enforce_hand_limit {
     $new_hc == $hl or xconfess "$new_hc != $hl";
 
     if ($tot_discarded_energy) {
-	info $self->name, " lost $tot_discarded_energy energy to hand limit";
+	$self->a_game->info($self->name, " lost $tot_discarded_energy energy to hand limit");
     }
 }
 
@@ -626,7 +626,7 @@ sub energy_backend {
     	    	    ->opal_count_to_energy_value(scalar @$ro);
     	if ($is_produce) {
 	    $self->add_items(
-		Game::ScepterOfZavandor::Item::Energy::Dust->make_dust($e));
+		Game::ScepterOfZavandor::Item::Energy::Dust->make_dust($self, $e));
     	}
 	else {
 	    $ee_add_constant->($e);
@@ -642,9 +642,9 @@ sub energy_backend {
 	    if ($is_produce) {
 		$self->add_items(
 		    Game::ScepterOfZavandor::Item::Energy::Concentrated->new(
-			$gtype),
+			$self, $gtype),
 		    Game::ScepterOfZavandor::Item::Energy::Dust->make_dust(
-			$Concentrated_additional_dust));
+			$self, $Concentrated_additional_dust));
     	    }
 	    else {
 		$ee_add_constant->($Gem_data[$gtype][GEM_DATA_CONCENTRATED]);
@@ -776,8 +776,10 @@ sub pay_energy {
 
     $self->spend(@to_use);
     $self->add_items(
-	    Game::ScepterOfZavandor::Item::Energy::Dust->make_dust(0 - $tot))
+	    Game::ScepterOfZavandor::Item::Energy::Dust->make_dust($self, 0 - $tot))
 	if $tot < 0;
+
+    # XXX consolidate dust so your hand count is accurate
 }
 
 # Take some things out of your inventory.  Return the amount of energy
@@ -800,6 +802,7 @@ sub actions {
     my $self = shift;
 
     $self->a_advanced_knowledge(0);
+    $self->a_ui->start_actions;
     while ($self->a_ui->one_action) {
 	;
     }

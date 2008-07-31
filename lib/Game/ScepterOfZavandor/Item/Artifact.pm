@@ -1,4 +1,4 @@
-# $Id: Artifact.pm,v 1.7 2008-07-31 00:52:13 roderick Exp $
+# $Id: Artifact.pm,v 1.8 2008-07-31 18:09:04 roderick Exp $
 
 use strict;
 
@@ -6,7 +6,7 @@ package Game::ScepterOfZavandor::Item::Artifact;
 
 use base qw(Game::ScepterOfZavandor::Item::Auctionable);
 
-use Game::Util	qw(add_array_index debug info make_ro_accessor);
+use Game::Util	qw(add_array_index debug make_ro_accessor);
 use RS::Handy	qw(badinvo data_dump dstr shuffle xcroak);
 
 use Game::ScepterOfZavandor::Constant qw(
@@ -17,10 +17,10 @@ use Game::ScepterOfZavandor::Constant qw(
 );
 
 sub new {
-    @_ == 2 || badinvo;
-    my ($class, $arti_type) = @_;
+    @_ == 3 || badinvo;
+    my ($class, $game, $arti_type) = @_;
 
-    my $self = $class->SUPER::new(ITEM_TYPE_ARTIFACT,
+    my $self = $class->SUPER::new($game, ITEM_TYPE_ARTIFACT,
 				    \@Artifact_data, $arti_type);
 
     $self->a_gem_slots($self->data(ARTI_DATA_GEM_SLOTS));
@@ -39,8 +39,9 @@ sub as_string_fields {
 }
 
 sub new_deck {
-    @_ == 2 || badinvo;
+    @_ == 3 || badinvo;
     my $self   = shift;
+    my $game   = shift;
     my $copies = shift;
 
     $copies > 0 or xcroak $copies;
@@ -48,7 +49,7 @@ sub new_deck {
     my %by_letter;
     for my $i (0..$#Artifact) {
 	for (1..$copies) {
-	    my $arti = __PACKAGE__->new($i);
+	    my $arti = __PACKAGE__->new($game, $i);
 	    push @{ $by_letter{$arti->data(ARTI_DATA_DECK_LETTER)} }, $arti;
     	}
     }
@@ -95,7 +96,7 @@ sub bought {
     	# XXX let user not advance if desired?
 	my @k = $self->a_player->knowledge_chips_advancable;
 	if (!@k) {
-	    info $self->a_player->name, " lost knowledge advance, no track to advance";
+	    $self->a_game->info($self->a_player, " lost knowledge advance, no track to advance");
 	}
 	else {
 	    # XXX ask user which to advance
@@ -130,8 +131,9 @@ sub cost_mod_on_auc_type {
 }
 
 sub free_items {
-    @_ == 1 || badinvo;
+    @_ == 2 || badinvo;
     my $self = shift;
+    my $game = shift;
 
     my $gtype = $self->data(ARTI_DATA_FREE_GEM);
     return unless defined $gtype;

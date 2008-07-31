@@ -1,4 +1,4 @@
-# $Id: Sentinel.pm,v 1.5 2008-07-31 15:02:25 roderick Exp $
+# $Id: Sentinel.pm,v 1.6 2008-07-31 18:09:04 roderick Exp $
 
 use strict;
 
@@ -19,10 +19,10 @@ use Game::ScepterOfZavandor::Constant qw(
 );
 
 sub new {
-    @_ == 2 || badinvo;
-    my ($class, $auc_type) = @_;
+    @_ == 3 || badinvo;
+    my ($class, $game, $auc_type) = @_;
 
-    my $self = $class->SUPER::new(ITEM_TYPE_SENTINEL,
+    my $self = $class->SUPER::new($game, ITEM_TYPE_SENTINEL,
 				    \@Sentinel_data, $auc_type);
 
     return $self;
@@ -30,12 +30,13 @@ sub new {
 
 # XXX name
 sub new_deck {
-    @_ == 1 || badinvo;
+    @_ == 2 || badinvo;
     my $self = shift;
+    my $game = shift;
 
     my @a = ();
     for (@Sentinel_real_ix_xxx) {
-	push @a, __PACKAGE__->new($_);
+	push @a, __PACKAGE__->new($game, $_);
     }
     return @a;
 }

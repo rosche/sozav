@@ -1,4 +1,4 @@
-# $Id: Util.pm,v 1.8 2008-07-31 00:52:13 roderick Exp $
+# $Id: Util.pm,v 1.9 2008-07-31 18:09:01 roderick Exp $
 
 package Game::Util;
 
@@ -10,7 +10,7 @@ use RS::Handy	qw(badinvo data_dump dstr xconfess);
 
 use vars qw($VERSION @EXPORT @EXPORT_OK);
 
-$VERSION = q$Revision: 1.8 $ =~ /(\d\S+)/ ? $1 : '?';
+$VERSION = q$Revision: 1.9 $ =~ /(\d\S+)/ ? $1 : '?';
 
 BEGIN {
     @EXPORT = qw(
@@ -21,7 +21,6 @@ BEGIN {
 	debug
 	debug_var
 	eval_block
-	info
 	make_ro_accessor
 	make_rw_accessor
 	make_accessor_pkg
@@ -50,13 +49,6 @@ sub debug_var {
     	my ($key, $val) = splice @_, 0, 2;
 	debug sprintf "%-20s %s", $key, dstr $val;
     }
-}
-
-# XXX callers of this have to be modified to do something more formal
-
-sub info {
-    @_ || badinvo;
-    print @_, "\n";
 }
 
 # XXX beef this up
