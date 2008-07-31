@@ -1,4 +1,4 @@
-# $Id: Stdio.pm,v 1.11 2008-07-31 15:02:27 roderick Exp $
+# $Id: Stdio.pm,v 1.12 2008-07-31 18:07:32 roderick Exp $
 
 use strict;
 
@@ -69,6 +69,14 @@ sub out_char {
     $self->out($self->a_player->name, " ", @_);
 }
 
+sub start_actions {
+    @_ == 1 || badinvo;
+    my $self = shift;
+
+    # XXX enable after losing something to a mirror/cloak
+    $self->a_player->auto_activate_gems;
+}
+
 sub one_action {
     @_ == 1 || badinvo;
     my $self = shift;
@@ -115,7 +123,7 @@ sub status_short {
 	$self->out("  nothing\n");
     }
 
-    $self->out(sprintf "%-10s %59s %s\n", "Players:", "", "gef9aa");
+    $self->out(sprintf "%-10s %61s %s\n", "Players:", "", "gef9ru");
     my $il = 2;
     for my $p ($self->a_player->a_game->players) {
     	my $knowledge = '';
@@ -130,7 +138,7 @@ sub status_short {
 
 	my $rel = sub {
 	    my ($desc, $cur, $max) = @_;
-	    my $fmt = "%s %2d";
+	    my $fmt = " %s %2d";
 	    my @arg = ($desc, $cur);
 	    $fmt .= sprintf "%-5s",
 			$cur == $max
@@ -140,26 +148,39 @@ sub status_short {
     	};
 
     	my @spec = (
-	    "%-6s"              => [$p->name],
-	    "vp %2d(%d)"        => [$p->score, $p->user_turn_order],
-	    "inc " . join("/", ("%.0f") x @Energy_estimate)
-    	    	                => [$p->income_estimate],
-	    "\$%3d"            => [$p->current_energy_liquid],
-	    $rel->("hand", $p->current_hand_count, $p->hand_limit),
-	    $rel->("gems", 0+$p->active_gems,      $p->num_gem_slots),
-	    "kn %s"             => [$knowledge],
+
+	    "%s"
+		=> [$p == $self->a_player ? color('bold') . ">" : " "],
+
+	    " %-6s"
+		=> [$p->name],
+
+	    " vp %2d(%d)"
+		=> [$p->score,
+		    $p->user_turn_order],
+
+	    "  inc " . join("/", ("%3.0f") x @Energy_estimate)
+		=> [$p->income_estimate],
+
+	    "  \$%3d"
+		=> [$p->current_energy_liquid],
+
+	    $rel->(" hand",
+		    $p->current_hand_count,
+		    $p->hand_limit),
+
+	    $rel->("gems",
+		    0+$p->active_gems,
+		    $p->num_gem_slots),
+
+	    " know %s"
+		=> [$knowledge],
+
     	);
 
     	my $it = natatime 2, @spec;
 	my ($fmt, @arg);
 	while (my ($this_fmt, $r) = $it->()) {
-	    if (!defined $fmt) {
-		$fmt = ($p == $self->a_player ? color('bold') . ">" : " ")
-			. " ";
-	    }
-	    else {
-		$fmt .= "  ";
-	    }
 	    $fmt .= $this_fmt;
 	    push @arg, @$r;
 	}
@@ -357,7 +378,7 @@ sub action_sell_gem {
 
     $self->a_player->add_items(
 	Game::ScepterOfZavandor::Item::Energy::Dust->make_dust(
-	    $self->a_player->spend($gem)));
+	    $self->a_player, $self->a_player->spend($gem)));
 
     # XXX don't automatically activate
 
