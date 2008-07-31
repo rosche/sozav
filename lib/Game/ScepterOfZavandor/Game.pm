@@ -1,4 +1,4 @@
-# $Id: Game.pm,v 1.9 2008-07-31 18:09:03 roderick Exp $
+# $Id: Game.pm,v 1.10 2008-07-31 20:47:09 roderick Exp $
 
 use strict;
 
@@ -238,16 +238,19 @@ sub play {
     my $place         = 0;
     my $nominal_place = 0;
     my $prev_score    = undef;
-    for ($self->players_in_order) {
+    for my $player ($self->players_in_order) {
 	$nominal_place++;
-    	my $this_score = $_->score;
+    	my $this_score = $player->score;
 	$place = (defined $prev_score && $this_score == $prev_score)
     	    	    	? $place
 			: $nominal_place;
 	$self->info(sprintf "  %s. %3d %s",
 		    $place,
-		    $_->score,
-		    $_->name);
+		    $player->score,
+		    $player->name);
+	for my $item (sort { $a <=> $b } grep { $_->vp } $player->items) {
+	    $self->info(" " x 11, $item);
+	}
 	$prev_score = $this_score;
     }
 }
