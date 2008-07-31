@@ -1,4 +1,4 @@
-# $Id: Player.pm,v 1.8 2008-07-30 15:06:45 roderick Exp $
+# $Id: Player.pm,v 1.9 2008-07-31 00:52:13 roderick Exp $
 
 use strict;
 
@@ -21,6 +21,7 @@ use Game::ScepterOfZavandor::Constant qw(
     /^CHAR_/
     /^CUR_ENERGY_/
     /^DUST_DATA_/
+    /^ENERGY_EST_/
     /^GEM_/
     /^KNOW_/
     $Base_gem_slots
@@ -31,6 +32,7 @@ use Game::ScepterOfZavandor::Constant qw(
     $Concentrated_additional_dust
     @Current_energy
     @Dust_data
+    @Energy_estimate
     @Gem
     @Gem_data
     @Knowledge
@@ -370,12 +372,12 @@ sub buy_auctionable {
     # XXX using active gems
 
     $self->pay_energy($net);
-    info "$self bought $auc for $net energy";
     $self->a_game->auctionable_sold($auc);
     # XXX weaken
     $auc->a_player($self);
     $self->add_items($auc, $auc->free_items);
     $auc->bought;
+    info "$self bought $auc for $net energy";
     # XXX do this manually
     # XXX if bought by a non-active player, it goes into their reserve,
     # only moved to active on their turn
@@ -569,9 +571,30 @@ sub enforce_hand_limit {
     }
 }
 
-sub gain_energy {
-    @_ == 1 || badinvo;
-    my $self = shift;
+sub energy_backend {
+    @_ == 2 || badinvo;
+    my $self   = shift;
+    my $action = shift;
+
+    my $is_produce  = ($action eq 'produce' );
+    my $is_estimate = ($action eq 'estimate');
+    $is_produce || $is_estimate
+	or xconfess dstr $action;
+
+    my @ee = (0) x @Energy_estimate;
+    my $ee_add = sub {
+	for (0..$#_) {
+	    $ee[$_] += $_[$_];
+	}
+    };
+    my $ee_add_constant = sub {
+	my $n = shift;
+	my @e = ();
+	$e[ENERGY_EST_MIN] = $n;
+	$e[ENERGY_EST_AVG] = $n;
+	$e[ENERGY_EST_MAX] = $n;
+	$ee_add->(@e);
+    };
 
     # gain energy from non-gems, save gems to process below
 
@@ -585,7 +608,12 @@ sub gain_energy {
 	    }
 	}
 	else {
-	    $self->add_items($i->produce_energy);
+	    if ($is_produce) {
+		$self->add_items($i->produce_energy);
+	    }
+	    else {
+		$ee_add->($i->produce_energy_estimate);
+	    }
 	}
     }
     $active_gems <= $self->num_gem_slots or xconfess;
@@ -594,9 +622,15 @@ sub gain_energy {
 
     if (my $ro = delete $gem{+GEM_OPAL}) {
     	debug 0+@$ro, " opals" if $Debug > 1;
-	$self->add_items(
-	    Game::ScepterOfZavandor::Item::Energy::Dust->make_dust_from_opals(
-	    	scalar @$ro));
+	my $e = Game::ScepterOfZavandor::Item::Energy::Dust
+    	    	    ->opal_count_to_energy_value(scalar @$ro);
+    	if ($is_produce) {
+	    $self->add_items(
+		Game::ScepterOfZavandor::Item::Energy::Dust->make_dust($e));
+    	}
+	else {
+	    $ee_add_constant->($e);
+	}
     }
 
     # other gems
@@ -605,14 +639,45 @@ sub gain_energy {
 	my @g = @{ $gem{$gtype} };
 	while (@g >= $Concentrated_card_count) {
 	    splice @g, 0, $Concentrated_card_count;
-	    $self->add_items(
-		Game::ScepterOfZavandor::Item::Energy::Concentrated->new(
-    	    	    $gtype),
-		Game::ScepterOfZavandor::Item::Energy::Dust->make_dust(
-    	    	    $Concentrated_additional_dust));
+	    if ($is_produce) {
+		$self->add_items(
+		    Game::ScepterOfZavandor::Item::Energy::Concentrated->new(
+			$gtype),
+		    Game::ScepterOfZavandor::Item::Energy::Dust->make_dust(
+			$Concentrated_additional_dust));
+    	    }
+	    else {
+		$ee_add_constant->($Gem_data[$gtype][GEM_DATA_CONCENTRATED]);
+		$ee_add_constant->($Concentrated_additional_dust);
+	    }
     	}
-	$self->add_items(map { $_->produce_energy } @g);
+	for (@g) {
+	    if ($is_produce) {
+		$self->add_items($_->produce_energy);
+	    }
+	    else {
+		$ee_add->($_->produce_energy_estimate);
+	    }
+	}
     }
+
+    if ($is_estimate) {
+	return @ee;
+    }
+}
+
+sub income_estimate {
+    @_ == 1 || badinvo;
+    my $self = shift;
+
+    return $self->energy_backend('estimate');
+}
+
+sub gain_energy {
+    @_ == 1 || badinvo;
+    my $self = shift;
+
+    return $self->energy_backend('produce');
 }
 
 sub gem_cost {

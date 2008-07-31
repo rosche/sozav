@@ -1,4 +1,4 @@
-# $Id: Stdio.pm,v 1.9 2008-07-30 15:00:04 roderick Exp $
+# $Id: Stdio.pm,v 1.10 2008-07-31 00:52:13 roderick Exp $
 
 use strict;
 
@@ -6,7 +6,7 @@ package Game::ScepterOfZavandor::UI::Stdio;
 
 use base qw(Game::ScepterOfZavandor::UI);
 
-use Game::Util 		qw(add_array_index debug);
+use Game::Util 		qw(add_array_index debug eval_block);
 use List::Util		qw(first);
 use List::MoreUtils	qw(natatime);
 use RS::Handy		qw(badinvo data_dump dstr xcroak);
@@ -16,6 +16,7 @@ use Term::ANSIColor	qw(color);
 
 use Game::ScepterOfZavandor::Constant qw(
     /^CUR_ENERGY_/
+    @Energy_estimate
     @Gem
     %Gem
     @Knowledge
@@ -84,9 +85,9 @@ sub one_action {
 	return 1;
     }
 
-    my $ret = eval { $self->$method(@arg) };
+    my $ret = eval_block { $self->$method(@arg) };
     if ($@) {
-	$self->out("ERROR: $@");
+	$self->out(color('red'), "ERROR: $@", color('reset'));
 	$ret = 1;
     }
 
@@ -114,7 +115,7 @@ sub status_short {
 	$self->out("  nothing\n");
     }
 
-    $self->out(sprintf "%-10s %61s %s\n", "Players:", "", "gef9aa");
+    $self->out(sprintf "%-10s %59s %s\n", "Players:", "", "gef9aa");
     my $il = 2;
     for my $p ($self->a_player->a_game->players) {
     	my $knowledge = '';
@@ -138,14 +139,15 @@ sub status_short {
     	    return $fmt => \@arg;
     	};
 
-    	# XXX show average income
     	my @spec = (
-	    "%-6s"               => [$p->name],
-	    "score %2d(%d)"     => [$p->score, $p->user_turn_order],
-	    "energy %3d"         => [$p->current_energy_liquid],
+	    "%-6s"              => [$p->name],
+	    "vp %2d(%d)"        => [$p->score, $p->user_turn_order],
+	    "inc " . join("/", ("%.0f") x @Energy_estimate)
+    	    	                => [$p->income_estimate],
+	    "\$%3d"            => [$p->current_energy_liquid],
 	    $rel->("hand", $p->current_hand_count, $p->hand_limit),
 	    $rel->("gems", 0+$p->active_gems,      $p->num_gem_slots),
-	    "know %s"            => [$knowledge],
+	    "kn %s"             => [$knowledge],
     	);
 
     	my $it = natatime 2, @spec;
@@ -156,7 +158,7 @@ sub status_short {
 			. " ";
 	    }
 	    else {
-		$fmt .= "   ";
+		$fmt .= "  ";
 	    }
 	    $fmt .= $this_fmt;
 	    push @arg, @$r;

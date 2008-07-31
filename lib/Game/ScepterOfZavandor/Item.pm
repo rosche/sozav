@@ -1,4 +1,4 @@
-# $Id: Item.pm,v 1.9 2008-07-30 15:47:53 roderick Exp $
+# $Id: Item.pm,v 1.10 2008-07-31 00:52:13 roderick Exp $
 
 use strict;
 
@@ -9,12 +9,13 @@ use overload (
     '<=>' => "spaceship",
 );
 
-use Game::Util  	qw($Debug add_array_indices debug
+use Game::Util  	qw($Debug add_array_indices debug eval_block
 			    make_ro_accessor make_rw_accessor);
 use RS::Handy		qw(badinvo data_dump dstr xconfess);
 use Scalar::Util	qw(refaddr weaken);
 
 use Game::ScepterOfZavandor::Constant qw(
+    /^ENERGY_EST_/
     /^ITEM_/
     @Item_type
 );
@@ -40,7 +41,7 @@ sub new {
 
     !defined $player
     	# XXX quoting on class name
-	or eval { $player->isa("Game::ScepterOfZavandor::Player") }
+	or eval_block { $player->isa("Game::ScepterOfZavandor::Player") }
 	or xconfess;
 
     my $self = bless [], $class;
@@ -125,10 +126,19 @@ sub as_string_fields {
     my $self = shift;
 
     my @r;
+
     push @r,
 	    "vp=$self->[ITEM_VP]",
 	    "hl=$self->[ITEM_HAND_COUNT]",
     	if $Debug > 1;
+
+    if (1) {
+	my @ee = $self->produce_energy_estimate;
+	if (@ee) {
+	    push @r, "energy=" . join "/", @ee;
+	}
+    }
+
     return @r;
 }
 
@@ -178,6 +188,12 @@ sub energy {
 }
 
 sub produce_energy {
+    @_ == 1 || badinvo;
+    my $self = shift;
+    return;
+}
+
+sub produce_energy_estimate {
     @_ == 1 || badinvo;
     my $self = shift;
     return;

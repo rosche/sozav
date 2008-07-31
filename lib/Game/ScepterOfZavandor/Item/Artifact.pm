@@ -1,4 +1,4 @@
-# $Id: Artifact.pm,v 1.6 2008-07-29 18:53:55 roderick Exp $
+# $Id: Artifact.pm,v 1.7 2008-07-31 00:52:13 roderick Exp $
 
 use strict;
 
@@ -145,15 +145,34 @@ sub own_only_one {
     return $self->data(ARTI_DATA_OWN_ONLY_ONE);
 }
 
-sub produce_energy {
-    @_ == 1 || badinvo;
+sub gem_deck_method {
+    @_ >= 2 || badinvo;
     my $self = shift;
+    my $meth = shift;
 
     my $gtype = $self->data(ARTI_DATA_GEM_ENERGY_PRODUCTION);
     defined $gtype
 	or return;
 
-    return $self->a_player->a_game->a_gem_decks->[$gtype]->draw;
+    # XXX still want to estimate energy in this case, store a game ref
+    # in the item alongside the player?
+    $self->a_player or return;
+
+    return $self->a_player->a_game->a_gem_decks->[$gtype]->$meth(@_);
+}
+
+sub produce_energy {
+    @_ == 1 || badinvo;
+    my $self = shift;
+
+    return $self->gem_deck_method("draw");
+}
+
+sub produce_energy_estimate {
+    @_ == 1 || badinvo;
+    my $self = shift;
+
+    return $self->gem_deck_method("energy_estimate");
 }
 
 1

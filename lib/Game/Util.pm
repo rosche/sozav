@@ -1,4 +1,4 @@
-# $Id: Util.pm,v 1.7 2008-07-30 14:07:22 roderick Exp $
+# $Id: Util.pm,v 1.8 2008-07-31 00:52:13 roderick Exp $
 
 package Game::Util;
 
@@ -10,7 +10,7 @@ use RS::Handy	qw(badinvo data_dump dstr xconfess);
 
 use vars qw($VERSION @EXPORT @EXPORT_OK);
 
-$VERSION = q$Revision: 1.7 $ =~ /(\d\S+)/ ? $1 : '?';
+$VERSION = q$Revision: 1.8 $ =~ /(\d\S+)/ ? $1 : '?';
 
 BEGIN {
     @EXPORT = qw(
@@ -20,6 +20,7 @@ BEGIN {
 	add_array_indices
 	debug
 	debug_var
+	eval_block
 	info
 	make_ro_accessor
 	make_rw_accessor
@@ -167,6 +168,13 @@ sub add_array_indices {
 
     add_array_index_type $itype;
     add_array_index $itype, $_, scalar caller for @iname;
+}
+
+sub eval_block (&) {
+    return eval {
+	local $SIG{__DIE__};
+	$_[0]->()
+    };
 }
 
 sub make_accessor_pkg {

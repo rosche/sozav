@@ -1,4 +1,4 @@
-# $Id: Constant.pm,v 1.10 2008-07-30 17:05:44 roderick Exp $
+# $Id: Constant.pm,v 1.11 2008-07-31 00:52:13 roderick Exp $
 
 use strict;
 
@@ -13,7 +13,7 @@ use RS::Handy		qw(badinvo data_dump dstr xcroak);
 
 use vars qw($VERSION @EXPORT @EXPORT_OK);
 BEGIN {
-    $VERSION = q$Revision: 1.10 $ =~ /(\d\S+)/ ? $1 : '?';
+    $VERSION = q$Revision: 1.11 $ =~ /(\d\S+)/ ? $1 : '?';
     @EXPORT_OK = qw(
 	$Base_gem_slots
 	$Base_hand_limit
@@ -73,8 +73,8 @@ BEGIN {
 
     @Energy_estimate = (
     	'min',			# publically visible minimum
-    	'max',			# publically visible maximum
     	'avg',			# publically visible average
+    	'max',			# publically visible maximum
     );
     add_array_indices 'ENERGY_EST', @Energy_estimate;
 
@@ -85,6 +85,7 @@ BEGIN {
 		'inactive gems',
 	    'active gems',
     	@Energy_estimate,
+    );
     add_array_indices 'CUR_ENERGY', @Current_energy;
 
     add_array_indices 'DUST_DATA', (
@@ -93,7 +94,6 @@ BEGIN {
 	'OPAL_COUNT',
     );
 
-    add_array_indices 'CUR_ENERGY', @Current_energy;
     @Gem = qw(opal sapphire emerald diamond ruby);
     %Gem = map { $Gem[$_] => $_ } 0..$#Gem;
     add_array_indices 'GEM', @Gem;
@@ -103,8 +103,8 @@ BEGIN {
 	'LIMIT',
     	'CARD_LIST',
     	'CARD_MIN',
-    	'CARD_MAX',
     	'CARD_AVG',
+    	'CARD_MAX',
     	'CONCENTRATED',
     );
 
@@ -372,14 +372,16 @@ BEGIN {
 	my $ct = scalar @$rcard_list;
 	$tot += $ct;
     	my ($min, $max) = minmax @$rcard_list;
-	my $avg = sum(@$rcard_list) / $ct;
+	my $avg  = sum(@$rcard_list) / $ct;
 	my $conc = int($avg * $Concentrated_card_count);
 	debug sprintf "%-8s min %2d max %2d avg %5.2f conc %2d",
 	    $Gem[$gi], $min, $max, $avg, $conc;
 
+	# XXX these can change based on options, have to calculate later
+	# XXX therefore storing them in globals isn't smart
 	$r->[GEM_DATA_CARD_MIN    ] = $min;
-	$r->[GEM_DATA_CARD_MAX    ] = $max;
 	$r->[GEM_DATA_CARD_AVG    ] = $avg;
+	$r->[GEM_DATA_CARD_MAX    ] = $max;
 	$r->[GEM_DATA_CONCENTRATED] = $conc;
     }
     $tot == 126 or die;
@@ -617,3 +619,5 @@ XXX
 	- but this likely wouldn't let you do everything you could by
 	  combining purchases for real
     - auto-activate gem on your own turn after having one destroyed
+    - at game end (or in info) show how much energy player drew vs. average
+    - show more details of artifacts, sentinels

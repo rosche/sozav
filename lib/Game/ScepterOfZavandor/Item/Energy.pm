@@ -1,4 +1,4 @@
-# $Id: Energy.pm,v 1.7 2008-07-30 15:32:09 roderick Exp $
+# $Id: Energy.pm,v 1.8 2008-07-31 00:52:13 roderick Exp $
 
 use strict;
 
@@ -120,7 +120,7 @@ sub as_string_fields {
     my $self = shift;
     my @r = $self->SUPER::as_string_fields(@_);
     push @r,
-    	$Gem[$self->a_deck->a_gtype];
+    	$Gem[$self->a_deck->a_gem_type];
     return @r;
 }
 
@@ -191,6 +191,13 @@ sub make_dust_from_opals {
     @_ == 2 || badinvo;
     my ($class, $opal_count) = @_;
 
+    return $class->make_dust($class->opal_count_to_energy_value($opal_count));
+}
+
+sub opal_count_to_energy_value {
+    @_ == 2 || badinvo;
+    my ($class, $opal_count) = @_;
+
     $opal_count > 0 or xconfess dstr $opal_count;
 
     my $tot_value = 0;
@@ -204,7 +211,7 @@ sub make_dust_from_opals {
 	}
     }
 
-    return $class->make_dust($tot_value);
+    return $tot_value;
 }
 
 #------------------------------------------------------------------------------
@@ -239,7 +246,7 @@ sub new {
 #    my $self = shift;
 #    my @r = $self->SUPER::as_string_fields(@_);
 #    push @r,
-#    	$Gem[$self->a_deck->a_gtype];
+#    	$Gem[$self->a_deck->a_gem_type];
 #    return @r;
 #}
 

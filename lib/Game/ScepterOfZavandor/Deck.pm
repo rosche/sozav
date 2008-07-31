@@ -1,4 +1,4 @@
-# $Id: Deck.pm,v 1.5 2008-07-28 12:55:43 roderick Exp $
+# $Id: Deck.pm,v 1.6 2008-07-31 00:52:13 roderick Exp $
 
 use strict;
 
@@ -10,6 +10,7 @@ use Game::Util	qw(add_array_index debug make_ro_accessor);
 use RS::Handy	qw(badinvo data_dump dstr xcroak);
 
 use Game::ScepterOfZavandor::Constant qw(
+    /^ENERGY_EST_/
     /^GEM_/
     @Gem
     @Gem_data
@@ -37,19 +38,34 @@ sub new {
 }
 
 make_ro_accessor (
-    a_gtype => DECK_GTYPE,
+    a_gem_type => DECK_GTYPE,
 );
 
 sub draw {
+    @_ || badinvo;
     my $self = shift;
 
     my @r = $self->SUPER::draw(@_);
     if (!defined $r[-1]) {
 	# XXX find out what's supposed to happen
-	xcroak "ran out of $Gem[$self->[DECK_GTYPE]] cards";
+	xcroak "ran out of $Gem[$self->a_gem_type] cards";
     }
 
     return @r == 1 ? $r[0] : @r;
+}
+
+sub energy_estimate {
+    @_ == 1 || badinvo;
+    my $self = shift;
+
+    my $gtype = $self->a_gem_type;
+
+    my @ee;
+    $ee[ENERGY_EST_MIN] = $Gem_data[$gtype][GEM_DATA_CARD_MIN];
+    $ee[ENERGY_EST_AVG] = $Gem_data[$gtype][GEM_DATA_CARD_AVG];
+    $ee[ENERGY_EST_MAX] = $Gem_data[$gtype][GEM_DATA_CARD_MAX];
+
+    return @ee;
 }
 
 1

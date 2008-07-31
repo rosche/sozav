@@ -1,4 +1,4 @@
-# $Id: Gem.pm,v 1.7 2008-07-30 14:52:33 roderick Exp $
+# $Id: Gem.pm,v 1.8 2008-07-31 00:52:13 roderick Exp $
 
 use strict;
 
@@ -109,6 +109,20 @@ sub produce_energy {
     my $self = shift;
 
     return $self->is_active ? $self->[ITEM_GEM_DECK]->draw : ();
+}
+
+sub produce_energy_estimate {
+    @_ == 1 || badinvo;
+    my $self = shift;
+
+    # XXX handle opals
+    $self->a_gem_type == GEM_OPAL
+	and return;
+
+    # XXX it might be nice if gems participating in concentrated energy
+    # had their numbers adjusted appropriately
+
+    return $self->is_active ? $self->[ITEM_GEM_DECK]->energy_estimate : ();
 }
 
 sub use_up {
