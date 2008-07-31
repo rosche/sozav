@@ -1,4 +1,4 @@
-# $Id: Constant.pm,v 1.11 2008-07-31 00:52:13 roderick Exp $
+# $Id: Constant.pm,v 1.12 2008-07-31 15:02:17 roderick Exp $
 
 use strict;
 
@@ -13,7 +13,7 @@ use RS::Handy		qw(badinvo data_dump dstr xcroak);
 
 use vars qw($VERSION @EXPORT @EXPORT_OK);
 BEGIN {
-    $VERSION = q$Revision: 1.11 $ =~ /(\d\S+)/ ? $1 : '?';
+    $VERSION = q$Revision: 1.12 $ =~ /(\d\S+)/ ? $1 : '?';
     @EXPORT_OK = qw(
 	$Base_gem_slots
 	$Base_hand_limit
@@ -161,7 +161,8 @@ BEGIN {
     ));
     @Sentinel_real_ix_xxx = grep { defined $Sentinel[$_] } 0..$#Sentinel;
     %Sentinel = map { $Sentinel[$_] => $_ } @Sentinel_real_ix_xxx;
-    #XXX add_array_indices 'SENT', @Sentinel;
+    # XXX can't use add_array_indices because of need to skip some
+    #add_array_indices 'SENT', @Sentinel;
     push @EXPORT_OK, RS::Handy::create_index_subs 'SENT', undef, @Sentinel;
 
     # XXX
@@ -621,3 +622,10 @@ XXX
     - auto-activate gem on your own turn after having one destroyed
     - at game end (or in info) show how much energy player drew vs. average
     - show more details of artifacts, sentinels
+    - check that expected exceptions don't change anything before they're
+      thrown
+
+XXY future
+    - save game
+    - logging
+    - undo

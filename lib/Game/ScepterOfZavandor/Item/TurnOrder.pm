@@ -1,4 +1,4 @@
-# $Id: TurnOrder.pm,v 1.3 2008-07-29 18:55:20 roderick Exp $
+# $Id: TurnOrder.pm,v 1.4 2008-07-31 15:02:25 roderick Exp $
 
 use strict;
 
@@ -90,7 +90,8 @@ sub cost_mod_on_auc_type {
 sub use_up {
     @_ == 1 || badinvo;
     my $self = shift;
-    # nothing to do
+
+    $self->a_player(undef);
 }
 
 1

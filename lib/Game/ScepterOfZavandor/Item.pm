@@ -1,4 +1,4 @@
-# $Id: Item.pm,v 1.10 2008-07-31 00:52:13 roderick Exp $
+# $Id: Item.pm,v 1.11 2008-07-31 15:02:19 roderick Exp $
 
 use strict;
 
@@ -25,7 +25,7 @@ BEGIN {
     	TYPE
 	DATA
 	PLAYER
-	VP
+	STATIC_VP
 	GEM_SLOTS
 	HAND_COUNT
 	HAND_LIMIT_MODIFIER
@@ -48,7 +48,7 @@ sub new {
     $self->[ITEM_TYPE] = $itype;
     $self->a_player($player);
     $self->a_data($rdata);
-    $self->a_vp(0);
+    $self->a_static_vp(0);
     $self->a_hand_count(0);
     $self->a_hand_limit_modifier(0);
     $self->a_gem_slots(0);
@@ -61,9 +61,8 @@ make_ro_accessor (
 );
 
 make_rw_accessor (
-    # XXX maybe a ITEM_STATIC_VP, then use extra_vp method
     a_data                => ITEM_DATA,
-    a_vp                  => ITEM_VP,
+    a_static_vp           => ITEM_STATIC_VP,
     a_hand_count          => ITEM_HAND_COUNT,
     a_hand_limit_modifier => ITEM_HAND_LIMIT_MODIFIER,
     a_gem_slots           => ITEM_GEM_SLOTS,
@@ -127,8 +126,12 @@ sub as_string_fields {
 
     my @r;
 
+    my $vp = $self->vp;
+    if ($vp) {
+	push @r, "vp=$vp";
+    }
+
     push @r,
-	    "vp=$self->[ITEM_VP]",
 	    "hl=$self->[ITEM_HAND_COUNT]",
     	if $Debug > 1;
 
@@ -208,12 +211,14 @@ sub produce_energy_estimate {
 #    my $self = shift;
 #}
 
-# This is overridden by sentinels.
-
 sub vp {
     @_ == 1 || badinvo;
     my $self = shift;
-    return $self->a_vp;
+    return $self->a_static_vp + $self->vp_extra;
+}
+
+sub vp_extra {
+    return 0;
 }
 
 1

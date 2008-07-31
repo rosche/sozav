@@ -1,4 +1,4 @@
-# $Id: Auctionable.pm,v 1.5 2008-07-29 17:14:56 roderick Exp $
+# $Id: Auctionable.pm,v 1.6 2008-07-31 15:02:24 roderick Exp $
 
 use strict;
 
@@ -53,7 +53,7 @@ sub new {
 
     my $self = $class->SUPER::new($itype, undef, $rauc_data->[$auc_type]);
     $self->[ITEM_AUC_TYPE] = $auc_type;
-    $self->a_vp($self->data(AUC_DATA_VP));
+    $self->a_static_vp($self->data(AUC_DATA_VP));
 
     return $self;
 }

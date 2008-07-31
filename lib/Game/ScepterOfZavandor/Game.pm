@@ -1,4 +1,4 @@
-# $Id: Game.pm,v 1.7 2008-07-30 14:35:41 roderick Exp $
+# $Id: Game.pm,v 1.8 2008-07-31 15:02:18 roderick Exp $
 
 use strict;
 
@@ -188,7 +188,6 @@ sub play {
     	my @p = $self->players_in_order;
 	if ($self->a_turn_num > 1) {
 	    for (@p) {
-		# XXX unset player?  do this from remove_items?
 		$_->remove_items($_->turn_order_card);
 	    }
 	}

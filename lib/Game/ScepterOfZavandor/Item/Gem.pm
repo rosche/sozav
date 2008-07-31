@@ -1,4 +1,4 @@
-# $Id: Gem.pm,v 1.8 2008-07-31 00:52:13 roderick Exp $
+# $Id: Gem.pm,v 1.9 2008-07-31 15:02:25 roderick Exp $
 
 use strict;
 
@@ -75,7 +75,6 @@ sub activate {
     # XXX check for slots
 
     $self->[ITEM_GEM_ACTIVE] = 1;
-    $self->a_vp($self->[ITEM_GEM_ACTIVE_VP])
 }
 
 sub deactivate {
@@ -87,7 +86,6 @@ sub deactivate {
     debug "deactivate $self";
 
     $self->[ITEM_GEM_ACTIVE] = 0;
-    $self->a_vp(0);
 }
 
 sub is_active {
@@ -130,6 +128,13 @@ sub use_up {
     my $self = shift;
 
     $self->deactivate;
+}
+
+sub vp_extra {
+    @_ == 1 || badinvo;
+    my $self = shift;
+
+    return $self->is_active ? $self->[ITEM_GEM_ACTIVE_VP] : 0;
 }
 
 1

@@ -1,4 +1,4 @@
-# $Id: Stdio.pm,v 1.10 2008-07-31 00:52:13 roderick Exp $
+# $Id: Stdio.pm,v 1.11 2008-07-31 15:02:27 roderick Exp $
 
 use strict;
 
@@ -201,7 +201,6 @@ sub action_buy_auctionable {
     my $self  = shift;
     my $aix   = shift;
     my $price = shift;
-    # XXX allow specifying price
 
     my @a = $self->a_player->a_game->auction_all;
     $aix >= 1 && $aix <= @a

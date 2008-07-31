@@ -1,4 +1,4 @@
-# $Id: Knowledge.pm,v 1.3 2008-07-30 02:52:03 roderick Exp $
+# $Id: Knowledge.pm,v 1.4 2008-07-31 15:02:25 roderick Exp $
 
 use strict;
 
@@ -118,10 +118,6 @@ sub advance {
     $self->a_level($new_level);
 
     # cost is handled externally
-
-    if ($self->maxed_out) {
-	$self->a_vp($Knowledge_top_vp);
-    }
 
     if ($self->ktype_is(KNOW_9SAGES)) {
 	push @{ $self->[ITEM_KNOW_9SAGES_CARDS] },
@@ -290,4 +286,10 @@ sub user_level {
     return defined $self->a_level ? 1 + $self->a_level : undef;
 }
 
+sub vp_extra {
+    @_ == 1 || badinvo;
+    my $self = shift;
+
+    return $self->maxed_out ? $Knowledge_top_vp : 0;
+}
 1

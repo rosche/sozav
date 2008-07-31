@@ -1,4 +1,4 @@
-# $Id: Sentinel.pm,v 1.4 2008-07-30 15:36:32 roderick Exp $
+# $Id: Sentinel.pm,v 1.5 2008-07-31 15:02:25 roderick Exp $
 
 use strict;
 
@@ -28,15 +28,6 @@ sub new {
     return $self;
 }
 
-sub as_string_fields {
-    @_ || badinvo;
-    my $self = shift;
-    my @r = $self->SUPER::as_string_fields(@_);
-    push @r,
-	defined $self->vp_bonus ? "bonus=" . $self->vp_bonus : ();
-    return @r;
-}
-
 # XXX name
 sub new_deck {
     @_ == 1 || badinvo;
@@ -49,13 +40,7 @@ sub new_deck {
     return @a;
 }
 
-sub vp {
-    @_ == 1 || badinvo;
-    my $self = shift;
-    return $self->a_vp + $self->vp_bonus;
-}
-
-sub vp_bonus {
+sub vp_extra {
     @_ == 1 || badinvo;
     my $self = shift;
 
