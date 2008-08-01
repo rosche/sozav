@@ -1,4 +1,4 @@
-# $Id: Gem.pm,v 1.11 2008-07-31 20:48:03 roderick Exp $
+# $Id: Gem.pm,v 1.12 2008-08-01 13:50:50 roderick Exp $
 
 use strict;
 
@@ -72,7 +72,8 @@ sub activate {
 
     debug "activate $self";
 
-    # XXX check for slots
+    $self->a_player->num_free_gem_slots
+    	or xconfess "no free gem slots";
 
     $self->[ITEM_GEM_ACTIVE] = 1;
 }

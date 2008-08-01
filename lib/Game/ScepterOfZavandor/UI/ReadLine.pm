@@ -1,4 +1,4 @@
-# $Id: ReadLine.pm,v 1.4 2008-07-28 17:58:37 roderick Exp $
+# $Id: ReadLine.pm,v 1.5 2008-08-01 13:50:52 roderick Exp $
 
 use strict;
 
@@ -17,6 +17,20 @@ BEGIN {
 
 my $Readline;
 
+sub readline_init {
+    @_ == 2 || badinvo;
+    my ($in_fh, $out_fh) = @_;
+
+    my $rl = Term::ReadLine->new('zavandor', $in_fh, $out_fh)
+	or xcroak "can't initialize Term::ReadLine";
+
+    my $a = $rl->Attribs;
+    $a->{completion_entry_function} = $a->{list_completion_function};
+    $a->{completion_word}           = [__PACKAGE__->action_names];
+
+    return $rl;
+}
+
 sub new {
     @_ == 3 || badinvo;
     my ($class, $in_fh, $out_fh) = @_;
@@ -25,13 +39,10 @@ sub new {
     $out_fh = qualify_to_ref $out_fh, scalar caller;
 
     # XXX only 1 readline obj allowed with whatever module I'm using
-    $Readline ||= Term::ReadLine->new('zavandor', $in_fh, $out_fh)
-	or xcroak "can't initialize Term::ReadLine";
+    $Readline ||= readline_init $in_fh, $out_fh;
 
     my $self = $class->SUPER::new($in_fh, $out_fh);
     $self->[UI_READLINE_OBJ] = $Readline;
-
-    # XXX completion
 
     return $self;
 }

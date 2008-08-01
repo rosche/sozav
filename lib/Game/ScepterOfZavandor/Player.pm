@@ -1,4 +1,4 @@
-# $Id: Player.pm,v 1.11 2008-07-31 18:48:20 roderick Exp $
+# $Id: Player.pm,v 1.12 2008-08-01 13:50:49 roderick Exp $
 
 use strict;
 
@@ -47,6 +47,7 @@ BEGIN {
 	CHAR
 	ITEM
 	ENCHANTED_RUBY
+	AUTO_ACTIVATE_GEMS
 	SCORE_AT_TURN_START
 	ADVANCED_KNOWLEDGE_THIS_TURN
     );
@@ -71,6 +72,7 @@ sub new {
     weaken $self->[PLAYER_GAME];
     $self->[PLAYER_UI  ] = $ui;
     $ui->a_player($self);
+    $self->a_auto_activate_gems(1);
 
     return $self;
 }
@@ -83,6 +85,7 @@ make_ro_accessor (
 make_rw_accessor (
     a_char                         => PLAYER_CHAR,
     a_enchanted_ruby               => PLAYER_ENCHANTED_RUBY,
+    a_auto_activate_gems           => PLAYER_AUTO_ACTIVATE_GEMS,
     a_advanced_knowledge_this_turn => PLAYER_ADVANCED_KNOWLEDGE_THIS_TURN,
     a_score_at_turn_start          => PLAYER_SCORE_AT_TURN_START,
 );
@@ -214,6 +217,12 @@ sub hand_limit {
 		map { $_->a_hand_limit_modifier } $self->items;
 }
 
+sub inactive_gems {
+    @_ == 1 || badinvo;
+    my $self = shift;
+    return grep { !$_->is_active } $self->gems;
+}
+
 sub knowledge_chips {
     @_ == 1 || badinvo;
     my $self = shift;
@@ -244,6 +253,14 @@ sub num_gem_slots {
     my $self = shift;
     return sum $Base_gem_slots,
 		map { $_->a_gem_slots } $self->items;
+}
+
+sub num_free_gem_slots {
+    @_ == 1 || badinvo;
+    my $self = shift;
+    my $n = $self->num_gem_slots - $self->active_gems;
+    $n >= 0 or xconfess;
+    return $n;
 }
 
 sub score {
@@ -338,21 +355,35 @@ sub auto_activate_gems {
     my $self = shift;
 
     my $n_slots  = $self->num_gem_slots;
-    my @gem      = sort { $a <=> $b } $self->gems;
+    my @gem      = sort { $b <=> $a } $self->gems;
 
     return unless @gem;
 
     my $first_active = $#gem - $n_slots + 1;
     $first_active = 0 if $first_active < 0;
 
+    my $needed_change = 0;
     for my $i (0..$#gem) {
     	my $g = $gem[$i];
 	if ($i >= $first_active) {
-	    $g->activate;
+	    if (!$g->is_active) {
+		$needed_change = 1;
+		$g->activate
+		    if $self->a_auto_activate_gems;
+	    }
 	}
 	else {
-	    $g->deactivate;
+	    if ($g->is_active) {
+		$needed_change = 1;
+		$g->deactivate
+		    if $self->a_auto_activate_gems;
+	    }
 	}
+    }
+
+    if ($needed_change && !$self->a_auto_activate_gems) {
+    	$self->a_ui->out("\n$self: ");
+    	$self->a_ui->out_notice("You aren't using your best gems.\n");
     }
 }
 
@@ -386,9 +417,6 @@ sub buy_auctionable {
     $self->add_items($auc, $auc->free_items($self->a_game));
     $auc->bought;
     $self->a_game->info("$self bought $auc for $net energy");
-    # XXX do this manually
-    # XXX if bought by a non-active player, it goes into their reserve,
-    # only moved to active on their turn
     $self->auto_activate_gems;
 }
 
@@ -778,8 +806,8 @@ sub pay_energy {
     my @cash = ();
     # sorting by ratio would do this effectively, as inactive gems have
     # infinite ratio
-    push @cash, sort { $a <=> $b } grep {  $_->is_energy } $self->items;
-    push @cash, sort { $a <=> $b } grep { !$_->is_active } $self->gems;
+    push @cash, sort { $a <=> $b } grep { $_->is_energy } $self->items;
+    push @cash, sort { $b <=> $a } $self->inactive_gems;
 
     my @to_use;
     for my $i (@cash) {

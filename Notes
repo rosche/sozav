@@ -1,4 +1,4 @@
-- $Id: Notes,v 1.4 2008-07-22 14:07:00 roderick Exp $
+- $Id: Notes,v 1.5 2008-08-01 13:50:48 roderick Exp $
 
 - rules to remember
 
@@ -27,6 +27,22 @@
     - show things you can afford to do
     - search for die/croak, deal more gracefully with some of them
     - many assertion-type tests
+
+- user interface
+
+    - network interface
+    	- inetd version, just like stdio version
+	- standard runner with -M...Game -e ...Game->run or such
+    	- prompt about number of players, options, character selection
+    - y/n/Y/N questions (Y == y and do this from now on)
+    - list of options (enchant gem, auction, disactivate gems, etc)
+    	- some with sublist of options (which type to enchant, what to
+    	  auction, what to disactivate)
+    - numeric (auction)
+    - informational message
+    	- but to display things graphically you'll need this to be
+    	  non-textual as well
+    - error from something you tried to do
 
 - variations to implement
 

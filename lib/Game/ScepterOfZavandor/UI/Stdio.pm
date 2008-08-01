@@ -1,4 +1,4 @@
-# $Id: Stdio.pm,v 1.12 2008-07-31 18:07:32 roderick Exp $
+# $Id: Stdio.pm,v 1.13 2008-08-01 13:50:52 roderick Exp $
 
 use strict;
 
@@ -9,7 +9,7 @@ use base qw(Game::ScepterOfZavandor::UI);
 use Game::Util 		qw(add_array_index debug eval_block);
 use List::Util		qw(first);
 use List::MoreUtils	qw(natatime);
-use RS::Handy		qw(badinvo data_dump dstr xcroak);
+use RS::Handy		qw(badinvo data_dump dstr xconfess);
 use Scalar::Util	qw(looks_like_number);
 use Symbol		qw(qualify_to_ref);
 use Term::ANSIColor	qw(color);
@@ -62,6 +62,18 @@ sub out {
 	or die "error writing: $!";
 }
 
+sub out_error {
+    @_ || badinvo;
+    my $self = shift;
+    $self->out(color('red'), 'ERROR: ', @_, color('reset'));
+}
+
+sub out_notice {
+    @_ || badinvo;
+    my $self = shift;
+    $self->out(color('bold'), 'NOTICE: ', @_, color('reset'));
+}
+
 sub out_char {
     @_ || badinvo;
     my $self = shift;
@@ -69,12 +81,32 @@ sub out_char {
     $self->out($self->a_player->name, " ", @_);
 }
 
+sub action_names {
+    @_ == 1 || badinvo;
+    my $class = shift;
+
+    my @name;
+    my $rstash = do { no strict 'refs'; \%{ __PACKAGE__ . "::" } };
+    for (grep { $class->can($_) } grep { /^action_/ } keys %$rstash ) {
+	s/^action_// or die;
+	tr/_/-/;
+    	push @name, $_;
+    }
+    @name or xconfess;
+
+    return @name;
+}
+
 sub start_actions {
     @_ == 1 || badinvo;
     my $self = shift;
 
-    # XXX enable after losing something to a mirror/cloak
-    $self->a_player->auto_activate_gems;
+    my $player = $self->a_player;
+
+    # Auto-activate gems to deal with losing something to a mirror/cloak,
+    # or buying an elixir on somebody else's turn.
+
+    $player->auto_activate_gems;
 }
 
 sub one_action {
@@ -95,7 +127,8 @@ sub one_action {
 
     my $ret = eval_block { $self->$method(@arg) };
     if ($@) {
-	$self->out(color('red'), "ERROR: $@", color('reset'));
+    	$self->out("\n", $self->a_player, ": ");
+	$self->out_error($@);
 	$ret = 1;
     }
 
@@ -190,6 +223,43 @@ sub status_short {
 
 #------------------------------------------------------------------------------
 
+sub _action_gem_backend {
+    @_ >= 3 || badinvo;
+    my $self  = shift;
+    my $gname = shift;
+    my $code  = shift;
+    my @gem   = @_;
+
+    my $gtype = $Gem{$gname};
+    if (!defined $gtype) {
+    	die "invalid gem name ", dstr $gname, "\n";
+    }
+
+    my ($gem) = grep { $_->a_gem_type == $gtype } @gem;
+    if (!$gem) {
+	die "no appropriate $gname found\n";
+    }
+
+    $code->($gem);
+}
+
+sub action_activate_gem {
+    @_ == 2 || badinvo;
+    my $self = shift;
+    my $gname = shift;
+
+    $self->a_player->num_free_gem_slots
+	or die "no free gem slots\n";
+
+    $self->_action_gem_backend($gname, sub {
+	    my $gem = shift;
+	    $self->a_player->a_auto_activate_gems(0);
+	    $gem->activate;
+	}, $self->a_player->inactive_gems);
+
+    return 1;
+}
+
 sub action_advance_knowledge {
     @_ == 1 || @_ == 2 || badinvo;
     my $self  = shift;
@@ -199,10 +269,10 @@ sub action_advance_knowledge {
     if (!defined $kname_or_type) {
 	my @k = $self->a_player->knowledge_chips_advancable;
 	if (@k == 0) {
-	    die "no advancable knowledge chips";
+	    die "no advancable knowledge chips\n";
 	}
 	elsif (@k > 1) {
-	    die "multiple advancable knowledge chips";
+	    die "multiple advancable knowledge chips\n";
 	}
 	$ktype = $k[0]->a_type;
     }
@@ -225,7 +295,7 @@ sub action_buy_auctionable {
 
     my @a = $self->a_player->a_game->auction_all;
     $aix >= 1 && $aix <= @a
-    	or die "invalid auction index ", dstr $aix;
+    	or die "invalid auction index ", dstr $aix, "\n";
 
     my $auc = $a[$aix - 1];
     $price = $auc->get_min_bid
@@ -244,23 +314,37 @@ sub action_buy_knowledge_chip {
     if (defined $cost) {
 	$kchip = first { $_->a_cost == $cost }
 		$self->a_player->knowledge_chips_unbought
-	    or die "no unbought chip with cost $cost";
+	    or die "no unbought chip with cost $cost\n";
     }
     else {
 	($kchip) = $self->a_player->knowledge_chips_unbought
-	    or die "no unbought chips";
+	    or die "no unbought chips\n";
     }
     $self->a_player->buy_knowledge_chip($kchip, 0);
 }
 *action_k = \&action_buy_knowledge_chip;
 
-sub action_done {
-    @_ == 1 || badinvo;
+sub action_deactivate_gem {
+    @_ == 2 || badinvo;
     my $self = shift;
+    my $gname = shift;
 
-    return 0;
+    $self->_action_gem_backend($gname, sub {
+	    my $gem = shift;
+	    $self->a_player->a_auto_activate_gems(0);
+	    $gem->deactivate;
+	}, $self->a_player->active_gems);
+
+    return 1;
 }
-*action_d = \&action_done;
+
+#sub action_done {
+#    @_ == 1 || badinvo;
+#    my $self = shift;
+#
+#    return 0;
+#}
+#*action_d = \&action_done;
 
 sub action_gem_info {
     @_ == 1 || badinvo;
@@ -283,12 +367,9 @@ sub action_help {
     my $self = shift;
 
     $self->out("actions/commands:\n");
-    my $class = ref $self;
-    my $pkg_hash = do { no strict 'refs'; \%{ "${class}::" } };
-    for (sort grep { /^action_/ } keys %$pkg_hash) {
-	next unless defined &{ "${class}::${_}" };
-	tr/_/-/;
+    for (sort $self->action_names) {
 	$self->out("  $_\n");
+	# XXX note aliases
     }
     return 1;
 }
@@ -340,16 +421,11 @@ sub action_enchant_gem {
 
     my $gtype = $Gem{$gname};
     if (!defined $gtype) {
-    	die "invalid gem name ", dstr $gname;
+    	die "invalid gem name ", dstr $gname, "\n";
     }
 
-    # XXX can_enchant
-
-    my $g = $self->a_player->enchant_gem($gtype)
-	or die "didn't get a gem back";
-
-    # XXX don't automatically activate
-
+    $self->a_player->enchant_gem($gtype)
+	or die "didn't get a gem back\n";
     $self->a_player->auto_activate_gems;
 
     return 1;
@@ -363,7 +439,7 @@ sub action_sell_gem {
 
     my $gtype = $Gem{$gname};
     if (!defined $gtype) {
-    	die "invalid gem name ", dstr $gname;
+    	die "invalid gem name ", dstr $gname, "\n";
     }
 
     # XXX let user pick
@@ -371,17 +447,17 @@ sub action_sell_gem {
     # XXX or at least prefer inactive ones (though the auto-activate
     # makes this non-critical)
 
-    my ($gem) = grep { $_->a_gem_type == $gtype } $self->a_player->gems;
+    my ($gem)
+    	# XXX test
+    	= sort { !!$a->is_active <=> !!$b->is_active }
+	    grep { $_->a_gem_type == $gtype } $self->a_player->gems;
     if (!$gem) {
-	die "you don't own a $gname"; # XXX grammar
+	die "you don't own a $gname\n"; # XXX grammar
     }
 
     $self->a_player->add_items(
 	Game::ScepterOfZavandor::Item::Energy::Dust->make_dust(
 	    $self->a_player, $self->a_player->spend($gem)));
-
-    # XXX don't automatically activate
-
     $self->a_player->auto_activate_gems;
 
     return 1;
@@ -390,3 +466,5 @@ sub action_sell_gem {
 #------------------------------------------------------------------------------
 
 1
+
+# XXX better completion (gem names, etc)

@@ -1,4 +1,4 @@
-# $Id: UI.pm,v 1.5 2008-07-31 18:09:03 roderick Exp $
+# $Id: UI.pm,v 1.6 2008-08-01 13:50:49 roderick Exp $
 
 use strict;
 
@@ -35,6 +35,18 @@ sub a_player {
 	weaken $self->[UI_PLAYER];
     }
     return $old;
+}
+
+sub out {
+    die;
+}
+
+sub out_error {
+    die;
+}
+
+sub out_notice {
+    die;
 }
 
 sub start_actions {
