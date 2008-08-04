@@ -1,4 +1,4 @@
-# $Id: Artifact.pm,v 1.8 2008-07-31 18:09:04 roderick Exp $
+# $Id: Artifact.pm,v 1.9 2008-08-04 13:03:02 roderick Exp $
 
 use strict;
 
@@ -14,6 +14,7 @@ use Game::ScepterOfZavandor::Constant qw(
     /^ITEM_/
     @Artifact
     @Artifact_data
+    @Gem
 );
 
 sub new {
@@ -33,8 +34,56 @@ sub as_string_fields {
     @_ || badinvo;
     my $self = shift;
     my @r = $self->SUPER::as_string_fields(@_);
+
     push @r,
 	$self->data(ARTI_DATA_DECK_LETTER);
+
+    my $add = sub {
+	my $s = "@_";
+	$s =~ tr/ /-/;
+    	push @r, $s;
+    };
+
+    my $add_x = sub {
+    	my $ix = shift;
+	my $n = $self->data($ix);
+	return unless $n;
+	my $s = "@_=+$n";
+	$add->($s);
+    };
+
+
+    if ($self->data(ARTI_DATA_OWN_ONLY_ONE)) {
+	$add->("own only 1");
+    }
+
+    $add_x->(ARTI_DATA_KNOWLEDGE_CHIP,    "knowledge chip");
+    $add_x->(ARTI_DATA_ADVANCE_KNOWLEDGE, "knowledge");
+    $add_x->(ARTI_DATA_DESTROY_GEM,       "destroy gem");
+    $add_x->(ARTI_DATA_GEM_SLOTS,         "gem slot");
+    $add_x->(ARTI_DATA_HAND_LIMIT,        "hand limit");
+
+    if (defined(my $n = $self->data(ARTI_DATA_CAN_BUY_GEM))) {
+    	$add->("enchant=$Gem[$n]");
+    }
+
+    if (defined(my $n = $self->data(ARTI_DATA_FREE_GEM))) {
+	$add->("free=$Gem[$n]");
+    }
+
+    if (defined(my $n = $self->data(ARTI_DATA_GEM_ENERGY_PRODUCTION))) {
+	$add->("produce card=$Gem[$n]");
+    }
+
+    if (my $auc_type = $self->data(ARTI_DATA_COST_MOD_ARTIFACT)) {
+    	my $n = $self->data(ARTI_DATA_COST_MOD_ARTIFACT_AMOUNT);
+	$add->("$Artifact[$auc_type]=$n");
+    }
+
+    if (my $n = $self->data(ARTI_DATA_COST_MOD_SENTINELS)) {
+	$add->("sentinels=$n");
+    }
+
     return @r;
 }
 

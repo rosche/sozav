@@ -1,4 +1,4 @@
-# $Id: Knowledge.pm,v 1.6 2008-07-31 18:48:22 roderick Exp $
+# $Id: Knowledge.pm,v 1.7 2008-08-04 13:03:02 roderick Exp $
 
 use strict;
 
@@ -97,8 +97,10 @@ sub as_string_fields {
 	push @r, "unassigned";
     }
     else {
+    	my $title = $Knowledge[$type];
+	$title =~ s/($Knowledge_data[$type][KNOW_DATA_ALIAS])/[$1]/ or die;
 	push @r,
-	    $Knowledge[$type],
+	    $title,
 	    "l=$level",
     	    $self->maxed_out ? () : "next_cost=" . $self->next_level_cost;
     }

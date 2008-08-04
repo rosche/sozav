@@ -1,4 +1,4 @@
-# $Id: Game.pm,v 1.10 2008-07-31 20:47:09 roderick Exp $
+# $Id: Game.pm,v 1.11 2008-08-04 13:03:00 roderick Exp $
 
 use strict;
 
@@ -11,6 +11,7 @@ use Game::Util	qw(add_array_indices debug debug_var
 use RS::Handy	qw(badinvo create_constant_subs data_dump dstr shuffle xconfess);
 
 use Game::ScepterOfZavandor::Constant	qw(
+    /^CHAR_/
     /^GEM_/
     /^OPT_/
     @Character
@@ -115,7 +116,7 @@ sub init {
 
     $self->die_if_initialized;
 
-    $self->info("options: ", join(" ",
+    $self->info("options: ", join(", ",
 	map { ($self->option($_) ? "" : "!") . $Option[$_] } 0..$#Option));
 
     my $num_players = $self->num_players;
@@ -163,6 +164,9 @@ sub init {
     # assign characters and initialize players
 
     my @c = RS::Handy::shuffle 0..$#Character;
+    if ($self->option(OPT_NO_DRUID) && $num_players < @c) {
+	@c = grep { $_ != CHAR_DRUID } @c;
+    }
     for my $player ($self->players) {
     	$player->init(shift @c);
     }

@@ -1,4 +1,4 @@
-# $Id: Util.pm,v 1.9 2008-07-31 18:09:01 roderick Exp $
+# $Id: Util.pm,v 1.10 2008-08-04 13:02:59 roderick Exp $
 
 package Game::Util;
 
@@ -7,10 +7,11 @@ use strict;
 use base qw(Exporter);
 
 use RS::Handy	qw(badinvo data_dump dstr xconfess);
+use Scalar::Util qw(looks_like_number);
 
 use vars qw($VERSION @EXPORT @EXPORT_OK);
 
-$VERSION = q$Revision: 1.9 $ =~ /(\d\S+)/ ? $1 : '?';
+$VERSION = q$Revision: 1.10 $ =~ /(\d\S+)/ ? $1 : '?';
 
 BEGIN {
     @EXPORT = qw(
@@ -25,6 +26,8 @@ BEGIN {
 	make_rw_accessor
 	make_accessor_pkg
 	same_object
+	valid_ix
+	valid_ix_plus_1
     );
     @EXPORT_OK = qw(
     	%Index
@@ -207,6 +210,24 @@ sub same_referent {
     @_ == 2 || @_ == 3 || badinvo;
 
     return ref($_[0]) && ref($_[1]) && refaddr($_[0]) == refaddr($_[1]);
+}
+
+sub valid_ix {
+    @_ == 2 || badinvo;
+    my ($ix, $r) = @_;
+
+    return @$r
+	&& defined $ix
+	&& looks_like_number($ix)
+	&& $ix >= 0
+    	&& $ix <= $#{ $r };
+}
+
+sub valid_ix_plus_1 {
+    @_ == 2 || badinvo;
+    my ($ix, $r) = @_;
+
+    return looks_like_number($ix) ? valid_ix($ix + 1, $r) : 0;
 }
 
 1

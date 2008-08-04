@@ -1,4 +1,4 @@
-# $Id: Stdio.pm,v 1.13 2008-08-01 13:50:52 roderick Exp $
+# $Id: Stdio.pm,v 1.14 2008-08-04 13:03:03 roderick Exp $
 
 use strict;
 
@@ -6,7 +6,7 @@ package Game::ScepterOfZavandor::UI::Stdio;
 
 use base qw(Game::ScepterOfZavandor::UI);
 
-use Game::Util 		qw(add_array_index debug eval_block);
+use Game::Util 		qw(add_array_index debug eval_block valid_ix_plus_1);
 use List::Util		qw(first);
 use List::MoreUtils	qw(natatime);
 use RS::Handy		qw(badinvo data_dump dstr xconfess);
@@ -16,11 +16,13 @@ use Term::ANSIColor	qw(color);
 
 use Game::ScepterOfZavandor::Constant qw(
     /^CUR_ENERGY_/
+    /^KNOW_DATA_/
     @Energy_estimate
     @Gem
     %Gem
     @Knowledge
     %Knowledge
+    @Knowledge_data
 );
 
 BEGIN {
@@ -156,7 +158,12 @@ sub status_short {
 	$self->out("  nothing\n");
     }
 
-    $self->out(sprintf "%-10s %61s %s\n", "Players:", "", "gef9ru");
+    my $knowledge_title = "";
+    for (@Knowledge_data) {
+	$knowledge_title .= $_->[KNOW_DATA_ALIAS];
+    }
+
+    $self->out(sprintf "%-10s %61s %s\n", "Players:", "", $knowledge_title);
     my $il = 2;
     for my $p ($self->a_player->a_game->players) {
     	my $knowledge = '';
@@ -277,9 +284,12 @@ sub action_advance_knowledge {
 	$ktype = $k[0]->a_type;
     }
     else {
-	$ktype = looks_like_number($kname_or_type)
-    	    	    ? $kname_or_type - 1
-		    : $Knowledge{$kname_or_type};
+	$ktype = $Knowledge{$kname_or_type};
+	if (!defined $ktype) {
+	    valid_ix_plus_1 $kname_or_type, \@Knowledge
+		or die "invalid knowledge track ", dstr $kname_or_type, "\n";
+	    $ktype = $kname_or_type - 1;
+	}
     }
 
     $self->a_player->advance_knowledge($ktype, 0);
@@ -312,6 +322,8 @@ sub action_buy_knowledge_chip {
 
     my $kchip;
     if (defined $cost) {
+    	looks_like_number $cost
+	    or die "invalid-looking knowledge chip cost ", dstr $cost, "\n";
 	$kchip = first { $_->a_cost == $cost }
 		$self->a_player->knowledge_chips_unbought
 	    or die "no unbought chip with cost $cost\n";

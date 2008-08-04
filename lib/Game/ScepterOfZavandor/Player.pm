@@ -1,4 +1,4 @@
-# $Id: Player.pm,v 1.12 2008-08-01 13:50:49 roderick Exp $
+# $Id: Player.pm,v 1.13 2008-08-04 13:03:01 roderick Exp $
 
 use strict;
 
@@ -550,7 +550,7 @@ sub destroy_active_gem {
     my $self = shift;
 
     # XXX prompt user about which to destroy
-    my @g = sort { $a <=> $b } $self->active_gems;
+    my @g = sort { $b <=> $a } $self->active_gems;
 
     if (!@g) {
     	$self->a_game->info($self->name, " doesn't have any active gems to destroy");

@@ -1,4 +1,4 @@
-# $Id: Constant.pm,v 1.13 2008-07-31 18:09:03 roderick Exp $
+# $Id: Constant.pm,v 1.14 2008-08-04 13:03:00 roderick Exp $
 
 use strict;
 
@@ -13,7 +13,7 @@ use RS::Handy		qw(badinvo data_dump dstr xcroak);
 
 use vars qw($VERSION @EXPORT @EXPORT_OK);
 BEGIN {
-    $VERSION = q$Revision: 1.13 $ =~ /(\d\S+)/ ? $1 : '?';
+    $VERSION = q$Revision: 1.14 $ =~ /(\d\S+)/ ? $1 : '?';
     @EXPORT_OK = qw(
 	$Base_gem_slots
 	$Base_hand_limit
@@ -118,6 +118,7 @@ BEGIN {
     add_array_indices 'KNOW', @Knowledge;
     add_array_indices 'KNOW_DATA', qw(
 	NAME
+	ALIAS
     	HAND_LIMIT
     	LEVEL_COST
 	DETAIL
@@ -125,6 +126,7 @@ BEGIN {
 
     @Option = (
     	'1 dust',
+	'no druid',
     );
     %Option = map { $Option[$_] => $_ } 0..$#Option;
     add_array_indices 'OPT', @Option;
@@ -260,6 +262,17 @@ BEGIN {
     $Knowledge_data[KNOW_9SAGES   ][$i] = "$k the 9 Sages";
     $Knowledge_data[KNOW_ARTIFACTS][$i] = "$k Artifacts";
     $Knowledge_data[KNOW_ACCUM    ][$i] = "$k Accumulation";
+
+    $i = KNOW_DATA_ALIAS;
+    $Knowledge_data[KNOW_GEMS     ][$i] = "g";
+    $Knowledge_data[KNOW_EFLOW    ][$i] = "e";
+    $Knowledge_data[KNOW_FIRE     ][$i] = "f";
+    $Knowledge_data[KNOW_9SAGES   ][$i] = "9";
+    $Knowledge_data[KNOW_ARTIFACTS][$i] = "r";
+    $Knowledge_data[KNOW_ACCUM    ][$i] = "u";
+    for (0..$#Knowledge) {
+	$Knowledge{$Knowledge_data[$_][$i]} = $_;
+    }
 
     $i = KNOW_DATA_LEVEL_COST;
     $Knowledge_data[KNOW_GEMS     ][$i] = [qw(2  4  8 16)];

@@ -1,4 +1,4 @@
-- $Id: Notes,v 1.5 2008-08-01 13:50:48 roderick Exp $
+- $Id: Notes,v 1.6 2008-08-04 13:02:58 roderick Exp $
 
 - rules to remember
 
@@ -46,9 +46,9 @@
 
 - variations to implement
 
+    - display verbose artifacts/sentinels
     - select character
     - multiple of same character
-    - 1 dust chits
     - which 1/2/3/4/5/6 cards to use
     - no randomness in cards, always average
     - reduced randomness in cards
@@ -64,7 +64,6 @@
     - fire 3 ruby for any player
     - no druid fire 3 ruby
     - don't turn 9 sages cards into dust
-    - no druid except in a 6 player game
 
 - algorithm for picking energy
 

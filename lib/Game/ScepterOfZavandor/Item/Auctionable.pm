@@ -1,4 +1,4 @@
-# $Id: Auctionable.pm,v 1.7 2008-07-31 18:09:04 roderick Exp $
+# $Id: Auctionable.pm,v 1.8 2008-08-04 13:03:02 roderick Exp $
 
 use strict;
 
@@ -77,7 +77,7 @@ sub as_string_fields {
     my @r = $self->SUPER::as_string_fields(@_);
     push @r,
 	"min=" . $self->get_min_bid,
-	$self->data(AUC_DATA_NAME);
+	sprintf("%-12s", $self->data(AUC_DATA_NAME));
     return @r;
 }
 
