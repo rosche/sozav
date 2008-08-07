@@ -1,4 +1,4 @@
-# $Id: Player.pm,v 1.13 2008-08-04 13:03:01 roderick Exp $
+# $Id: Player.pm,v 1.14 2008-08-07 11:08:13 roderick Exp $
 
 use strict;
 
@@ -24,6 +24,7 @@ use Game::ScepterOfZavandor::Constant qw(
     /^ENERGY_EST_/
     /^GEM_/
     /^KNOW_/
+    /^OPT_/
     $Base_gem_slots
     $Base_hand_limit
     @Character
@@ -533,6 +534,7 @@ sub can_enchant_gem_type_right_now {
     # Druids can enchant 1 ruby at knowledge of fire level 3.
 
     if ($gtype == GEM_RUBY
+    	    && $self->a_game->option(OPT_DRUID_LEVEL_3_RUBY)
     	    && $self->a_char == CHAR_DRUID
     	    && grep { $_->ktype_is(KNOW_FIRE) && $_->a_level >= 2 }
 		    $self->knowledge_chips) {

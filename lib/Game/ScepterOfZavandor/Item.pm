@@ -1,4 +1,4 @@
-# $Id: Item.pm,v 1.13 2008-07-31 18:48:19 roderick Exp $
+# $Id: Item.pm,v 1.14 2008-08-07 11:08:13 roderick Exp $
 
 use strict;
 
@@ -151,6 +151,7 @@ sub as_string_fields {
 	    "hl=$self->[ITEM_HAND_COUNT]",
     	if $Debug > 1;
 
+    # XXX inaccurate with concentrated energy, opals
     if (1) {
 	my @ee = $self->produce_energy_estimate;
 	if (@ee) {
@@ -168,6 +169,13 @@ sub as_string {
     return sprintf "%s(%s)",
 	$Item_type[$self->[ITEM_TYPE]],
 	join " ", $self->as_string_fields;
+}
+
+sub as_string_as_is {
+    @_ == 3 || badinvo;
+    my $self = shift;
+
+    return join " ", $self->as_string_fields;
 }
 
 # - XXX caller shouldn't have to test item type first because of more

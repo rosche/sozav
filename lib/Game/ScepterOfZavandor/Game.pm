@@ -1,4 +1,4 @@
-# $Id: Game.pm,v 1.11 2008-08-04 13:03:00 roderick Exp $
+# $Id: Game.pm,v 1.12 2008-08-07 11:08:13 roderick Exp $
 
 use strict;
 
@@ -7,7 +7,7 @@ package Game::ScepterOfZavandor::Game;
 # XXY class::makemethods
 
 use Game::Util	qw(add_array_indices debug debug_var
-		    make_ro_accessor make_rw_accessor);
+		    make_ro_accessor make_rw_accessor valid_ix);
 use RS::Handy	qw(badinvo create_constant_subs data_dump dstr shuffle xconfess);
 
 use Game::ScepterOfZavandor::Constant	qw(
@@ -24,6 +24,7 @@ use Game::ScepterOfZavandor::Constant	qw(
     %Option
     @Sentinel_real_ix_xxx
 );
+
 use Game::ScepterOfZavandor::Item::Artifact	();
 use Game::ScepterOfZavandor::Item::Sentinel	();
 use Game::ScepterOfZavandor::Item::TurnOrder	();
@@ -56,9 +57,11 @@ sub new {
     $self->[GAME_SENTINEL]             = [];
 
     for (0..$#Option) {
-	# XXY non-boolean types
+	# XXX non-boolean types
 	$self->option($_, 0);
     }
+    $self->option(OPT_DRUID_LEVEL_3_RUBY, 1);
+    $self->option(OPT_9_SAGES_DUST,       1);
 
     return $self;
 }
@@ -93,11 +96,10 @@ sub add_player {
 sub option {
     @_ == 2 || @_ == 3 || badinvo;
     my $self = shift;
-    my $opt = shift;
+    my $opt  = shift;
 
-    if (!$opt < 0 || $opt > @Option) {
-	xconfess "invalid option ", dstr $opt;
-    }
+    valid_ix $opt, \@Option
+	or xconfess "bad option index ", dstr $opt;
 
     my $old = $self->[GAME_OPTION][$opt];
     if (@_) {
@@ -110,12 +112,21 @@ sub option {
     return $old;
 }
 
+sub option_toggle {
+    @_ == 2 || @_ == 3 || badinvo;
+    my $self = shift;
+    my $opt = shift;
+
+    return $self->option($opt, !$self->option($opt));
+}
+
 sub init {
     @_ == 1 || badinvo;
     my ($self) = @_;
 
     $self->die_if_initialized;
 
+    $self->info("\n");
     $self->info("options: ", join(", ",
 	map { ($self->option($_) ? "" : "!") . $Option[$_] } 0..$#Option));
 
@@ -134,6 +145,18 @@ sub init {
 	push @Dust_data, $Dust_data_val_1;
     }
 
+    $self->init_items($artifact_copies);
+    $self->init_players;
+
+    $self->[GAME_TURN_NUM]    = 0;
+    $self->[GAME_INITIALIZED] = 1;
+}
+
+sub init_items {
+    @_ == 2 || badinvo;
+    my $self            = shift;
+    my $artifact_copies = shift;
+
     # initialize gem decks
 
     $self->[GAME_GEM_DECKS] = [];
@@ -146,7 +169,8 @@ sub init {
     # initialize artifact deck
 
     $self->[GAME_ARTIFACT_DECK]
-	= Game::ScepterOfZavandor::Item::Artifact->new_deck($self, $artifact_copies);
+	= Game::ScepterOfZavandor::Item::Artifact->new_deck($self,
+							    $artifact_copies);
     #print "artifact deck:\n";
     #print $_, "\n" while $_ = $self->[GAME_ARTIFACT_DECK]->draw;
 
@@ -156,28 +180,57 @@ sub init {
     # create turn order markers
 
     $self->[GAME_TURN_ORDER] = [];
-    for (0 .. $num_players-1) {
+    for (0 .. $self->num_players - 1) {
     	push @{ $self->[GAME_TURN_ORDER] },
 	    Game::ScepterOfZavandor::Item::TurnOrder->new($self, $_);
     }
-
-    # assign characters and initialize players
-
-    my @c = RS::Handy::shuffle 0..$#Character;
-    if ($self->option(OPT_NO_DRUID) && $num_players < @c) {
-	@c = grep { $_ != CHAR_DRUID } @c;
-    }
-    for my $player ($self->players) {
-    	$player->init(shift @c);
-    }
-
-    # XXX convenience when testing
-    $self->[GAME_PLAYER] =
-	[sort { $a->a_char <=> $b->a_char } $self->players];
-
-    $self->[GAME_TURN_NUM]    = 0;
-    $self->[GAME_INITIALIZED] = 1;
 }
+
+# assign characters and initialize players
+
+sub init_players {
+    @_ == 1 || badinvo;
+    my $self = shift;
+
+    my @all_c = 0..$#Character;
+    if ($self->option(OPT_NO_DRUID)
+	    && ($self->option(OPT_DUPLICATE_CHARACTERS)
+    	    	    || $self->num_players < @all_c)) {
+	@all_c = grep { $_ != CHAR_DRUID } @all_c;
+    }
+
+    if ($self->option(OPT_CHOOSE_CHARACTER)) {
+	my @c          = @all_c;
+    	my $player_num = 0;
+	for my $player ($self->players) {
+	    $player_num++;
+	    @c = @all_c
+		if $self->option(OPT_DUPLICATE_CHARACTERS);
+	    my $c = $player->a_ui->choose_character($player_num,
+							sort { $a <=> $b } @c);
+	    if (!defined $c) {
+		$c = splice @c, int rand @c, 1;
+	    }
+	    my @new = grep { $_ != $c } @c;
+	    if (@c != @new + 1) {
+		xconfess "$player chose bad character ", dstr $c;
+	    }
+	    @c = @new;
+	    $player->init($c);
+	}
+    }
+    else {
+	my @c = shuffle @all_c;
+	for my $player ($self->players) {
+	    @c = shuffle @all_c
+		if $self->option(OPT_DUPLICATE_CHARACTERS);
+	    $player->init(shift @c);
+	}
+	$self->[GAME_PLAYER]
+	    = [sort { $a->a_char <=> $b->a_char } $self->players];
+
+    }
+};
 
 #------------------------------------------------------------------------------
 
@@ -348,6 +401,69 @@ sub num_players {
     my ($self) = @_;
 
     return scalar $self->players;
+}
+
+
+#------------------------------------------------------------------------------
+
+sub prompt_for_options {
+    @_ == 2 || badinvo;
+    my $self = shift;
+    my $ui   = shift;
+
+    while (1) {
+	my $w = 25;
+	$ui->out("\n");
+	$ui->out("Game options:\n");
+	$ui->out(sprintf "     %-${w}s %-${w}s\n", qw(enabled disabled));
+	for (0..$#Option) {
+	    my $o = $self->option($_);
+	    $ui->out(sprintf "%2d.  %-${w}s %-${w}s\n",
+			$_+1,
+			("", $Option[$_])[$o, !$o]);
+	}
+	my $i = $ui->prompt("Enter the number of the option to toggle, "
+				. "or Enter to continue: ",
+			    ["", 1..@Option]);
+	last unless defined $i && $i ne '';
+	$self->option_toggle($i - 1);
+    }
+}
+
+sub run_game {
+    @_ == 0 || badinvo;
+
+    require Game::ScepterOfZavandor::UI::ReadLine;
+    my $new_ui = sub {
+	return Game::ScepterOfZavandor::UI::ReadLine->new(*STDIN, *STDOUT);
+    };
+
+    my $ui = $new_ui->();
+    my $num_players = $ui->prompt("How may players? (1-6) ", [1..6]);
+
+    my $g = Game::ScepterOfZavandor::Game->new;
+
+    $g->option(OPT_1_DUST,   1);
+    #$g->option(OPT_NO_DRUID, 1);
+    $g->prompt_for_options($ui);
+
+    my @p;
+    for (1 .. $num_players) {
+    	my $this_ui = $_ == 1 ? $ui : $new_ui->();
+    	push @p,
+	    Game::ScepterOfZavandor::Player->new($g, $this_ui);
+	$g->add_player($p[-1]);
+    }
+    $g->init;
+    if (0 || @p == 1) {
+    	my $p = $p[0];
+	for (1..4) {
+	    $p[0]->add_items(Game::ScepterOfZavandor::Item::Gem->new(
+    	    	    	    	$p, GEM_RUBY));
+	}
+	$p->auto_activate_gems;
+    }
+    $g->play;
 }
 
 

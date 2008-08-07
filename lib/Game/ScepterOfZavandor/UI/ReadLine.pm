@@ -1,4 +1,4 @@
-# $Id: ReadLine.pm,v 1.5 2008-08-01 13:50:52 roderick Exp $
+# $Id: ReadLine.pm,v 1.6 2008-08-07 11:08:16 roderick Exp $
 
 use strict;
 
@@ -48,11 +48,16 @@ sub new {
 }
 
 sub in {
-    @_ == 1 || badinvo;
-    my $self = shift;
+    @_ == 1 || @_ == 2 || badinvo;
+    my $self   = shift;
+    my $prompt = shift;
 
-    return $self->[UI_READLINE_OBJ]->readline(
-    	    $self->a_player->name . " action? ");
+    if (!defined $prompt) {
+	$prompt = "action? ";
+	$prompt = $self->a_player->name . " $prompt"
+	    if $self->a_player;
+    }
+    return $self->[UI_READLINE_OBJ]->readline($prompt);
 }
 
 1

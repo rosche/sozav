@@ -1,4 +1,4 @@
-# $Id: Constant.pm,v 1.14 2008-08-04 13:03:00 roderick Exp $
+# $Id: Constant.pm,v 1.15 2008-08-07 11:08:13 roderick Exp $
 
 use strict;
 
@@ -13,7 +13,7 @@ use RS::Handy		qw(badinvo data_dump dstr xcroak);
 
 use vars qw($VERSION @EXPORT @EXPORT_OK);
 BEGIN {
-    $VERSION = q$Revision: 1.14 $ =~ /(\d\S+)/ ? $1 : '?';
+    $VERSION = q$Revision: 1.15 $ =~ /(\d\S+)/ ? $1 : '?';
     @EXPORT_OK = qw(
 	$Base_gem_slots
 	$Base_hand_limit
@@ -125,7 +125,16 @@ BEGIN {
     );
 
     @Option = (
+    	# standard
+	'druid level 3 ruby',
+	'9 sages dust',
+
+	# common
     	'1 dust',
+
+	# characters
+	'choose character',
+	'duplicate characters',
 	'no druid',
     );
     %Option = map { $Option[$_] => $_ } 0..$#Option;
@@ -199,6 +208,7 @@ BEGIN {
 
     @Sentinel_data_field = (
     	@Auctionable_data_field,
+	'DESC',
 	'MAX_BONUS_VP',
 	'VP_PER',
 	'BONUS_GEM',
@@ -547,10 +557,15 @@ BEGIN {
 
     # Sentinels
 
-    $Sentinel_data[SENT_PHOENIX   ][SENT_DATA_VP_PER      ] = 2; # type of gem
-    $Sentinel_data[SENT_OWL       ][SENT_DATA_VP_PER      ] = 2; # knowledge
+    $Sentinel_data[SENT_PHOENIX   ][SENT_DATA_VP_PER      ] = 2;
+    $Sentinel_data[SENT_PHOENIX   ][SENT_DATA_DESC        ] = 'gem types';
+
+    $Sentinel_data[SENT_OWL       ][SENT_DATA_VP_PER      ] = 2;
+    $Sentinel_data[SENT_OWL       ][SENT_DATA_DESC        ] = 'knowledge';
 
     $Sentinel_data[SENT_TOAD      ][SENT_DATA_VP_PER      ] = 2;
+    $Sentinel_data[SENT_TOAD      ][SENT_DATA_DESC        ]
+	= 'runestone, spellbook, crystal of protection, elixir';
     $Sentinel_data[SENT_TOAD      ][SENT_DATA_BONUS_AUC_TYPE]
     	= { map { $_ => 1 } (
 	    AUC_RUNESTONE,
@@ -560,6 +575,8 @@ BEGIN {
 	) };
 
     $Sentinel_data[SENT_RAVEN     ][SENT_DATA_VP_PER      ] = 2;
+    $Sentinel_data[SENT_RAVEN     ][SENT_DATA_DESC        ]
+	= 'crystal ball, magic belt, mask of charisma, magic wand';
     $Sentinel_data[SENT_RAVEN     ][SENT_DATA_BONUS_AUC_TYPE]
     	= { map { $_ => 1 } (
     	    AUC_CRYSTAL_BALL,
@@ -570,20 +587,25 @@ BEGIN {
 
     $Sentinel_data[SENT_TOMCAT    ][SENT_DATA_BONUS_GEM   ] = GEM_OPAL;
     $Sentinel_data[SENT_TOMCAT    ][SENT_DATA_VP_PER      ] = 2;
+    $Sentinel_data[SENT_TOMCAT    ][SENT_DATA_DESC        ] = 'opals';
     $Sentinel_data[SENT_TOMCAT    ][SENT_DATA_MAX_BONUS_VP] = 12;
 
     $Sentinel_data[SENT_FOX       ][SENT_DATA_BONUS_GEM   ] = GEM_SAPPHIRE;
     $Sentinel_data[SENT_FOX       ][SENT_DATA_VP_PER      ] = 2;
+    $Sentinel_data[SENT_FOX       ][SENT_DATA_DESC        ] = 'sapphires';
     $Sentinel_data[SENT_FOX       ][SENT_DATA_MAX_BONUS_VP] = 12;
 
     $Sentinel_data[SENT_SCARAB    ][SENT_DATA_BONUS_GEM   ] = GEM_EMERALD;
     $Sentinel_data[SENT_SCARAB    ][SENT_DATA_VP_PER      ] = 1;
+    $Sentinel_data[SENT_SCARAB    ][SENT_DATA_DESC        ] = 'emeralds';
 
     $Sentinel_data[SENT_UNICORN   ][SENT_DATA_BONUS_GEM   ] = GEM_DIAMOND;
     $Sentinel_data[SENT_UNICORN   ][SENT_DATA_VP_PER      ] = 1;
+    $Sentinel_data[SENT_UNICORN   ][SENT_DATA_DESC        ] = 'diamonds';
 
     $Sentinel_data[SENT_SALAMANDER][SENT_DATA_BONUS_GEM   ] = GEM_RUBY;
     $Sentinel_data[SENT_SALAMANDER][SENT_DATA_VP_PER      ] = 2;
+    $Sentinel_data[SENT_SALAMANDER][SENT_DATA_DESC        ] = 'rubies';
 }
 
 
@@ -624,7 +646,6 @@ __END__
 #   gems knowledge (3b) and then buy gems (3a again).
 
 XXX
-    - manually activate/disactivate gems
     - ask user about which gem to destroy
     - ask user about what to pay with
     - ask user about which knowledge to advance
@@ -632,9 +653,7 @@ XXX
     	- maybe always allow 1 dust, then remove it when appropriate
 	- but this likely wouldn't let you do everything you could by
 	  combining purchases for real
-    - auto-activate gem on your own turn after having one destroyed
     - at game end (or in info) show how much energy player drew vs. average
-    - show more details of artifacts, sentinels
     - check that expected exceptions don't change anything before they're
       thrown
 

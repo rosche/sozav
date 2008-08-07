@@ -1,4 +1,4 @@
-# $Id: Artifact.pm,v 1.9 2008-08-04 13:03:02 roderick Exp $
+# $Id: Artifact.pm,v 1.10 2008-08-07 11:08:14 roderick Exp $
 
 use strict;
 
@@ -6,7 +6,7 @@ package Game::ScepterOfZavandor::Item::Artifact;
 
 use base qw(Game::ScepterOfZavandor::Item::Auctionable);
 
-use Game::Util	qw(add_array_index debug make_ro_accessor);
+use Game::Util	qw($Debug add_array_index debug make_ro_accessor);
 use RS::Handy	qw(badinvo data_dump dstr shuffle xcroak);
 
 use Game::ScepterOfZavandor::Constant qw(
@@ -36,7 +36,8 @@ sub as_string_fields {
     my @r = $self->SUPER::as_string_fields(@_);
 
     push @r,
-	$self->data(ARTI_DATA_DECK_LETTER);
+	    "deck=" . $self->data(ARTI_DATA_DECK_LETTER)
+	if $Debug;
 
     my $add = sub {
 	my $s = "@_";
@@ -54,7 +55,7 @@ sub as_string_fields {
 
 
     if ($self->data(ARTI_DATA_OWN_ONLY_ONE)) {
-	$add->("own only 1");
+	$add->("just 1");
     }
 
     $add_x->(ARTI_DATA_KNOWLEDGE_CHIP,    "knowledge chip");
@@ -72,7 +73,7 @@ sub as_string_fields {
     }
 
     if (defined(my $n = $self->data(ARTI_DATA_GEM_ENERGY_PRODUCTION))) {
-	$add->("produce card=$Gem[$n]");
+	$add->("produce=$Gem[$n]");
     }
 
     if (my $auc_type = $self->data(ARTI_DATA_COST_MOD_ARTIFACT)) {

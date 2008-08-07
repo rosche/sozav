@@ -1,10 +1,14 @@
-# $Id: Auctionable.pm,v 1.8 2008-08-04 13:03:02 roderick Exp $
+# $Id: Auctionable.pm,v 1.9 2008-08-07 11:08:15 roderick Exp $
 
 use strict;
 
 package Game::ScepterOfZavandor::Item::Auctionable;
 
 use base qw(Game::ScepterOfZavandor::Item);
+
+use overload (
+    '""'  => "as_string_as_is",
+);
 
 use Carp	qw(confess);
 use Game::Util	qw(add_array_index debug make_ro_accessor make_rw_accessor);
@@ -75,9 +79,10 @@ sub as_string_fields {
     @_ || badinvo;
     my $self = shift;
     my @r = $self->SUPER::as_string_fields(@_);
+    unshift @r,
+	sprintf "%-21s", $self->data(AUC_DATA_NAME);
     push @r,
-	"min=" . $self->get_min_bid,
-	sprintf("%-12s", $self->data(AUC_DATA_NAME));
+	"min=" . $self->get_min_bid;
     return @r;
 }
 

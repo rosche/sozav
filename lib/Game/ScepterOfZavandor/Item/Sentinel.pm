@@ -1,4 +1,4 @@
-# $Id: Sentinel.pm,v 1.6 2008-07-31 18:09:04 roderick Exp $
+# $Id: Sentinel.pm,v 1.7 2008-08-07 11:08:15 roderick Exp $
 
 use strict;
 
@@ -26,6 +26,15 @@ sub new {
 				    \@Sentinel_data, $auc_type);
 
     return $self;
+}
+
+sub as_string_fields {
+    @_ || badinvo;
+    my $self = shift;
+    my @r = $self->SUPER::as_string_fields(@_);
+
+    push @r, $self->data(SENT_DATA_DESC);
+    return @r;
 }
 
 # XXX name

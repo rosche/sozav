@@ -1,4 +1,4 @@
-# $Id: Stdio.pm,v 1.14 2008-08-04 13:03:03 roderick Exp $
+# $Id: Stdio.pm,v 1.15 2008-08-07 11:08:16 roderick Exp $
 
 use strict;
 
@@ -15,6 +15,7 @@ use Symbol		qw(qualify_to_ref);
 use Term::ANSIColor	qw(color);
 
 use Game::ScepterOfZavandor::Constant qw(
+    /^CHAR_/
     /^CUR_ENERGY_/
     /^KNOW_DATA_/
     @Energy_estimate
@@ -45,9 +46,12 @@ sub new {
 }
 
 sub in {
-    @_ == 1 || badinvo;
-    my $self = shift;
+    @_ == 1 || @_ == 2 || badinvo;
+    my $self   = shift;
+    my $prompt = shift;
 
+    $self->out($prompt)
+	if defined $prompt;
     my $s = readline $self->[UI_STDIO_IN_FH];
     if (!defined $s) {
 	die "eof";
@@ -391,13 +395,15 @@ sub action_items {
     @_ == 1 || badinvo;
     my $self = shift;
 
+    my $player = $self->a_player;
+
     # XXX how many of each kind of card left
     $self->out("on auction:\n");
-    if (my @a = $self->a_player->a_game->auction_all) {
+    if (my @a = $player->a_game->auction_all) {
 	for (0..$#a) {
 	    my $a = $a[$_];
 	    my $n = $_ + 1;
-	    my $mod = $self->a_player->auctionable_cost_mod($a);
+	    my $mod = $player->auctionable_cost_mod($a);
 	    $self->out(sprintf "  %2d %s%s\n", $n, $a,
 	    	    	$mod == 0 ? "" : sprintf " (%+d)", $mod);
 	}
@@ -406,20 +412,24 @@ sub action_items {
 	$self->out("  nothing\n");
     }
 
-    $self->out_char("score: ", $self->a_player->score, "\n");
+    $self->out_char("score: ", $player->score, "\n");
 
     # XXX hand limit, gem slots
 
-    my @e = $self->a_player->current_energy;
+    my @e = $player->current_energy;
     $self->out_char(sprintf "energy: %d total %d liquid (%d + %d) %d active\n",
 		    @e[CUR_ENERGY_TOTAL,
 			CUR_ENERGY_LIQUID,
 			CUR_ENERGY_CARDS_DUST,
 			CUR_ENERGY_INACTIVE_GEMS,
 			CUR_ENERGY_ACTIVE_GEMS]);
+    if ($player->a_char == CHAR_DRUID) {
+	$self->out_char(sprintf "%s enchanted a ruby\n",
+			    $player->a_enchanted_ruby ? "has" : "has not");
+    }
     $self->out_char("items:\n");
     for (sort { $a->a_item_type <=> $b->a_item_type
-    	    	    or $a <=> $b } $self->a_player->items) {
+    	    	    or $a <=> $b } $player->items) {
 	$self->out("  $_\n")
     }
     return 1;
