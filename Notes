@@ -1,4 +1,4 @@
-- $Id: Notes,v 1.6 2008-08-04 13:02:58 roderick Exp $
+- $Id: Notes,v 1.7 2008-08-07 11:01:39 roderick Exp $
 
 - rules to remember
 
@@ -30,6 +30,7 @@
 
 - user interface
 
+    - cbreak interface
     - network interface
     	- inetd version, just like stdio version
 	- standard runner with -M...Game -e ...Game->run or such
