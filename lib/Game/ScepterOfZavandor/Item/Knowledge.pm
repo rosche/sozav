@@ -1,4 +1,4 @@
-# $Id: Knowledge.pm,v 1.7 2008-08-04 13:03:02 roderick Exp $
+# $Id: Knowledge.pm,v 1.8 2008-08-08 11:31:36 roderick Exp $
 
 use strict;
 
@@ -15,6 +15,7 @@ use Game::ScepterOfZavandor::Constant qw(
     /^GEM_/
     /^ITEM_/
     /^KNOW_/
+    /^OPT_/
     @Knowledge
     @Knowledge_data
     $Knowledge_9sages_card_count
@@ -26,7 +27,6 @@ BEGIN {
 	'COST',		# > 0 -> unbought, = 0 -> bought, possibly unallocated
 	'TYPE',		# undef -> unassigned
 	'LEVEL',	# 0-3
-	#'BOUGHT_RUBY',	# true after buying a ruby, for druid at level 3
     	'9SAGES_CARDS',	# cards drawn for 9 sages for next turn
     );
 }
@@ -124,7 +124,7 @@ sub advance {
 
     if ($self->ktype_is(KNOW_9SAGES)) {
 	push @{ $self->[ITEM_KNOW_9SAGES_CARDS] },
-	    $self->a_player->a_game->draw_from_deck($self->detail,
+	    $self->a_game->draw_from_deck($self->detail,
 					    $Knowledge_9sages_card_count);
     }
 
@@ -271,10 +271,27 @@ sub produce_energy {
     if (my @card = @{ $self->[ITEM_KNOW_9SAGES_CARDS] }) {
 	@{ $self->[ITEM_KNOW_9SAGES_CARDS] } = ();
 	my @item;
+	my $val = 0;
 	for (@card) {
-	    # XXX turn to dust if you can't produce it
-	    push @item, $_;
+	    my $keep
+		= $self->a_player->could_enchant_gem_type_at_some_point(
+					$_->a_deck->a_gem_type)
+			|| !$self->a_game->option(OPT_9_SAGES_DUST);
+	    debug "9 sages keep $keep $_";
+	    if ($keep) {
+		push @item, $_;
+	    }
+	    else {
+	    	$val += $_->energy;
+		$_->use_up;
+	    }
 	}
+	if ($val) {
+	    push @item,
+		Game::ScepterOfZavandor::Item::Energy::Dust->make_dust(
+    	    	    	$self->a_player, $val);
+	}
+	debug "9 sages items @item\n";
 	return @item;
     }
 

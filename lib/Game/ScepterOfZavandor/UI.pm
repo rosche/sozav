@@ -1,10 +1,10 @@
-# $Id: UI.pm,v 1.7 2008-08-07 11:08:13 roderick Exp $
+# $Id: UI.pm,v 1.8 2008-08-08 11:31:35 roderick Exp $
 
 use strict;
 
 package Game::ScepterOfZavandor::UI;
 
-use Game::Util 	qw(add_array_indices debug make_rw_accessor);
+use Game::Util 	qw(add_array_indices debug make_ro_accessor);
 use RS::Handy	qw(badinvo data_dump dstr process_arg_pairs xcroak);
 use Scalar::Util qw(weaken);
 
@@ -13,21 +13,23 @@ use Game::ScepterOfZavandor::Constant	qw(
 );
 
 BEGIN {
-    add_array_indices 'UI', qw(PLAYER);
+    add_array_indices 'UI', qw(GAME PLAYER);
 }
 
 sub new {
-    @_ == 1 || badinvo;
-    my ($class) = @_;
+    @_ == 2 || badinvo;
+    my $class = shift;
+    my $game  = shift;
 
     my $self = bless [], $class;
+    $self->[UI_GAME] = $game;
 
     return $self;
 }
 
-#make_rw_accessor (
-#    a_player => UI_PLAYER,
-#);
+make_ro_accessor (
+    a_game => UI_GAME,
+);
 
 # XXX duplicate of Item->a_player, move to a util lib?
 sub a_player {

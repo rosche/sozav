@@ -1,4 +1,4 @@
-# $Id: Artifact.pm,v 1.10 2008-08-07 11:08:14 roderick Exp $
+# $Id: Artifact.pm,v 1.11 2008-08-08 11:31:36 roderick Exp $
 
 use strict;
 
@@ -12,6 +12,7 @@ use RS::Handy	qw(badinvo data_dump dstr shuffle xcroak);
 use Game::ScepterOfZavandor::Constant qw(
     /^ARTI_/
     /^ITEM_/
+    /^OPT_/
     @Artifact
     @Artifact_data
     @Gem
@@ -34,6 +35,10 @@ sub as_string_fields {
     @_ || badinvo;
     my $self = shift;
     my @r = $self->SUPER::as_string_fields(@_);
+
+    if (!$self->a_game->option(OPT_VERBOSE)) {
+	return @r;
+    }
 
     push @r,
 	    "deck=" . $self->data(ARTI_DATA_DECK_LETTER)
@@ -129,7 +134,7 @@ sub bought {
     my $self = shift;
 
     for (1..$self->data(ARTI_DATA_DESTROY_GEM)) {
-    	for my $p ($self->a_player->a_game->players) {
+    	for my $p ($self->a_game->players) {
 	    next if $p == $self->a_player;
 	    $p->destroy_active_gem;
 	}
@@ -206,11 +211,7 @@ sub gem_deck_method {
     defined $gtype
 	or return;
 
-    # XXX still want to estimate energy in this case, store a game ref
-    # in the item alongside the player?
-    $self->a_player or return;
-
-    return $self->a_player->a_game->a_gem_decks->[$gtype]->$meth(@_);
+    return $self->a_game->gem_deck($gtype)->$meth(@_);
 }
 
 sub produce_energy {

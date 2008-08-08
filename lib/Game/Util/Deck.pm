@@ -1,4 +1,4 @@
-# $Id: Deck.pm,v 1.4 2008-07-24 00:55:51 roderick Exp $
+# $Id: Deck.pm,v 1.5 2008-08-08 11:31:39 roderick Exp $
 
 package Game::Util::Deck;
 
@@ -29,6 +29,24 @@ sub new {
 }
 
 make_rw_accessor a_auto_reshuffle => DECK_AUTO_RESHUFFLE;
+
+sub all_deck_items {
+    @_ == 1 || badinvo;
+    my $self = shift;
+    return $self->draw_deck_items, $self->discard_deck_items;
+}
+
+sub draw_deck_items {
+    @_ == 1 || badinvo;
+    my $self = shift;
+    return @{ $self->[DECK_DRAW] };
+}
+
+sub discard_deck_items {
+    @_ == 1 || badinvo;
+    my $self = shift;
+    return @{ $self->[DECK_DISCARD] };
+}
 
 sub shuffle {
     @_ == 1 || badinvo;

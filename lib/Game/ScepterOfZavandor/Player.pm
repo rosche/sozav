@@ -1,4 +1,4 @@
-# $Id: Player.pm,v 1.14 2008-08-07 11:08:13 roderick Exp $
+# $Id: Player.pm,v 1.15 2008-08-08 11:31:34 roderick Exp $
 
 use strict;
 
@@ -504,10 +504,11 @@ sub enchant_gem {
     return $g;
 }
 
-sub can_enchant_gem_type_right_now {
-    @_ == 2 || badinvo;
-    my $self = shift;
-    my $gtype = shift;
+sub can_enchant_gem_backend {
+    @_ == 3 || badinvo;
+    my $self      = shift;
+    my $gtype     = shift;
+    my $right_now = shift;
 
     defined $Gem[$gtype] or xconfess dstr $gtype;
 
@@ -515,14 +516,15 @@ sub can_enchant_gem_type_right_now {
 	return 1;
     }
 
-    if (my $limit = $Gem_data[$gtype][GEM_DATA_LIMIT]) {
+    if ($right_now && (my $limit = $Gem_data[$gtype][GEM_DATA_LIMIT])) {
     	debug "gtype $gtype limit $limit";
 	my @g = grep { $_->a_gem_type == $gtype } $self->gems;
 	if (@g > $limit) {
 	    xconfess 0+@g, " > $limit";
 	}
 	if (@g == $limit) {
-	    die "can't enchant another $Gem[$gtype], at limit\n";
+	    # XXX message for user
+	    #die "can't enchant another $Gem[$gtype], at limit\n";
 	    return 0;
 	}
     }
@@ -533,18 +535,41 @@ sub can_enchant_gem_type_right_now {
 
     # Druids can enchant 1 ruby at knowledge of fire level 3.
 
+    my $allow_level_3_ruby
+	= $self->a_game->option(OPT_ANYBODY_LEVEL_3_RUBY)
+	    || ($self->a_game->option(OPT_DRUID_LEVEL_3_RUBY)
+		    && $self->a_char == CHAR_DRUID);
     if ($gtype == GEM_RUBY
-    	    && $self->a_game->option(OPT_DRUID_LEVEL_3_RUBY)
-    	    && $self->a_char == CHAR_DRUID
+    	    && $allow_level_3_ruby
     	    && grep { $_->ktype_is(KNOW_FIRE) && $_->a_level >= 2 }
 		    $self->knowledge_chips) {
-    	if ($self->a_enchanted_ruby) {
-	    die "druid already enchanted special level 3 ruby\n";
+    	if ($right_now && $self->a_enchanted_ruby) {
+	    # XXX message for user
+	    #die "already enchanted special fire level 3 ruby\n";
+	    return 0;
 	}
 	return 1;
     }
 
     return 0;
+}
+
+sub can_enchant_gem_type_right_now {
+    @_ == 2 || badinvo;
+    my $self = shift;
+    my $gtype = shift;
+
+    return $self->can_enchant_gem_backend($gtype, 1);
+}
+
+# XXX do I have these rules correct for 9 sages?
+
+sub could_enchant_gem_type_at_some_point {
+    @_ == 2 || badinvo;
+    my $self = shift;
+    my $gtype = shift;
+
+    return $self->can_enchant_gem_backend($gtype, 0);
 }
 
 sub destroy_active_gem {
@@ -871,7 +896,3 @@ sub actions {
 }
 
 1
-
-__END__
-
-- method ->can_produce_card for 9 sages

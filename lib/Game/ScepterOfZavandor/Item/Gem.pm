@@ -1,4 +1,4 @@
-# $Id: Gem.pm,v 1.12 2008-08-01 13:50:50 roderick Exp $
+# $Id: Gem.pm,v 1.13 2008-08-08 11:31:36 roderick Exp $
 
 use strict;
 
@@ -31,7 +31,7 @@ sub new {
     my $self = $class->SUPER::new($player, ITEM_TYPE_GEM, $Gem_data[$gtype]);
     $self->[ITEM_GEM_TYPE]      = $gtype;
     # XXX lose this, always go through links?
-    $self->[ITEM_GEM_DECK]      = $player->a_game->a_gem_decks->[$gtype];
+    $self->[ITEM_GEM_DECK]      = $player->a_game->gem_deck($gtype);
     weaken $self->[ITEM_GEM_DECK];
     # XXX lose this field, get it from data directly
     $self->[ITEM_GEM_ACTIVE_VP] = $self->data(GEM_DATA_VP);

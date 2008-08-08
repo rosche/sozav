@@ -1,4 +1,4 @@
-# $Id: ReadLine.pm,v 1.6 2008-08-07 11:08:16 roderick Exp $
+# $Id: ReadLine.pm,v 1.7 2008-08-08 11:31:38 roderick Exp $
 
 use strict;
 
@@ -8,7 +8,7 @@ use base qw(Game::ScepterOfZavandor::UI::Stdio);
 
 use Term::ReadLine	();
 use Game::Util 		qw(add_array_index debug);
-use RS::Handy		qw(badinvo data_dump dstr xcroak);
+use RS::Handy		qw(badinvo data_dump define dstr xcroak);
 use Symbol		qw(qualify_to_ref);
 
 BEGIN {
@@ -26,14 +26,16 @@ sub readline_init {
 
     my $a = $rl->Attribs;
     $a->{completion_entry_function} = $a->{list_completion_function};
-    $a->{completion_word}           = [__PACKAGE__->action_names];
+    $a->{completion_word}           = [__PACKAGE__->get_action_names];
+
+    # XXX comletion for gem, knowledge names when appropriate
 
     return $rl;
 }
 
 sub new {
-    @_ == 3 || badinvo;
-    my ($class, $in_fh, $out_fh) = @_;
+    @_ == 4 || badinvo;
+    my ($class, $game, $in_fh, $out_fh) = @_;
 
     $in_fh  = qualify_to_ref $in_fh , scalar caller;
     $out_fh = qualify_to_ref $out_fh, scalar caller;
@@ -41,7 +43,7 @@ sub new {
     # XXX only 1 readline obj allowed with whatever module I'm using
     $Readline ||= readline_init $in_fh, $out_fh;
 
-    my $self = $class->SUPER::new($in_fh, $out_fh);
+    my $self = $class->SUPER::new($game, $in_fh, $out_fh);
     $self->[UI_READLINE_OBJ] = $Readline;
 
     return $self;
@@ -53,7 +55,7 @@ sub in {
     my $prompt = shift;
 
     if (!defined $prompt) {
-	$prompt = "action? ";
+	$prompt = "action (? for help): ";
 	$prompt = $self->a_player->name . " $prompt"
 	    if $self->a_player;
     }

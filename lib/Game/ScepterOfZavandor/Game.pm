@@ -1,4 +1,4 @@
-# $Id: Game.pm,v 1.12 2008-08-07 11:08:13 roderick Exp $
+# $Id: Game.pm,v 1.13 2008-08-08 11:31:34 roderick Exp $
 
 use strict;
 
@@ -6,12 +6,15 @@ package Game::ScepterOfZavandor::Game;
 
 # XXY class::makemethods
 
-use Game::Util	qw(add_array_indices debug debug_var
+use Game::Util	qw($Debug add_array_indices debug debug_var
 		    make_ro_accessor make_rw_accessor valid_ix);
+use List::MoreUtils qw(minmax);
+use List::Util	qw(sum);
 use RS::Handy	qw(badinvo create_constant_subs data_dump dstr shuffle xconfess);
 
 use Game::ScepterOfZavandor::Constant	qw(
     /^CHAR_/
+    /^GAME_GEM_DATA/
     /^GEM_/
     /^OPT_/
     @Character
@@ -36,7 +39,7 @@ BEGIN {
 	'INITIALIZED',
 	'OPTION',
 	'PLAYER',
-	'GEM_DECKS',
+	'GEM_DATA',
 	'ARTIFACT_DECK',
 	'ARTIFACTS_ON_AUCTION',
 	'ARTIFACTS_AT_ONCE',
@@ -53,6 +56,7 @@ sub new {
     $self->[GAME_INITIALIZED]          = 0;
     $self->[GAME_OPTION]               = [];
     $self->[GAME_PLAYER]               = [];
+    $self->[GAME_GEM_DATA]             = [];
     $self->[GAME_ARTIFACTS_ON_AUCTION] = [];
     $self->[GAME_SENTINEL]             = [];
 
@@ -60,15 +64,15 @@ sub new {
 	# XXX non-boolean types
 	$self->option($_, 0);
     }
+    $self->option(OPT_VERBOSE           , 1);
     $self->option(OPT_DRUID_LEVEL_3_RUBY, 1);
-    $self->option(OPT_9_SAGES_DUST,       1);
+    $self->option(OPT_9_SAGES_DUST      , 1);
 
     return $self;
 }
 
-make_ro_accessor (
-    a_gem_decks => GAME_GEM_DECKS,
-);
+#make_ro_accessor (
+#);
 
 make_rw_accessor (
     a_turn_num => GAME_TURN_NUM,
@@ -126,9 +130,9 @@ sub init {
 
     $self->die_if_initialized;
 
-    $self->info("\n");
-    $self->info("options: ", join(", ",
-	map { ($self->option($_) ? "" : "!") . $Option[$_] } 0..$#Option));
+    $self->info("");
+    $self->info("Active options:");
+    $self->info("  $Option[$_]") for grep { $self->option($_) } 0..$#Option;
 
     my $num_players = $self->num_players;
     debug_var num_players => $num_players;
@@ -152,27 +156,68 @@ sub init {
     $self->[GAME_INITIALIZED] = 1;
 }
 
+# derive values from card distributions
+
+sub init_card_info {
+    @_ == 1 || badinvo;
+    my $self = shift;
+
+    my $tot = 0;
+    for my $gi (0..$#Gem) {
+    	my $deck = $self->gem_deck($gi)
+	    or next;
+
+	my @value = map { $_->energy } $deck->all_deck_items
+	    or xconfess $gi;
+
+	my $ct = scalar @value;
+	$tot += $ct;
+    	my ($min, $max) = minmax @value;
+	my $avg  = sum(@value) / $ct;
+	debug sprintf "%-8s count %2d min %2d max %2d avg %5.2f",
+	    $Gem[$gi], $ct, $min, $max, $avg;
+
+    	my $rgame_gem_data = $self->gem_data($gi);
+	$rgame_gem_data->[GAME_GEM_DATA_CARD_MIN] = $min;
+	$rgame_gem_data->[GAME_GEM_DATA_CARD_AVG] = $avg;
+	$rgame_gem_data->[GAME_GEM_DATA_CARD_MAX] = $max;
+    }
+    $tot == 126 or xconfess $tot;
+}
+
+sub init_gem_decks {
+    @_ == 1 || badinvo;
+    my $self = shift;
+
+    for my $i (0..$#Gem) {
+    	next if $i == GEM_OPAL;
+	$self->[GAME_GEM_DATA][$i] = [];
+	my $deck = Game::ScepterOfZavandor::Deck->new($self, $i);
+    	my $rdata = $self->gem_data($i);
+	$rdata->[GAME_GEM_DATA_DECK] = $deck;
+    }
+
+    # have to do the card init before initializing players and the fairy
+    # gets 2 sapphire cards
+    $self->init_card_info;
+}
+
 sub init_items {
     @_ == 2 || badinvo;
     my $self            = shift;
     my $artifact_copies = shift;
 
-    # initialize gem decks
-
-    $self->[GAME_GEM_DECKS] = [];
-    for my $i (0..$#Gem) {
-    	next if $i == GEM_OPAL;
-	$self->[GAME_GEM_DECKS][$i]
-	    = Game::ScepterOfZavandor::Deck->new($self, $i);
-    }
+    $self->init_gem_decks;
 
     # initialize artifact deck
 
     $self->[GAME_ARTIFACT_DECK]
 	= Game::ScepterOfZavandor::Item::Artifact->new_deck($self,
 							    $artifact_copies);
-    #print "artifact deck:\n";
-    #print $_, "\n" while $_ = $self->[GAME_ARTIFACT_DECK]->draw;
+    if ($Debug > 2) {
+	print "artifact deck:\n";
+	print $_, "\n" while $_ = $self->[GAME_ARTIFACT_DECK]->draw;
+    }
 
     $self->[GAME_SENTINEL]
 	= [Game::ScepterOfZavandor::Item::Sentinel->new_deck($self)];
@@ -354,7 +399,32 @@ sub draw_from_deck {
     @_ == 3 || badinvo;
     my ($self, $gtype, $ct) = @_;
 
-    return $self->[GAME_GEM_DECKS][$gtype]->draw($ct);
+    return $self->gem_deck($gtype)->draw($ct);
+}
+
+sub gem_data {
+    @_ == 2 || badinvo;
+    my ($self, $gtype) = @_;
+
+    # XXX this should be a common idiom, make a sub which includes the die
+    valid_ix $gtype, \@Gem
+	or xconfess "bad gem index ", dstr $gtype;
+
+    return $self->[GAME_GEM_DATA][$gtype];
+}
+
+sub gem_deck {
+    @_ == 2 || badinvo;
+    my ($self, $gtype) = @_;
+
+    # XXX this should be a common idiom, make a sub which includes the die
+    valid_ix $gtype, \@Gem
+	or xconfess "bad gem index ", dstr $gtype;
+
+    my $rdata = $self->gem_data($gtype)
+    	or return;
+
+    return $rdata->[GAME_GEM_DATA_DECK];
 }
 
 # XXX
@@ -412,17 +482,18 @@ sub prompt_for_options {
     my $ui   = shift;
 
     while (1) {
-	my $w = 25;
+	my $w = 30;
 	$ui->out("\n");
 	$ui->out("Game options:\n");
-	$ui->out(sprintf "     %-${w}s %-${w}s\n", qw(enabled disabled));
+	$ui->out("\n");
+	$ui->out(sprintf "      %-${w}s%-${w}s\n", qw(enabled disabled));
+	$ui->out(sprintf "      %-${w}s%-${w}s\n", qw(------- --------));
 	for (0..$#Option) {
 	    my $o = $self->option($_);
-	    $ui->out(sprintf "%2d.  %-${w}s %-${w}s\n",
-			$_+1,
-			("", $Option[$_])[$o, !$o]);
+	    $ui->out($o ? "" : " " x $w,
+		     sprintf "  %2d. %s\n", $_+1, $Option[$_]);
 	}
-	my $i = $ui->prompt("Enter the number of the option to toggle, "
+	my $i = $ui->prompt("Type the number of the option to toggle, "
 				. "or Enter to continue: ",
 			    ["", 1..@Option]);
 	last unless defined $i && $i ne '';
@@ -431,21 +502,26 @@ sub prompt_for_options {
 }
 
 sub run_game {
-    @_ == 0 || badinvo;
-
-    require Game::ScepterOfZavandor::UI::ReadLine;
-    my $new_ui = sub {
-	return Game::ScepterOfZavandor::UI::ReadLine->new(*STDIN, *STDOUT);
-    };
-
-    my $ui = $new_ui->();
-    my $num_players = $ui->prompt("How may players? (1-6) ", [1..6]);
+    @_ == 0 || @_ == 1 || badinvo;
+    my $num_players = shift;
 
     my $g = Game::ScepterOfZavandor::Game->new;
 
-    $g->option(OPT_1_DUST,   1);
-    #$g->option(OPT_NO_DRUID, 1);
-    $g->prompt_for_options($ui);
+    require Game::ScepterOfZavandor::UI::ReadLine;
+    my $new_ui = sub {
+	return Game::ScepterOfZavandor::UI::ReadLine->new($g, *STDIN, *STDOUT);
+    };
+
+    my $ui = $new_ui->();
+    $ui->out("The Scepter of Zavandor\n");
+    # XXX set up web site
+    #$ui->out("more info at http://www.argon.org/zavandor/\n");
+
+    if (!defined $num_players) {
+	$ui->out("\n");
+	$num_players = $ui->prompt("How may players? (1-6) ", [1..6]);
+	$g->prompt_for_options($ui);
+    }
 
     my @p;
     for (1 .. $num_players) {
@@ -455,6 +531,7 @@ sub run_game {
 	$g->add_player($p[-1]);
     }
     $g->init;
+
     if (0 || @p == 1) {
     	my $p = $p[0];
 	for (1..4) {
@@ -463,6 +540,7 @@ sub run_game {
 	}
 	$p->auto_activate_gems;
     }
+
     $g->play;
 }
 

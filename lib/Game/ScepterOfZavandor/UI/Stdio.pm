@@ -1,4 +1,4 @@
-# $Id: Stdio.pm,v 1.15 2008-08-07 11:08:16 roderick Exp $
+# $Id: Stdio.pm,v 1.16 2008-08-08 11:31:38 roderick Exp $
 
 use strict;
 
@@ -9,7 +9,7 @@ use base qw(Game::ScepterOfZavandor::UI);
 use Game::Util 		qw(add_array_index debug eval_block valid_ix_plus_1);
 use List::Util		qw(first);
 use List::MoreUtils	qw(natatime);
-use RS::Handy		qw(badinvo data_dump dstr xconfess);
+use RS::Handy		qw(badinvo data_dump dstr plural xconfess);
 use Scalar::Util	qw(looks_like_number);
 use Symbol		qw(qualify_to_ref);
 use Term::ANSIColor	qw(color);
@@ -19,22 +19,26 @@ use Game::ScepterOfZavandor::Constant qw(
     /^CUR_ENERGY_/
     /^KNOW_DATA_/
     @Energy_estimate
+    $Game_end_sentinels_sold_count
     @Gem
     %Gem
     @Knowledge
     %Knowledge
     @Knowledge_data
+    @Sentinel_real_ix_xxx
 );
 
 BEGIN {
     add_array_index 'UI', $_ for map { "STDIO_$_" } qw(IN_FH OUT_FH);
 }
 
-sub new {
-    @_ == 3 || badinvo;
-    my ($class, $in_fh, $out_fh) = @_;
+my $Indent = "  ";
 
-    my $self = $class->SUPER::new;
+sub new {
+    @_ == 4 || badinvo;
+    my ($class, $game, $in_fh, $out_fh) = @_;
+
+    my $self = $class->SUPER::new($game);
     $self->[UI_STDIO_IN_FH ] = qualify_to_ref $in_fh , scalar caller;
     $self->[UI_STDIO_OUT_FH] = qualify_to_ref $out_fh, scalar caller;
 
@@ -87,7 +91,19 @@ sub out_char {
     $self->out($self->a_player->name, " ", @_);
 }
 
-sub action_names {
+sub munge_action_name {
+    my $s = shift;
+    $s =~ tr/-/_/;
+    return $s;
+}
+
+sub unmunge_action_name {
+    my $s = shift;
+    $s =~ tr/_/-/;
+    return $s;
+}
+
+sub get_action_names {
     @_ == 1 || badinvo;
     my $class = shift;
 
@@ -95,7 +111,7 @@ sub action_names {
     my $rstash = do { no strict 'refs'; \%{ __PACKAGE__ . "::" } };
     for (grep { $class->can($_) } grep { /^action_/ } keys %$rstash ) {
 	s/^action_// or die;
-	tr/_/-/;
+	$_ = unmunge_action_name $_;
     	push @name, $_;
     }
     @name or xconfess;
@@ -124,7 +140,7 @@ sub one_action {
     my $s = $self->in;
     return unless defined $s && $s ne '';
     my ($cmd, @arg) = split ' ', $s;
-    $cmd =~ tr/-/_/;
+    $cmd = munge_action_name $cmd;
     my $method = "action_$cmd";
     if (!$self->can($method)) {
 	$self->out_char("invalid action ", dstr $cmd, "\n");
@@ -147,14 +163,14 @@ sub status_short {
 
     $self->out("\n");
 
-    $self->out("Turn ", $self->a_player->a_game->a_turn_num,
+    $self->out("Turn ", $self->a_game->a_turn_num,
 	       ", on auction:\n");
-    if (my @a = grep { !$_->is_sentinel } $self->a_player->a_game->auction_all) {
+    if (my @a = grep { !$_->is_sentinel } $self->a_game->auction_all) {
 	for (0..$#a) {
 	    my $a = $a[$_];
 	    my $n = $_ + 1;
 	    my $mod = $self->a_player->auctionable_cost_mod($a);
-	    $self->out(sprintf "  %2d %s%s\n", $n, $a,
+	    $self->out(sprintf "${Indent}%2d %s%s\n", $n, $a,
 	    	    	$mod == 0 ? "" : sprintf " (%+d)", $mod);
 	}
     }
@@ -169,7 +185,7 @@ sub status_short {
 
     $self->out(sprintf "%-10s %61s %s\n", "Players:", "", $knowledge_title);
     my $il = 2;
-    for my $p ($self->a_player->a_game->players) {
+    for my $p ($self->a_game->players) {
     	my $knowledge = '';
 	for my $ktype (0..$#Knowledge) {
 	    my $k = first { $_->ktype_is($ktype) } $p->knowledge_chips;
@@ -254,6 +270,15 @@ sub _action_gem_backend {
     $code->($gem);
 }
 
+sub help_activate_gem {
+    return (
+    	["gem-name"],
+	"- activate an enchanted (but inactive) gem from your pentagon",
+	"- you don't ordinarily have to do this, it's only necessary",
+    	"  if you've used the deactivate-gem command",
+    );
+}
+
 sub action_activate_gem {
     @_ == 2 || badinvo;
     my $self = shift;
@@ -269,6 +294,14 @@ sub action_activate_gem {
 	}, $self->a_player->inactive_gems);
 
     return 1;
+}
+
+sub help_advance_knowledge {
+    return (
+    	["[knowledge-track]"],
+    	"- advance the given knowledge track",
+	"- no need to specify if you have only 1 which isn't maxxed out",
+    );
 }
 
 sub action_advance_knowledge {
@@ -301,13 +334,21 @@ sub action_advance_knowledge {
 }
 *action_a = \&action_advance_knowledge;
 
+sub help_buy_auctionable {
+    return (
+    	["item-number", "[price]"],
+	"- buy the given item (hold the actual auction in your head)",
+    	"- if the price isn't given the minimum bid is used",
+    );
+}
+
 sub action_buy_auctionable {
     @_ == 2 || @_ == 3 || badinvo;
     my $self  = shift;
     my $aix   = shift;
     my $price = shift;
 
-    my @a = $self->a_player->a_game->auction_all;
+    my @a = $self->a_game->auction_all;
     $aix >= 1 && $aix <= @a
     	or die "invalid auction index ", dstr $aix, "\n";
 
@@ -318,6 +359,14 @@ sub action_buy_auctionable {
     return 1;
 }
 *action_b = \&action_buy_auctionable;
+
+sub help_buy_knowledge_chip {
+    return (
+    	["[cost]"],
+	"- buy the knowledge chip with the given cost",
+	"- if the cost isn't given you buy your cheapest one",
+    );
+}
 
 sub action_buy_knowledge_chip {
     @_ == 1 || @_ == 2 || badinvo;
@@ -339,6 +388,16 @@ sub action_buy_knowledge_chip {
     $self->a_player->buy_knowledge_chip($kchip, 0);
 }
 *action_k = \&action_buy_knowledge_chip;
+
+sub help_deactivate_gem {
+    return (
+    	["gem-type"],
+	"- move a gem to your pentagon (making it available as liquid energy)",
+	"- once you deactivate a gem you have to manage activating and",
+    	"  deactivating yourself from then on (but the game will give",
+    	"  you a notice when you aren't using your best gems)",
+    );
+}
 
 sub action_deactivate_gem {
     @_ == 2 || badinvo;
@@ -362,6 +421,13 @@ sub action_deactivate_gem {
 #}
 #*action_d = \&action_done;
 
+sub help_gem_info {
+    return (
+    	[],
+	"- list your gem purchase and sale prices",
+    );
+}
+
 sub action_gem_info {
     @_ == 1 || badinvo;
     my $self = shift;
@@ -378,18 +444,85 @@ sub action_gem_info {
     return 1;
 }
 
+# XXX quit/exit command
+
+sub help_help {
+    return (
+    	[],
+	"- list commands with descriptions",
+    );
+}
+
+sub _action_help_backend {
+    @_ == 2 || badinvo;
+    my $self  = shift;
+    my $brief = shift;
+
+    $self->out("actions/commands:\n");
+    for (sort $self->get_action_names) {
+	# XXX tag abbreviations
+	my $out = "${Indent}$_";
+
+    	my $help_sub = "help_" . munge_action_name $_;
+	if (defined &$help_sub) {
+	    my ($rarg, @desc) = do { no strict 'refs'; $help_sub->() };
+	    for (@$rarg) {
+		$out .= " $_";
+	    }
+	    $self->out($out, "\n");
+	    if (!$brief) {
+		for (@desc) {
+		    $self->out($Indent x 2, $_, "\n");
+		}
+	    }
+	}
+	else {
+	    $self->out($out, "\n");
+	}
+    }
+
+    # XXX tag abbreviations
+    $self->out("\n");
+    $self->out("${Indent}            Gem names: @Gem\n");
+    $self->out("${Indent}Knowledge track names: @Knowledge\n");
+
+    # XXX legend for "Players:" display
+
+    return 1;
+}
+
 sub action_help {
     @_ == 1 || badinvo;
     my $self = shift;
-
-    $self->out("actions/commands:\n");
-    for (sort $self->action_names) {
-	$self->out("  $_\n");
-	# XXX note aliases
-    }
-    return 1;
+    return $self->_action_help_backend(0);
 }
 *action_h = \&action_help;
+
+sub help_help_brief {
+    return (
+    	[],
+	"- list commands briefly",
+    );
+}
+
+sub action_help_brief {
+    @_ == 1 || badinvo;
+    my $self = shift;
+    return $self->_action_help_backend(1);
+}
+{
+    no strict 'refs';
+    *{ __PACKAGE__ . "::action_?" } = \&action_help_brief;
+}
+
+sub help_items {
+    return (
+    	[],
+	"- list your items and some other info",
+    );
+}
+
+# XXX make this 2 commands
 
 sub action_items {
     @_ == 1 || badinvo;
@@ -397,20 +530,7 @@ sub action_items {
 
     my $player = $self->a_player;
 
-    # XXX how many of each kind of card left
-    $self->out("on auction:\n");
-    if (my @a = $player->a_game->auction_all) {
-	for (0..$#a) {
-	    my $a = $a[$_];
-	    my $n = $_ + 1;
-	    my $mod = $player->auctionable_cost_mod($a);
-	    $self->out(sprintf "  %2d %s%s\n", $n, $a,
-	    	    	$mod == 0 ? "" : sprintf " (%+d)", $mod);
-	}
-    }
-    else {
-	$self->out("  nothing\n");
-    }
+    # XXX how many of each kind of card left?
 
     $self->out_char("score: ", $player->score, "\n");
 
@@ -423,6 +543,8 @@ sub action_items {
 			CUR_ENERGY_CARDS_DUST,
 			CUR_ENERGY_INACTIVE_GEMS,
 			CUR_ENERGY_ACTIVE_GEMS]);
+    # XXX option for anybody
+    # XXX option disabled for druid
     if ($player->a_char == CHAR_DRUID) {
 	$self->out_char(sprintf "%s enchanted a ruby\n",
 			    $player->a_enchanted_ruby ? "has" : "has not");
@@ -435,6 +557,13 @@ sub action_items {
     return 1;
 }
 *action_i = \&action_items;
+
+sub help_enchant_gem {
+    return (
+    	["gem-type"],
+	"- enchant (buy) a gem",
+    );
+}
 
 sub action_enchant_gem {
     @_ == 2 || badinvo;
@@ -453,6 +582,15 @@ sub action_enchant_gem {
     return 1;
 }
 *action_e = \&action_enchant_gem;
+
+sub help_sell_gem {
+    return (
+    	["gem-type"],
+	"- sell a gem for magic dust",
+	"- you don't normally have to do this, your inactive gems will be",
+	"  sold automatically as necessary",
+    );
+}
 
 sub action_sell_gem {
     @_ == 2 || badinvo;
@@ -484,6 +622,48 @@ sub action_sell_gem {
 
     return 1;
 }
+
+sub help_sentinels {
+    return (
+    	[],
+	"- list the sentinels available to auction",
+    );
+}
+
+# XXX make this 2 commands
+
+sub action_sentinels {
+    @_ == 1 || badinvo;
+    my $self = shift;
+
+    my $player = $self->a_player;
+
+    $self->out("Sentinels available for auction:\n");
+
+    my @a = $player->a_game->auction_all;
+    my $s_available = 0;
+
+    for (0..$#a) {
+	my $a = $a[$_];
+	next unless $a->is_sentinel;
+    	$s_available++;
+	my $n = $_ + 1;
+	my $mod = $player->auctionable_cost_mod($a);
+	$self->out(sprintf "${Indent}%2d %s%s\n", $n, $a,
+		    $mod == 0 ? "" : sprintf " (%+d)", $mod);
+    }
+    if (!$s_available) {
+	$self->out("${Indent}none!\n");
+    }
+
+    my $s_purchased = @Sentinel_real_ix_xxx - $s_available;
+    my $s_to_go     = $Game_end_sentinels_sold_count - $s_purchased;
+    $self->out($s_purchased, " sentinel", plural($s_purchased),
+    	    	" have been purchased ($s_to_go more to end the game)\n");
+
+    return 1;
+}
+*action_s = \&action_sentinels;
 
 #------------------------------------------------------------------------------
 

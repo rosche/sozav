@@ -1,4 +1,4 @@
-# $Id: Constant.pm,v 1.15 2008-08-07 11:08:13 roderick Exp $
+# $Id: Constant.pm,v 1.16 2008-08-08 11:31:34 roderick Exp $
 
 use strict;
 
@@ -13,7 +13,7 @@ use RS::Handy		qw(badinvo data_dump dstr xcroak);
 
 use vars qw($VERSION @EXPORT @EXPORT_OK);
 BEGIN {
-    $VERSION = q$Revision: 1.15 $ =~ /(\d\S+)/ ? $1 : '?';
+    $VERSION = q$Revision: 1.16 $ =~ /(\d\S+)/ ? $1 : '?';
     @EXPORT_OK = qw(
 	$Base_gem_slots
 	$Base_hand_limit
@@ -101,11 +101,15 @@ BEGIN {
     	'COST',
 	'VP',
 	'LIMIT',
-    	'CARD_LIST',
-    	'CARD_MIN',
-    	'CARD_AVG',
-    	'CARD_MAX',
+    	'CARD_LIST_NORMAL',
+	'CARD_LIST_LESS_DEVIANT',
     	'CONCENTRATED',
+    );
+    add_array_indices 'GAME_GEM_DATA', (
+	'DECK',
+	'CARD_MIN',
+	'CARD_AVG',
+	'CARD_MAX',
     );
 
     @Item_type = qw(turn_order knowledge sentinel artifact gem
@@ -126,11 +130,20 @@ BEGIN {
 
     @Option = (
     	# standard
+	'verbose',
 	'druid level 3 ruby',
 	'9 sages dust',
 
 	# common
     	'1 dust',
+
+	# randomness
+	'less random start',
+	'lower deviance', # XXX not sure if this is the right term
+	'averaged cards',
+
+    	# other
+	'anybody level 3 ruby',
 
 	# characters
 	'choose character',
@@ -365,50 +378,37 @@ BEGIN {
 # Ruby     (20) Card 13-17 60+2 15   60 3 Knowledge of Fire
 
 BEGIN {
-    $Gem_data[GEM_OPAL    ][GEM_DATA_VP] = 1;
-    $Gem_data[GEM_SAPPHIRE][GEM_DATA_VP] = 1;
-    $Gem_data[GEM_EMERALD ][GEM_DATA_VP] = 2;
-    $Gem_data[GEM_DIAMOND ][GEM_DATA_VP] = 2;
-    $Gem_data[GEM_RUBY    ][GEM_DATA_VP] = 3;
+    my ($i, $j);
 
-    $Gem_data[GEM_OPAL    ][GEM_DATA_COST] = 10;
-    $Gem_data[GEM_SAPPHIRE][GEM_DATA_COST] = 20;
-    $Gem_data[GEM_EMERALD ][GEM_DATA_COST] = 30;
-    $Gem_data[GEM_DIAMOND ][GEM_DATA_COST] = 40;
-    $Gem_data[GEM_RUBY    ][GEM_DATA_COST] = 60;
+    $i = GEM_DATA_VP;
+    $Gem_data[GEM_OPAL    ][$i] = 1;
+    $Gem_data[GEM_SAPPHIRE][$i] = 1;
+    $Gem_data[GEM_EMERALD ][$i] = 2;
+    $Gem_data[GEM_DIAMOND ][$i] = 2;
+    $Gem_data[GEM_RUBY    ][$i] = 3;
+
+    $i = GEM_DATA_COST;
+    $j = GEM_DATA_CONCENTRATED;
+                                       $Gem_data[GEM_OPAL    ][$i] = 10;
+    $Gem_data[GEM_SAPPHIRE][$j] = $Gem_data[GEM_SAPPHIRE][$i] = 20;
+    $Gem_data[GEM_EMERALD ][$j] = $Gem_data[GEM_EMERALD ][$i] = 30;
+    $Gem_data[GEM_DIAMOND ][$j] = $Gem_data[GEM_DIAMOND ][$i] = 40;
+    $Gem_data[GEM_RUBY    ][$j] = $Gem_data[GEM_RUBY    ][$i] = 60;
 
     $Gem_data[GEM_RUBY    ][GEM_DATA_LIMIT] = 5;
 
-    my $i = GEM_DATA_CARD_LIST;
+    $i = GEM_DATA_CARD_LIST_NORMAL;
     $Gem_data[GEM_SAPPHIRE][$i] = [( 3, 7)x3,( 4, 6)x6,( 5  )x12];
     $Gem_data[GEM_EMERALD ][$i] = [( 5,10)x3,( 6, 9)x6,( 7,8)x 9];
     $Gem_data[GEM_DIAMOND ][$i] = [( 8,12)x3,( 9,11)x6,(10  )x12];
     $Gem_data[GEM_RUBY    ][$i] = [(13,17)x3,(14,16)x6,(15  )x12];
 
-    # derive values from card distributions
+    $i = GEM_DATA_CARD_LIST_LESS_DEVIANT;
+    $Gem_data[GEM_SAPPHIRE][$i] = [          ( 4, 6)x9,( 5  )x12];
+    $Gem_data[GEM_EMERALD ][$i] = [          ( 6, 9)x9,( 7,8)x 9];
+    $Gem_data[GEM_DIAMOND ][$i] = [          ( 9,11)x9,(10  )x12];
+    $Gem_data[GEM_RUBY    ][$i] = [          (14,16)x9,(15  )x12];
 
-    my $tot = 0;
-    for my $gi (0..$#Gem_data) {
-    	my $r = $Gem_data[$gi];
-	my $rcard_list = $r->[GEM_DATA_CARD_LIST];
-	next unless $rcard_list;
-
-	my $ct = scalar @$rcard_list;
-	$tot += $ct;
-    	my ($min, $max) = minmax @$rcard_list;
-	my $avg  = sum(@$rcard_list) / $ct;
-	my $conc = int($avg * $Concentrated_card_count);
-	debug sprintf "%-8s min %2d max %2d avg %5.2f conc %2d",
-	    $Gem[$gi], $min, $max, $avg, $conc;
-
-	# XXX these can change based on options, have to calculate later
-	# XXX therefore storing them in globals isn't smart
-	$r->[GEM_DATA_CARD_MIN    ] = $min;
-	$r->[GEM_DATA_CARD_AVG    ] = $avg;
-	$r->[GEM_DATA_CARD_MAX    ] = $max;
-	$r->[GEM_DATA_CONCENTRATED] = $conc;
-    }
-    $tot == 126 or die;
 }
 
 BEGIN {

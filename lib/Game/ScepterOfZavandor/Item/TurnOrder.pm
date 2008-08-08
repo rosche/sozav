@@ -1,4 +1,4 @@
-# $Id: TurnOrder.pm,v 1.5 2008-07-31 18:09:05 roderick Exp $
+# $Id: TurnOrder.pm,v 1.6 2008-08-08 11:31:37 roderick Exp $
 
 use strict;
 
@@ -52,7 +52,7 @@ sub is_active {
 
     my $any_vp_ge = $self->data(TURN_DATA_ACTIVE_IF_ANY_VP_GE);
     if ($any_vp_ge && grep { $_->a_score_at_turn_start >= $any_vp_ge }
-			$self->a_player->a_game->players) {
+			$self->a_game->players) {
 	return 1;
     }
 

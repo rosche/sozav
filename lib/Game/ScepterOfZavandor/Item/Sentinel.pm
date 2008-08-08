@@ -1,4 +1,4 @@
-# $Id: Sentinel.pm,v 1.7 2008-08-07 11:08:15 roderick Exp $
+# $Id: Sentinel.pm,v 1.8 2008-08-08 11:31:37 roderick Exp $
 
 use strict;
 
@@ -12,6 +12,7 @@ use RS::Handy	qw(badinvo data_dump dstr shuffle xconfess);
 use Game::ScepterOfZavandor::Constant qw(
     /^GEM_/
     /^ITEM_/
+    /^OPT_/
     /^SENT_/
     @Sentinel
     @Sentinel_real_ix_xxx
@@ -32,6 +33,10 @@ sub as_string_fields {
     @_ || badinvo;
     my $self = shift;
     my @r = $self->SUPER::as_string_fields(@_);
+
+    if (!$self->a_game->option(OPT_VERBOSE)) {
+	return @r;
+    }
 
     push @r, $self->data(SENT_DATA_DESC);
     return @r;
