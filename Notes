@@ -1,4 +1,4 @@
-- $Id: Notes,v 1.7 2008-08-07 11:01:39 roderick Exp $
+- $Id: Notes,v 1.8 2008-08-08 11:20:34 roderick Exp $
 
 - rules to remember
 
@@ -17,12 +17,17 @@
       points.
 
 - questions
+    - 9 sages -- what if you can make the gem (spellbook for emerald,
+      level 3 fire druid for ruby) but haven't?
     - are gems limited?
     - is dust limited?
     - can't hand limit go over 13 if you have multiple crystal balls?
     - what happens if you run out of cards?
 
 - todo
+    - advancing on accumulation and getting a new slot doesn't trigger
+      "not using best gems" message (and maybe doesn't auto-activate)
+    - gem name abbreviations
     - undo
     - show things you can afford to do
     - search for die/croak, deal more gracefully with some of them
@@ -47,24 +52,12 @@
 
 - variations to implement
 
-    - display verbose artifacts/sentinels
-    - select character
-    - multiple of same character
     - which 1/2/3/4/5/6 cards to use
-    - no randomness in cards, always average
     - reduced randomness in cards
     - no or reduced randomness in cards, but only for X rounds
     	- perhaps pick out 3+7 sapphires, include them when reshuffling
-    - changes in Z-Man version
-	- druid gets or doesn't get 3rd level bonus
-    	- 9 sages cards turn into dust if you can't buy that type of gem
-	  (Or produce that card?  What if you had a crystal of
-	  protection, eg?)
     - restricted order of actions on your turn
     - bid for characters http://www.boardgamegeek.com/thread/29499
-    - fire 3 ruby for any player
-    - no druid fire 3 ruby
-    - don't turn 9 sages cards into dust
 
 - algorithm for picking energy
 
