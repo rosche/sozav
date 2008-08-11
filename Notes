@@ -1,10 +1,29 @@
-- $Id: Notes,v 1.8 2008-08-08 11:20:34 roderick Exp $
+- $Id: Notes,v 1.9 2008-08-11 23:46:39 roderick Exp $
+
+- before release
+
+    - telnet url can contain window size hint?
+    - telnet works from Firefox but with prompt
+    - telnet doesn't work from IE
+    - I often want to know the next cost for my knowledge advancements
+    - web page
+    - knapsack problems (paying for item and discarding when over limit)
+    - combining purchases to avoid making dust
+    - logging
+    	- everything read/written
+	- specially formatted logfile
+    - cheesy undo via Storable?
+
+- todo
+    - option for which turn order cards to use
+    - undo
+    - show things you can afford to do
+    - search for die/croak, deal more gracefully with some of them
+    - many assertion-type tests
+    - 1-player puzzle mode, need some sort of game timer.
 
 - rules to remember
 
-    - 5 ruby limit
-    - diamond from elixir goes to the pentagon, only activated on your
-      turn
     - faq says
 	- The phases 3a, 3b and 3c may be done in any order, although you may
 	  NOT split any of the phases, like selling
@@ -24,14 +43,6 @@
     - can't hand limit go over 13 if you have multiple crystal balls?
     - what happens if you run out of cards?
 
-- todo
-    - advancing on accumulation and getting a new slot doesn't trigger
-      "not using best gems" message (and maybe doesn't auto-activate)
-    - gem name abbreviations
-    - undo
-    - show things you can afford to do
-    - search for die/croak, deal more gracefully with some of them
-    - many assertion-type tests
 
 - user interface
 
@@ -52,10 +63,6 @@
 
 - variations to implement
 
-    - which 1/2/3/4/5/6 cards to use
-    - reduced randomness in cards
-    - no or reduced randomness in cards, but only for X rounds
-    	- perhaps pick out 3+7 sapphires, include them when reshuffling
     - restricted order of actions on your turn
     - bid for characters http://www.boardgamegeek.com/thread/29499
 
