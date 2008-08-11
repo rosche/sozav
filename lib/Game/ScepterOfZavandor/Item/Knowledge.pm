@@ -1,4 +1,4 @@
-# $Id: Knowledge.pm,v 1.8 2008-08-08 11:31:36 roderick Exp $
+# $Id: Knowledge.pm,v 1.9 2008-08-11 23:53:47 roderick Exp $
 
 use strict;
 
@@ -97,8 +97,8 @@ sub as_string_fields {
 	push @r, "unassigned";
     }
     else {
-    	my $title = $Knowledge[$type];
-	$title =~ s/($Knowledge_data[$type][KNOW_DATA_ALIAS])/[$1]/ or die;
+    	my $title = $self->a_player->a_ui->tag_abbrev($Knowledge[$type],
+			$Knowledge_data[$type][KNOW_DATA_ABBREV]);
 	push @r,
 	    $title,
 	    "l=$level",
@@ -130,6 +130,7 @@ sub advance {
 
     if ($self->ktype_is(KNOW_ACCUM)) {
 	$self->a_gem_slots($self->detail);
+	$self->a_player->auto_activate_gems;
     }
 }
 

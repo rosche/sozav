@@ -1,4 +1,4 @@
-# $Id: Auctionable.pm,v 1.9 2008-08-07 11:08:15 roderick Exp $
+# $Id: Auctionable.pm,v 1.10 2008-08-11 23:53:46 roderick Exp $
 
 use strict;
 
@@ -79,6 +79,7 @@ sub as_string_fields {
     @_ || badinvo;
     my $self = shift;
     my @r = $self->SUPER::as_string_fields(@_);
+    # XXX shorter field for sentinels to keep it under 80 cols?
     unshift @r,
 	sprintf "%-21s", $self->data(AUC_DATA_NAME);
     push @r,

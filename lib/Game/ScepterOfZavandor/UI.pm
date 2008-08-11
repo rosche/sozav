@@ -1,11 +1,11 @@
-# $Id: UI.pm,v 1.8 2008-08-08 11:31:35 roderick Exp $
+# $Id: UI.pm,v 1.9 2008-08-11 23:53:45 roderick Exp $
 
 use strict;
 
 package Game::ScepterOfZavandor::UI;
 
 use Game::Util 	qw(add_array_indices debug make_ro_accessor);
-use RS::Handy	qw(badinvo data_dump dstr process_arg_pairs xcroak);
+use RS::Handy	qw(badinvo data_dump dstr process_arg_pairs xconfess);
 use Scalar::Util qw(weaken);
 
 use Game::ScepterOfZavandor::Constant	qw(
@@ -50,6 +50,16 @@ sub a_player {
 #    out_notice
 
 sub start_actions {
+}
+
+sub can_underline {
+    @_ == 1 || badinvo;
+    return $_[0]->underline("hi mom") ne "hi mom";
+}
+
+sub underline {
+    @_ == 2 || badinvo;
+    return $_[1];
 }
 
 #------------------------------------------------------------------------------
@@ -128,6 +138,17 @@ sub prompt_for_index {
     }
 
     return $n;
+}
+
+sub tag_abbrev {
+    @_ == 3 || badinvo;
+    my $self   = shift;
+    my $full   = shift;
+    my $abbrev = shift;
+
+    $full =~ s/(\Q$abbrev\E)/$self->underline($1)/e
+	or xconfess "full ", dstr $full, " abbrev ", dstr $abbrev;
+    return $full;
 }
 
 1

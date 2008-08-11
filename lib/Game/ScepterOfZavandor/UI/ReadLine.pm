@@ -1,4 +1,4 @@
-# $Id: ReadLine.pm,v 1.7 2008-08-08 11:31:38 roderick Exp $
+# $Id: ReadLine.pm,v 1.8 2008-08-11 23:53:48 roderick Exp $
 
 use strict;
 
@@ -55,7 +55,7 @@ sub in {
     my $prompt = shift;
 
     if (!defined $prompt) {
-	$prompt = "action (? for help): ";
+	$prompt = "action (? for brief help): ";
 	$prompt = $self->a_player->name . " $prompt"
 	    if $self->a_player;
     }

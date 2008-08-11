@@ -1,4 +1,4 @@
-# $Id: Player.pm,v 1.15 2008-08-08 11:31:34 roderick Exp $
+# $Id: Player.pm,v 1.16 2008-08-11 23:53:45 roderick Exp $
 
 use strict;
 
@@ -572,6 +572,28 @@ sub could_enchant_gem_type_at_some_point {
     return $self->can_enchant_gem_backend($gtype, 0);
 }
 
+sub consolidate_dust {
+    @_ == 1 || badinvo;
+    my $self = shift;
+
+    my @old_dust = grep { $_->is_energy_dust } $self->items
+	or return;
+
+    my $before = join " ", map { $_->energy } @old_dust;
+
+    # XXX inefficient
+    my $e = sum map { $_->energy } @old_dust;
+    my @new_dust
+	= Game::ScepterOfZavandor::Item::Energy::Dust->make_dust($self, $e);
+
+    my $after = join " ", map { $_->energy } @new_dust;
+
+    print "consolidate dust $before -> $after\n";
+
+    $self->remove_items(@old_dust);
+    $self->add_items(@new_dust);
+}
+
 sub destroy_active_gem {
     @_ == 1 || badinvo;
     my $self = shift;
@@ -742,6 +764,9 @@ sub energy_backend {
     if ($is_estimate) {
 	return @ee;
     }
+    else {
+	$self->consolidate_dust;
+    }
 }
 
 sub income_estimate {
@@ -859,14 +884,7 @@ sub pay_energy {
 
     # consolidate dust so your hand count is accurate
 
-    # XXX inefficient
-
-    if (my @dust = grep { $_->is_energy_dust } $self->items) {
-	my $e = sum map { $_->energy } @dust;
-	$self->remove_items(@dust);
-	$self->add_items(
-	    Game::ScepterOfZavandor::Item::Energy::Dust->make_dust($self, $e));
-    }
+    $self->consolidate_dust;
 }
 
 # Take some things out of your inventory.  Return the amount of energy

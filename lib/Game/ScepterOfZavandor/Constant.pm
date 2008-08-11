@@ -1,4 +1,4 @@
-# $Id: Constant.pm,v 1.16 2008-08-08 11:31:34 roderick Exp $
+# $Id: Constant.pm,v 1.17 2008-08-11 23:53:45 roderick Exp $
 
 use strict;
 
@@ -13,7 +13,7 @@ use RS::Handy		qw(badinvo data_dump dstr xcroak);
 
 use vars qw($VERSION @EXPORT @EXPORT_OK);
 BEGIN {
-    $VERSION = q$Revision: 1.16 $ =~ /(\d\S+)/ ? $1 : '?';
+    $VERSION = q$Revision: 1.17 $ =~ /(\d\S+)/ ? $1 : '?';
     @EXPORT_OK = qw(
 	$Base_gem_slots
 	$Base_hand_limit
@@ -98,6 +98,7 @@ BEGIN {
     %Gem = map { $Gem[$_] => $_ } 0..$#Gem;
     add_array_indices 'GEM', @Gem;
     add_array_indices 'GEM_DATA', (
+    	'ABBREV',
     	'COST',
 	'VP',
 	'LIMIT',
@@ -122,7 +123,7 @@ BEGIN {
     add_array_indices 'KNOW', @Knowledge;
     add_array_indices 'KNOW_DATA', qw(
 	NAME
-	ALIAS
+	ABBREV
     	HAND_LIMIT
     	LEVEL_COST
 	DETAIL
@@ -286,7 +287,7 @@ BEGIN {
     $Knowledge_data[KNOW_ARTIFACTS][$i] = "$k Artifacts";
     $Knowledge_data[KNOW_ACCUM    ][$i] = "$k Accumulation";
 
-    $i = KNOW_DATA_ALIAS;
+    $i = KNOW_DATA_ABBREV;
     $Knowledge_data[KNOW_GEMS     ][$i] = "g";
     $Knowledge_data[KNOW_EFLOW    ][$i] = "e";
     $Knowledge_data[KNOW_FIRE     ][$i] = "f";
@@ -352,7 +353,7 @@ BEGIN {
 BEGIN {
     # These have to be ordered by descending hand count efficiency.
 
-    for ([10 => 3, 3], [5 => 2, 2], [2 => 1, 1], [1 => 1, 1]) {
+    for ([10 => 3, 3], [5 => 2, 2], [2 => 1, 1], [1 => 1]) {
     	my ($v, $hl, $opal_count) = @$_;
     	my $r = [];
 	$r->[DUST_DATA_VALUE]      = $v;
@@ -379,6 +380,16 @@ BEGIN {
 
 BEGIN {
     my ($i, $j);
+
+    $i = GEM_DATA_ABBREV;
+    $Gem_data[GEM_OPAL    ][$i] = 'o';
+    $Gem_data[GEM_SAPPHIRE][$i] = 's';
+    $Gem_data[GEM_EMERALD ][$i] = 'e';
+    $Gem_data[GEM_DIAMOND ][$i] = 'd';
+    $Gem_data[GEM_RUBY    ][$i] = 'r';
+    for (0..$#Gem) {
+	$Gem{$Gem_data[$_][GEM_DATA_ABBREV]} = $_;
+    }
 
     $i = GEM_DATA_VP;
     $Gem_data[GEM_OPAL    ][$i] = 1;
@@ -408,7 +419,6 @@ BEGIN {
     $Gem_data[GEM_EMERALD ][$i] = [          ( 6, 9)x9,( 7,8)x 9];
     $Gem_data[GEM_DIAMOND ][$i] = [          ( 9,11)x9,(10  )x12];
     $Gem_data[GEM_RUBY    ][$i] = [          (14,16)x9,(15  )x12];
-
 }
 
 BEGIN {

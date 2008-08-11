@@ -1,4 +1,4 @@
-# $Id: Game.pm,v 1.13 2008-08-08 11:31:34 roderick Exp $
+# $Id: Game.pm,v 1.14 2008-08-11 23:53:45 roderick Exp $
 
 use strict;
 
@@ -14,15 +14,18 @@ use RS::Handy	qw(badinvo create_constant_subs data_dump dstr shuffle xconfess);
 
 use Game::ScepterOfZavandor::Constant	qw(
     /^CHAR_/
+    /^DUST_DATA_/
     /^GAME_GEM_DATA/
     /^GEM_/
     /^OPT_/
     @Character
+    $Concentrated_additional_dust
     @Config_by_num_players
     @Dust_data
     $Dust_data_val_1
     $Game_end_sentinels_sold_count
     @Gem
+    @Gem_data
     @Option
     %Option
     @Sentinel_real_ix_xxx
@@ -427,6 +430,32 @@ sub gem_deck {
     return $rdata->[GAME_GEM_DATA_DECK];
 }
 
+sub gem_energy_desc {
+    @_ == 2 || badinvo;
+    my ($self, $gtype) = @_;
+
+    my $s = '';
+
+    if ($gtype == GEM_OPAL) {
+	$s .= join ", ",
+		map({ "$_->" . Game::ScepterOfZavandor::Item::Energy::Dust
+    	    	    	    	->opal_count_to_energy_value($_)
+		} 1 .. (2 + grep { $_->[DUST_DATA_OPAL_COUNT] } @Dust_data)),
+    	    	"...";
+    }
+    else {
+	my $ggd = $self->gem_data($gtype);
+	$s .= sprintf "min %2d avg %4.1f max %2d concentrated %2d+%d",
+		$ggd->[GAME_GEM_DATA_CARD_MIN],
+		$ggd->[GAME_GEM_DATA_CARD_AVG],
+		$ggd->[GAME_GEM_DATA_CARD_MAX],
+		$Gem_data[$gtype][GEM_DATA_CONCENTRATED],
+		$Concentrated_additional_dust;
+    }
+
+    return $s;
+}
+
 # XXX
 sub log {
     @_ > 1 || badinvo;
@@ -515,6 +544,7 @@ sub run_game {
     my $ui = $new_ui->();
     $ui->out("The Scepter of Zavandor\n");
     # XXX set up web site
+    # XXX add this link to help
     #$ui->out("more info at http://www.argon.org/zavandor/\n");
 
     if (!defined $num_players) {

@@ -1,4 +1,4 @@
-# $Id: Sentinel.pm,v 1.8 2008-08-08 11:31:37 roderick Exp $
+# $Id: Sentinel.pm,v 1.9 2008-08-11 23:53:47 roderick Exp $
 
 use strict;
 
@@ -38,7 +38,12 @@ sub as_string_fields {
 	return @r;
     }
 
-    push @r, $self->data(SENT_DATA_DESC);
+    push @r,
+    	$self->data(SENT_DATA_VP_PER) . 'x',
+	$self->data(SENT_DATA_DESC);
+    if (my $max = $self->data(SENT_DATA_MAX_BONUS_VP)) {
+    	push @r, "(max bonus $max)";
+    }
     return @r;
 }
 
