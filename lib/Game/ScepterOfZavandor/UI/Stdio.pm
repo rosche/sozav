@@ -1,4 +1,4 @@
-# $Id: Stdio.pm,v 1.17 2008-08-11 23:53:48 roderick Exp $
+# $Id: Stdio.pm,v 1.18 2009-02-15 15:17:01 roderick Exp $
 
 use strict;
 
@@ -83,6 +83,7 @@ sub in {
     if (!defined $s) {
 	die "eof";
     }
+    $self->log_out($s);
     chomp $s;
     return $s;
 }
@@ -91,6 +92,7 @@ sub out {
     @_ || badinvo;
     my $self = shift;
 
+    $self->log_out(@_);
     print { $self->[UI_STDIO_OUT_FH] } @_
 	or die "error writing: $!";
 }
@@ -284,6 +286,8 @@ sub status_short {
 	    "  \$%3d"
 		=> [$p->current_energy_liquid],
 
+	    # XXX more useful to show how much energy you'd lose to your
+	    # hand limit when you're over
 	    $rel->(" hand",
 		    $p->current_hand_count,
 		    $p->hand_limit),
@@ -582,6 +586,8 @@ sub _action_help_backend {
 	}
     }
 
+    $self->out("${i}<Enter> on a blank line ends this player's turn.\n");
+
     if ($brief) {
 	$self->out("${i}Type \"$Action{help}[ACTION_ABBREV]\" for more detailed help.\n");
     }
@@ -703,8 +709,7 @@ sub action_items {
 			    $player->a_enchanted_ruby ? "has" : "has not");
     }
     $self->out_char("items:\n");
-    for (sort { $a->a_item_type <=> $b->a_item_type
-    	    	    or $a <=> $b } $player->items) {
+    for (sort { $a <=> $b } $player->items) {
 	$self->out("  $_\n")
     }
     return 1;
@@ -816,6 +821,7 @@ sub action_sentinels {
 
     my $s_purchased = @Sentinel_real_ix_xxx - $s_available;
     my $s_to_go     = $Game_end_sentinels_sold_count - $s_purchased;
+    # XXX negative $s_to_go
     $self->out($s_purchased, " sentinel", plural($s_purchased),
     	    	" have been purchased ($s_to_go more to end the game)\n");
 

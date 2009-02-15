@@ -1,21 +1,37 @@
-# $Id: Makefile,v 1.5 2008-08-08 11:20:19 roderick Exp $
+# $Id: Makefile,v 1.6 2009-02-15 15:16:53 roderick Exp $
+
+all:
 
 install_dest 		= /usr/local/src/zavandor-inst
 install_rsync_args      =
 
 all_files		:= $(shell find -type f ! -name '*~' ! -name '*\#')
 
-all: TAGS
+pm_file			:= $(shell find lib -name '*.pm')
+pm_name			:= $(shell echo "$(pm_file)" | \
+				sed 's,lib/,,g; s,\.pm,,g; s,/,-,g')
+pm_test			:= $(patsubst %,t/0-load-%.t,$(pm_name))
 
-TAGS: $(filter-out ./TAGS, $(all_files))
+all: $(pm_test)
+$(pm_test): create-load-test
+	./$^ $@
+
+all: TAGS
+TAGS: $(pm_file)
 	etags $^
+
+.PHONY: test
+test: all
+	./run-tests t/*.t
 
 install: all
 	rsync -ia \
 		--delete-excluded \
 		--cvs-exclude \
 		--omit-dir-times \
+		--exclude cover_db \
 	    $(install_rsync_args) . $(install_dest)
 
-test-install: install_rsync_args_no = -n
-test-install: install
+# XXX broken
+#test-install: install_rsync_args = -n
+#test-install: install

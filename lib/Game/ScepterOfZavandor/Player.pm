@@ -1,4 +1,4 @@
-# $Id: Player.pm,v 1.16 2008-08-11 23:53:45 roderick Exp $
+# $Id: Player.pm,v 1.17 2009-02-15 15:16:57 roderick Exp $
 
 use strict;
 
@@ -9,11 +9,12 @@ use overload (
     '<=>' => "spaceship",
 );
 
-use List::Util	qw(first sum);
-use Game::Util  qw($Debug add_array_indices debug debug_var
-		    make_ro_accessor make_rw_accessor);
-use RS::Handy	qw(badinvo data_dump dstr xconfess);
-use Scalar::Util qw(refaddr weaken);
+use List::Util		qw(first sum);
+use Game::Util  	qw($Debug debug_var add_array_indices debug debug_var
+			    knapsack_0_1 make_ro_accessor make_rw_accessor);
+use RS::Handy		qw(badinvo data_dump dstr xconfess);
+use Scalar::Util	qw(refaddr weaken);
+use Set::Scalar	 	  ();
 
 use Game::ScepterOfZavandor::Item::Knowledge ();
 
@@ -32,7 +33,6 @@ use Game::ScepterOfZavandor::Constant qw(
     $Concentrated_card_count
     $Concentrated_additional_dust
     @Current_energy
-    @Dust_data
     @Energy_estimate
     @Gem
     @Gem_data
@@ -234,6 +234,7 @@ sub knowledge_chips_advancable {
     @_ == 1 || badinvo;
     my $self = shift;
 
+    # XXX include bought but uncommitted chips?
     return grep { $_->is_advancable } $self->knowledge_chips;
 }
 
@@ -413,7 +414,6 @@ sub buy_auctionable {
 
     $self->pay_energy($net);
     $self->a_game->auctionable_sold($auc);
-    # XXX weaken
     $auc->a_player($self);
     $self->add_items($auc, $auc->free_items($self->a_game));
     $auc->bought;
@@ -576,22 +576,106 @@ sub consolidate_dust {
     @_ == 1 || badinvo;
     my $self = shift;
 
-    my @old_dust = grep { $_->is_energy_dust } $self->items
+    my $big_dust = $self->a_game->a_dust_data->[0][DUST_DATA_VALUE];
+
+    # @old_dust is kept in descending order of energy
+    my @old_dust = sort { $b->energy <=> $a->energy }
+		    grep { $_->is_energy_dust
+			    # no need to consolidate the 10s
+			    # XXX test
+			    && $_->energy < $big_dust
+			} $self->items
 	or return;
 
+    # XXX got to be a better way to deal with the odd dust situation
+
+    # XXX with no 1 dust this consolidates 2 2 2 -> 5 and loses a dust
+    my ($old_tot, @new_dust, $new_tot);
+    while (1) {
+	$old_tot  = sum map { $_->energy } @old_dust;
+	@new_dust = Game::ScepterOfZavandor::Item::Energy::Dust->make_dust($self, $old_tot);
+	$new_tot  = sum map { $_->energy } @new_dust;
+	if ($old_tot == $new_tot) {
+	    last;
+	}
+	# Oops, I couldn't make that amount.  Eg, 2 2 2 -> 5.  Drop a
+	# small one and try again.
+	if (!@old_dust) {
+	    return;
+	}
+	debug "consolidate dust:  ignoring $old_dust[-1]";
+	pop @old_dust;
+    }
+
+    if ($old_tot - 1 == $new_tot) {
+    	# oops, lost a dust
+	die "XXX";
+    }
+
     my $before = join " ", map { $_->energy } @old_dust;
+    my $after  = join " ", map { $_->energy } @new_dust;
+    debug "consolidate dust $before -> $after";
 
-    # XXX inefficient
-    my $e = sum map { $_->energy } @old_dust;
-    my @new_dust
-	= Game::ScepterOfZavandor::Item::Energy::Dust->make_dust($self, $e);
+    # I could just remove all the @old_dust and add the @new_dust, but
+    # when debugging this makes it harder to see what's really changing.
+    # Consequently I go to some trouble to make the minimal number of
+    # changes.
 
-    my $after = join " ", map { $_->energy } @new_dust;
+    # XXX this task comes into other places too, such as hand limit discard
 
-    print "consolidate dust $before -> $after\n";
+    # XXX cleaner to implement with a hash?
 
-    $self->remove_items(@old_dust);
-    $self->add_items(@new_dust);
+    # 5 -> 2 -> 1
+    # XXX @old_dust already sorted
+    #@old_dust = sort { $b->energy <=> $a->energy } @old_dust;
+    @new_dust = sort { $b->energy <=> $a->energy } @new_dust;
+    my @new_dust_tmp = @new_dust;
+    my (@keep_dust, @rm_dust, @add_dust);
+    for (@old_dust) {
+	while (@new_dust_tmp && $new_dust_tmp[0]->energy > $_->energy) {
+	    push @add_dust, shift @new_dust_tmp;
+	}
+	if (!@new_dust_tmp) {
+	    push @rm_dust, $_;
+	    next;
+	}
+	if ($_->energy == $new_dust_tmp[0]->energy) {
+	    push @keep_dust, $_;
+	    shift @new_dust_tmp;
+	    next;
+	}
+	if ($_->energy > $new_dust_tmp[0]->energy) {
+	    push @rm_dust, $_;
+	    next;
+	}
+	xconfess $_->energy, " @new_dust_tmp";
+    }
+    push @add_dust, splice @new_dust_tmp, 0;
+
+    my $add_tot  = sum 0, map { $_->energy } @add_dust;
+    my $rm_tot   = sum 0, map { $_->energy } @rm_dust;
+    my $keep_tot = sum 0, map { $_->energy } @keep_dust;
+    if (!!@add_dust ^ !!@rm_dust
+    	    or $add_tot != $rm_tot
+	    or $add_tot + $keep_tot != $old_tot
+	    or $old_tot != $new_tot) {
+	xconfess map { "$_\n" }
+	    "internal dust error:",
+	    "  add=[@add_dust]",
+	    "  rm=[@rm_dust]",
+	    "  keep=[@keep_dust]",
+	    "  old=[@old_dust]",
+	    "  new=[@new_dust]";
+    }
+
+    if (!@add_dust && !@rm_dust) {
+	return;
+    }
+
+    debug "consolidate @rm_dust -> @add_dust";
+
+    $self->remove_items(@rm_dust);
+    $self->add_items(@add_dust);
 }
 
 sub destroy_active_gem {
@@ -610,58 +694,76 @@ sub destroy_active_gem {
     $self->remove_items($g[0]);
 }
 
+# This sub enforces your hand limit.  It tries to let you keep as much
+# energy as possible.
+
 sub enforce_hand_limit {
     @_ == 1 || badinvo;
     my $self = shift;
+    #local $Game::Util::Debug = 1;
 
     my $hc = $self->current_hand_count;
     my $hl = $self->hand_limit;
     return if $hc <= $hl;
 
-    # XXX This sorts poor ratio items back first, but that isn't correct.
-    # This is another knapsack problem.
-    #
-    # XXX greedy approximation
-    #
-    # XXX one way this fails:  You can trade 5 2-dust chits (hand limit
-    # 5) for 1 10-dust chit (hand limit 3), but this doesn't do that.
+    # There's 1 case where dust has a better hand limit ratio than
+    # non-dust (10 dust ratio = 3.33, 3 energy saphire card ratio = 3),
+    # but I'm ignoring it.
+
+    my (@dust, @non_dust);
+    for (grep { $_->a_hand_count > 0 } $self->items) {
+	push @{ $_->is_energy_dust ? \@dust : \@non_dust }, $_;
+    }
+    debug_var
+	non_dust => "@non_dust",
+	dust	 => "@dust";
 
     my @rm;
     my $new_hc = 0;
-    for my $i (sort { $b <=> $a } grep { $_->a_hand_count > 0 } $self->items) {
-	my $this_hc = $i->a_hand_count;
-	if ($new_hc + $this_hc <= $hl) {
-	    $new_hc += $this_hc;
-	}
-	else {
-	    push @rm, $i;
+
+    if (@non_dust) {
+	# XXX why can't this just choose the ones with the best ratio?
+	#my ($e, @want_non_dust) = xxx({}, \@non_dust, $#non_dust, $hl);
+	my ($hc, $e, @want_non_dust)
+	    = knapsack_0_1 \@non_dust,
+			    sub { $_[0]->a_hand_count, $_[0]->energy },
+			    $hl;
+	debug "non-dust-items to keep: @want_non_dust";
+	# XXX better way to do this bookkeeping
+	for my $i (@non_dust) {
+	    if (grep { $_ == $i } @want_non_dust) {
+		# keep
+		$new_hc += $i->a_hand_count;
+	    }
+	    else {
+		push @rm, $i;
+	    }
 	}
     }
 
-    my $tot_discarded_energy = $self->spend(@rm);
+    # 2. sum the value of the rest and all your dust, remove these items
 
-    # Add in as much dust as possible, starting with most efficient forms.
+    # XXX do this without extraneous dust remove/add to make it easier
+    # to see what's changing when debugging.  ->consolidate_dust has
+    # code to do this which should be shared.
 
-    for my $di (0..$#Dust_data) {
-    	my $dust_value      = $Dust_data[$di][DUST_DATA_VALUE];
-    	my $dust_hand_count = $Dust_data[$di][DUST_DATA_HAND_COUNT];
-	if ($Debug > 3) {
-	    debug "trying to re-add dust";
-	    debug_var (
-		new_hc          => $new_hc,
-		tot_discarded   => $tot_discarded_energy,
-		dust_value      => $dust_value,
-		dust_hand_count => $dust_hand_count,
-	    );
-	}
-	while ($tot_discarded_energy >= $dust_value
-    	    	&& $new_hc + $dust_hand_count <= $hl) {
-	    $tot_discarded_energy -= $dust_value;
-	    my $dust = Game::ScepterOfZavandor::Item::Energy::Dust->new(
-    	    	    	$self, $dust_value);
-    	    $new_hc += $dust->a_hand_count;
-	    $self->add_items($dust);
-	}
+    my $tot_discarded_energy = $self->spend(@dust, @rm);
+    debug_var
+	tot_discarded_energy => $tot_discarded_energy,
+    	hand_count_remaining => $hl - $new_hc;
+
+    # 3. make dust from this total as best you can
+
+    if ($new_hc < $hl) {
+	my @new_dust
+	    = Game::ScepterOfZavandor::Item::Energy::Dust
+    	    	->make_dust_with_hand_limit(
+		    $self, $tot_discarded_energy, $hl - $new_hc);
+	my $new_dust_energy = sum map { $_->energy } @new_dust;
+	debug_var new_dust_energy => $new_dust_energy;
+	$tot_discarded_energy -= $new_dust_energy;
+	$new_hc += sum map { $_->a_hand_count } @new_dust;
+	$self->add_items(@new_dust);
     }
 
     $new_hc == $hl or xconfess "$new_hc != $hl";
@@ -809,37 +911,6 @@ sub gem_value {
     my $cost = $self->gem_cost($gtype);
     return int($cost / 2);
 }
-
-# http://en.wikipedia.org/wiki/Knapsack_problem
-#
-# A similar dynamic programming solution for the 0-1 knapsack problem also
-# runs in pseudo-polynomial time. As above, let the costs be c1, ..., cn
-# and the corresponding values v1, ..., vn. We wish to maximize total
-# value subject to the constraint that total cost is less than C. Define a
-# recursive function, A(i, j) to be the maximum value that can be attained
-# with cost less than or equal to j using items up to i.
-#
-# We can define A(i,j) recursively as follows:
-#
-#     * A(0, j) = 0
-#     * A(i, 0) = 0
-#     * A(i, j) = A(i - 1, j) if ci > j
-#     * A(i, j) = max(A(i - 1, j), vi + A(i - 1, j - ci)) if ci \u2264 j.
-#
-# The solution can then be found by calculating A(n, C). To do this
-# efficiently we can use a table to store previous computations. This
-# solution will therefore run in O(nC) time and O(nC) space, though with
-# some slight modifications we can reduce the space complexity to O(C).
-
-
-#sub fill_hand_limit {
-#    @_ == 3 || badinvo;
-#    my $self = shift;
-#    my ($max_i, $max_hand_limit) = @_;
-#
-#    if ($max_i == 0 || $max_hand_limit == 0) {
-#	return xxx;
-#    }
 
 sub pay_energy {
     @_ == 2 || badinvo;

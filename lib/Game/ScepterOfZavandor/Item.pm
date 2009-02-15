@@ -1,4 +1,4 @@
-# $Id: Item.pm,v 1.14 2008-08-07 11:08:13 roderick Exp $
+# $Id: Item.pm,v 1.15 2009-02-15 15:16:57 roderick Exp $
 
 use strict;
 
@@ -41,7 +41,7 @@ sub new {
 	or xconfess;
 
     my ($game, $player);
-    if (eval_block { $player_or_game->isa(Game::ScepterOfZavandor::Game::) }) {
+    if (eval_block { $player_or_game->isa("Game::ScepterOfZavandor::Game") }) {
 	$game   = $player_or_game;
 	$player = undef;
     }

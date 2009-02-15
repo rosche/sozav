@@ -1,4 +1,4 @@
-# $Id: Game.pm,v 1.14 2008-08-11 23:53:45 roderick Exp $
+# $Id: Game.pm,v 1.15 2009-02-15 15:16:57 roderick Exp $
 
 use strict;
 
@@ -10,7 +10,8 @@ use Game::Util	qw($Debug add_array_indices debug debug_var
 		    make_ro_accessor make_rw_accessor valid_ix);
 use List::MoreUtils qw(minmax);
 use List::Util	qw(sum);
-use RS::Handy	qw(badinvo create_constant_subs data_dump dstr shuffle xconfess);
+use RS::Handy	qw(badinvo create_constant_subs data_dump dstr
+		    pwuid safe_tmp shuffle xconfess);
 
 use Game::ScepterOfZavandor::Constant	qw(
     /^CHAR_/
@@ -43,6 +44,7 @@ BEGIN {
 	'OPTION',
 	'PLAYER',
 	'GEM_DATA',
+	'DUST_DATA',
 	'ARTIFACT_DECK',
 	'ARTIFACTS_ON_AUCTION',
 	'ARTIFACTS_AT_ONCE',
@@ -60,6 +62,7 @@ sub new {
     $self->[GAME_OPTION]               = [];
     $self->[GAME_PLAYER]               = [];
     $self->[GAME_GEM_DATA]             = [];
+    $self->[GAME_DUST_DATA]            = [@Dust_data];
     $self->[GAME_ARTIFACTS_ON_AUCTION] = [];
     $self->[GAME_SENTINEL]             = [];
 
@@ -74,8 +77,9 @@ sub new {
     return $self;
 }
 
-#make_ro_accessor (
-#);
+make_ro_accessor (
+    a_dust_data => GAME_DUST_DATA,
+);
 
 make_rw_accessor (
     a_turn_num => GAME_TURN_NUM,
@@ -149,7 +153,7 @@ sub init {
     # add 1 dust if desired
 
     if ($self->option(OPT_1_DUST)) {
-	push @Dust_data, $Dust_data_val_1;
+    	push @{ $self->a_dust_data }, $Dust_data_val_1;
     }
 
     $self->init_items($artifact_copies);
@@ -256,9 +260,7 @@ sub init_players {
 		if $self->option(OPT_DUPLICATE_CHARACTERS);
 	    my $c = $player->a_ui->choose_character($player_num,
 							sort { $a <=> $b } @c);
-	    if (!defined $c) {
-		$c = splice @c, int rand @c, 1;
-	    }
+	    $c //= splice @c, int rand @c, 1;
 	    my @new = grep { $_ != $c } @c;
 	    if (@c != @new + 1) {
 		xconfess "$player chose bad character ", dstr $c;
@@ -346,6 +348,7 @@ sub play {
     for my $player ($self->players_in_order) {
 	$nominal_place++;
     	my $this_score = $player->score;
+	# XXX is there a tie-breaker?
 	$place = (defined $prev_score && $this_score == $prev_score)
     	    	    	? $place
 			: $nominal_place;
@@ -405,6 +408,16 @@ sub draw_from_deck {
     return $self->gem_deck($gtype)->draw($ct);
 }
 
+sub dust_data_loop {
+    @_ == 2 || badinvo;
+    my ($self, $callback) = @_;
+
+    local $_;
+    for (@{ $self->a_dust_data }) {
+	$callback->();
+    }
+}
+
 sub gem_data {
     @_ == 2 || badinvo;
     my ($self, $gtype) = @_;
@@ -440,7 +453,8 @@ sub gem_energy_desc {
 	$s .= join ", ",
 		map({ "$_->" . Game::ScepterOfZavandor::Item::Energy::Dust
     	    	    	    	->opal_count_to_energy_value($_)
-		} 1 .. (2 + grep { $_->[DUST_DATA_OPAL_COUNT] } @Dust_data)),
+		} 1 .. (2 + grep { $_->[DUST_DATA_OPAL_COUNT] }
+			    @{ $self->a_dust_data })),
     	    	"...";
     }
     else {
@@ -469,7 +483,7 @@ sub info {
     @_ > 1 || badinvo;
     my $self = shift;
 
-    print @_, "\n";
+    ($self->players)[0]->a_ui->info(@_, "\n");
 }
 
 sub players {
@@ -538,7 +552,20 @@ sub run_game {
 
     require Game::ScepterOfZavandor::UI::ReadLine;
     my $new_ui = sub {
-	return Game::ScepterOfZavandor::UI::ReadLine->new($g, *STDIN, *STDOUT);
+	my $ui = Game::ScepterOfZavandor::UI::ReadLine->new($g, *STDIN, *STDOUT);
+	# XXX opens for each player?
+	$ui->log_open(scalar safe_tmp
+			dir => "/var/local/zavandor",
+	    	    	mode => 0666,
+		        prefix => "zavandor.");
+	$ui->log_out(scalar(localtime), "\n");
+	# XXX not working
+	if (my $peer = getpeername STDIN) {
+	    require Socket;
+	    my ($port, $iaddr) = Socket::sockaddr_in($peer);
+	    $ui->log_out("remote is ", Socket::inet_ntoa($iaddr), ":$port\n");
+	}
+	return $ui;
     };
 
     my $ui = $new_ui->();
@@ -562,7 +589,7 @@ sub run_game {
     }
     $g->init;
 
-    if (0 || @p == 1) {
+    if (0 && @p == 1) {
     	my $p = $p[0];
 	for (1..4) {
 	    $p[0]->add_items(Game::ScepterOfZavandor::Item::Gem->new(

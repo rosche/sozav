@@ -1,4 +1,4 @@
-# $Id: ReadLine.pm,v 1.8 2008-08-11 23:53:48 roderick Exp $
+# $Id: ReadLine.pm,v 1.9 2009-02-15 15:17:00 roderick Exp $
 
 use strict;
 
@@ -59,7 +59,10 @@ sub in {
 	$prompt = $self->a_player->name . " $prompt"
 	    if $self->a_player;
     }
-    return $self->[UI_READLINE_OBJ]->readline($prompt);
+    $self->log_out($prompt);
+    my $s = $self->[UI_READLINE_OBJ]->readline($prompt);
+    $self->log_out($s, "\n");
+    return $s;
 }
 
 1

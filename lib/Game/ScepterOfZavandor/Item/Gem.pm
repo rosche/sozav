@@ -1,4 +1,4 @@
-# $Id: Gem.pm,v 1.13 2008-08-08 11:31:36 roderick Exp $
+# $Id: Gem.pm,v 1.14 2009-02-15 15:16:59 roderick Exp $
 
 use strict;
 
@@ -58,7 +58,7 @@ sub spaceship {
     @_ == 3 || badinvo;
     my ($a, $b, $rev) = @_;
 
-    ($a->a_item_type == $b->a_item_type)
+    $b->is_gem
 	    ? $b->[ITEM_GEM_TYPE] <=> $a->[ITEM_GEM_TYPE]
 	    : 0
     	or $a->SUPER::spaceship($b, $rev)

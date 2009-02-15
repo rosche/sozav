@@ -1,4 +1,4 @@
-# $Id: Knowledge.pm,v 1.9 2008-08-11 23:53:47 roderick Exp $
+# $Id: Knowledge.pm,v 1.10 2009-02-15 15:16:59 roderick Exp $
 
 use strict;
 
@@ -193,7 +193,8 @@ sub is_advancable {
     @_ == 1 || badinvo;
     my $self = shift;
 
-    return defined $self->a_type && !$self->maxed_out;
+    # XXX include bought but unassigned chips?
+    return $self->is_assigned && !$self->maxed_out;
 }
 
 sub is_assigned {

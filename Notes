@@ -1,14 +1,72 @@
-- $Id: Notes,v 1.9 2008-08-11 23:46:39 roderick Exp $
+- $Id: Notes,v 1.10 2009-02-15 15:16:53 roderick Exp $
+
+- things you should be able to do but can't
+
+    - choose which gem to destroy for a magic mirror or shadow cloak
+      (currently it destroys the most epensive one)
+
+    - choose which knowledge track to advance if you get a free advancement
+      (currently it always uses the most expensive one), and allow choosing
+      owned but unassigned knowledge chips
+
+    - explicity choose what to pay with, if you want
+
+- rules not implemented yet
+
+    - you can sell gems, increase knowledge of gems, then buy gems, but
+      you shouldn't be able to
+    - you can't combine purchases to prevent losing a dust
+    - you can auction a magic mirror or shadow cloak even if you have no
+      active gems
+
+- knapsack problems
+
+    - make dust (due to lack of 1 dust)
+    	- cost minimized
+	- value <= and maximized
+    - make dust with hand limit
+    	- cost <= and minimized
+	- value <= and maximized
+    - pay energy
+    	- cost maximized
+    	- value >= X but as little over as possible
+	    - actually want to minimize the hand count of the resulting
+	      overpayment combined with existing dust
+    	    - sometimes you might want to save the 1 dust, sometimes to
+    	      maximize your hand limit.  I think you have to ask the
+    	      player if it matters.
+	- I think the result can change if you combine purchases vs. doing
+	  the same individually, so how to implement combining purchases?
 
 - before release
 
-    - telnet url can contain window size hint?
-    - telnet works from Firefox but with prompt
-    - telnet doesn't work from IE
-    - I often want to know the next cost for my knowledge advancements
+    - label toad/raven artifacts as such in their descriptions
+    - 1-player puzzle mode, need some sort of game timer.
+    - telnet access
+	- telnet url can contain window size hint?
+	- telnet works from Firefox but with prompt
+	- telnet doesn't work from IE
+	- other solutions
+	    - ajaxterm
+	    	- needs server side
+		- trying this one
+		- use GET by default?
+		- bold too hard to see, use exploicit colors, option to
+		  turn them off?
+	    - anyterm
+	    	- needs server side
+	    - webtty
+	    	- needs server side
+	    - termlib
+		- http://www.masswerk.at/termlib/
+	    - webterm (Java)
+	    	http://awacs.dhs.org/software/webterm/Documentation/
+	    - jcterm (Java, SSH)
+	    	http://www.jcraft.com/jcterm/
     - web page
     - knapsack problems (paying for item and discarding when over limit)
     - combining purchases to avoid making dust
+    - can't sell gems/advance knowledge of gems/buy gems
     - logging
     	- everything read/written
 	- specially formatted logfile
@@ -20,7 +78,6 @@
     - show things you can afford to do
     - search for die/croak, deal more gracefully with some of them
     - many assertion-type tests
-    - 1-player puzzle mode, need some sort of game timer.
 
 - rules to remember
 

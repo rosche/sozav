@@ -1,11 +1,10 @@
-# $Id: Constant.pm,v 1.17 2008-08-11 23:53:45 roderick Exp $
+# $Id: Constant.pm,v 1.18 2009-02-15 15:16:56 roderick Exp $
 
 use strict;
 
 package Game::ScepterOfZavandor::Constant;
 
-use base qw(Exporter);
-
+use Exporter		qw(import);
 use Game::Util		qw(add_array_indices debug);
 use List::Util		qw(sum);
 use List::MoreUtils	qw(minmax);
@@ -13,7 +12,7 @@ use RS::Handy		qw(badinvo data_dump dstr xcroak);
 
 use vars qw($VERSION @EXPORT @EXPORT_OK);
 BEGIN {
-    $VERSION = q$Revision: 1.17 $ =~ /(\d\S+)/ ? $1 : '?';
+    $VERSION = q$Revision: 1.18 $ =~ /(\d\S+)/ ? $1 : '?';
     @EXPORT_OK = qw(
 	$Base_gem_slots
 	$Base_hand_limit
@@ -364,9 +363,6 @@ BEGIN {
 
     # 1-value dust isn't normally present, it can be added via an option.
 
-    # XXX modifying the global means you can't have two $game objects at
-    # once
-
     $Dust_data_val_1 = pop @Dust_data;
 }
 
@@ -400,7 +396,7 @@ BEGIN {
 
     $i = GEM_DATA_COST;
     $j = GEM_DATA_CONCENTRATED;
-                                       $Gem_data[GEM_OPAL    ][$i] = 10;
+                                  $Gem_data[GEM_OPAL    ][$i] = 10;
     $Gem_data[GEM_SAPPHIRE][$j] = $Gem_data[GEM_SAPPHIRE][$i] = 20;
     $Gem_data[GEM_EMERALD ][$j] = $Gem_data[GEM_EMERALD ][$i] = 30;
     $Gem_data[GEM_DIAMOND ][$j] = $Gem_data[GEM_DIAMOND ][$i] = 40;
@@ -427,7 +423,7 @@ BEGIN {
     # XXX
     @Config_by_num_players = (
     	undef, # 0
-    	[24, 2], # XXX undef, # 1
+    	[4, 2], # XXX undef, # 1
     	[2, 1], # 2
     	[3, 2], # 3
     	[4, 2], # 4
@@ -666,6 +662,8 @@ XXX
     - at game end (or in info) show how much energy player drew vs. average
     - check that expected exceptions don't change anything before they're
       thrown
+    - overload cmp instead of <=> so you can leave off the comparison
+      block in most sorts
 
 XXY future
     - save game

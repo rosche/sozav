@@ -1,11 +1,14 @@
 #!/usr/bin/perl -w
 use strict;
 
-# $Id: runner,v 1.1 2008-08-08 11:32:11 roderick Exp $
+# $Id: runner,v 1.2 2009-02-15 15:16:53 roderick Exp $
 
 use lib '/usr/local/src/zavandor/lib';
 
-$ENV{TERM} ||= 'vt100';
+$ENV{TERM} //= 'vt100';
 
 require Game::ScepterOfZavandor::Game;
+
+# XXX eval, somehow log errors if it fails
+
 Game::ScepterOfZavandor::Game::run_game();

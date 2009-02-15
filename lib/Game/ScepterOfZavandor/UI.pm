@@ -1,4 +1,4 @@
-# $Id: UI.pm,v 1.9 2008-08-11 23:53:45 roderick Exp $
+# $Id: UI.pm,v 1.10 2009-02-15 15:16:57 roderick Exp $
 
 use strict;
 
@@ -13,7 +13,7 @@ use Game::ScepterOfZavandor::Constant	qw(
 );
 
 BEGIN {
-    add_array_indices 'UI', qw(GAME PLAYER);
+    add_array_indices 'UI', qw(GAME PLAYER LOG_PATH LOG_FH);
 }
 
 sub new {
@@ -28,7 +28,9 @@ sub new {
 }
 
 make_ro_accessor (
-    a_game => UI_GAME,
+    a_game     => UI_GAME,
+    a_log_path => UI_LOG_PATH,
+    a_log_fh   => UI_LOG_FH,
 );
 
 # XXX duplicate of Item->a_player, move to a util lib?
@@ -48,6 +50,49 @@ sub a_player {
 #    out
 #    out_error
 #    out_notice
+
+sub info {
+    my $self = shift;
+    $self->out(@_);
+}
+
+sub log_open {
+    @_ == 2 || badinvo;
+    my $self = shift;
+    my $path = shift;
+
+    my $fh;
+    if (!open $fh, ">>", $path) {
+	xconfess "can't write to $path: $!";
+    }
+
+    my $old = select $fh;
+    $| = 1;
+    select $old;
+
+    $self->[UI_LOG_PATH] = $path;
+    $self->[UI_LOG_FH  ] = $fh;
+}
+
+sub log_out {
+    @_ || badinvo;
+    my $self = shift;
+
+    my $fh = $self->a_log_fh
+	or return;
+    print $fh @_
+    	or xconfess "error writing to $self->a_log_path: $!";
+}
+
+sub log_close {
+    @_ || badinvo;
+    my $self = shift;
+
+    my $fh = $self->a_log_fh
+	or return;
+    close $fh
+    	or xconfess "error closing to $self->a_log_path: $!";
+}
 
 sub start_actions {
 }
