@@ -1,4 +1,4 @@
-# $Id: Makefile,v 1.6 2009-02-15 15:16:53 roderick Exp $
+# $Id: Makefile,v 1.7 2012-04-28 20:02:24 roderick Exp $
 
 all:
 
@@ -32,6 +32,5 @@ install: all
 		--exclude cover_db \
 	    $(install_rsync_args) . $(install_dest)
 
-# XXX broken
-#test-install: install_rsync_args = -n
-#test-install: install
+test-install: install_rsync_args = -n
+test-install: install

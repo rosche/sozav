@@ -1,4 +1,4 @@
-# $Id: Util.pm,v 1.11 2009-02-15 15:16:55 roderick Exp $
+# $Id: Util.pm,v 1.12 2012-04-28 20:02:27 roderick Exp $
 
 package Game::Util;
 
@@ -11,7 +11,7 @@ use Scalar::Util qw(looks_like_number);
 
 use vars qw($VERSION @EXPORT @EXPORT_OK);
 
-$VERSION = q$Revision: 1.11 $ =~ /(\d\S+)/ ? $1 : '?';
+$VERSION = q$Revision: 1.12 $ =~ /(\d\S+)/ ? $1 : '?';
 
 BEGIN {
     @EXPORT = qw(
@@ -24,6 +24,7 @@ BEGIN {
 	eval_block
 	knapsack_0_1
 	make_ro_accessor
+	make_ro_accessor_multi
 	make_rw_accessor
 	make_accessor_pkg
 	same_object
@@ -104,9 +105,9 @@ sub debug_var {
 #}
 
 # XXX sub-types handling:  when adding a field to an object, it's
-# important not to class with fields of your ancestors, but it doesn't
+# important not to clash with fields of your ancestors, but it doesn't
 # matter if you clash with your siblings.  Right now all are disjoint,
-# which wasts array space.  Eg it'd be nice to have:
+# which wastes array space.  Eg it'd be nice to have:
 #
 #     object Foo,          fields fa = 0, fb = 1
 #     object Bar @ISA Foo, fields bc = 2, bc = 3
@@ -158,11 +159,14 @@ sub add_array_index {
     push @{ "${pkg}::EXPORT_OK" }, $sub;
 }
 
+# This allows the $itype to already have been defined.
+
 sub add_array_indices {
     @_ >= 2 || badinvo;
     my ($itype, @iname) = @_;
 
-    add_array_index_type $itype;
+    add_array_index_type $itype
+    	if !$Index{$itype};
     add_array_index $itype, $_, scalar caller for @iname;
 }
 
@@ -334,23 +338,28 @@ sub knapsack_0_1 {
 
 sub make_accessor_pkg {
     @_ >= 4 || badinvo;
-    my $pkg = shift;
-    my $rw  = shift;
+    my $pkg  = shift;
+    my $rw   = shift;
+    my $rpi  = shift;	# access $self->[$rpi->[0]][$rpi->[1]]...[$index]
     @_ % 2 && badinvo;
 
+    my @pi = $rpi ? @$rpi : ();
     while (@_) {
 	my ($name, $index) = splice @_, 0, 2;
 	my $sub = $rw
 	    ? sub {
 		@_ == 1 || @_ == 2 || badinvo;
-		my $self = shift;
-		my $old = $self->[$index];
-		$self->[$index] = shift if @_;
+		my $r = shift;
+		$r = $r->[$_] for @pi;
+		my $old = $r->[$index];
+		$r->[$index] = shift if @_;
 		return $old;
 	    }
 	    : sub {
 	    	@_ == 1 || badinvo 1, "$name property is read-only";
-		return $_[0]->[$index];
+		my $r = shift;
+		$r = $r->[$_] for @pi;
+		return $r->[$index];
 	    };
 	no strict 'refs';
 	*{ "${pkg}::${name}" } = $sub;
@@ -358,11 +367,15 @@ sub make_accessor_pkg {
 }
 
 sub make_ro_accessor {
+    return make_accessor_pkg scalar caller, 0, [], @_;
+}
+
+sub make_ro_accessor_multi {
     return make_accessor_pkg scalar caller, 0, @_;
 }
 
 sub make_rw_accessor {
-    return make_accessor_pkg scalar caller, 1, @_;
+    return make_accessor_pkg scalar caller, 1, [], @_;
 }
 
 sub same_referent {

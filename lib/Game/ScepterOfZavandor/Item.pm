@@ -1,4 +1,4 @@
-# $Id: Item.pm,v 1.15 2009-02-15 15:16:57 roderick Exp $
+# $Id: Item.pm,v 1.16 2012-04-28 20:02:27 roderick Exp $
 
 use strict;
 
@@ -110,6 +110,10 @@ sub a_player {
     return $old;
 }
 
+sub data_ix {
+    return ITEM_DATA;
+}
+
 sub data {
     @_ >= 2 || badinvo;
     my $self = shift;
@@ -192,7 +196,7 @@ sub spaceship {
 	or refaddr($a)     <=> refaddr($b)
 }
 
-sub allows_player_to_enchant_gem_type {
+sub allows_player_to_buy_gem_type {
     @_ == 2 || badinvo;
     my $self = shift;
     my $gtype = shift;

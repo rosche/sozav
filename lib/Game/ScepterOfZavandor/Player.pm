@@ -1,4 +1,4 @@
-# $Id: Player.pm,v 1.17 2009-02-15 15:16:57 roderick Exp $
+# $Id: Player.pm,v 1.18 2012-04-28 20:02:27 roderick Exp $
 
 use strict;
 
@@ -25,6 +25,7 @@ use Game::ScepterOfZavandor::Constant qw(
     /^ENERGY_EST_/
     /^GEM_/
     /^KNOW_/
+    /^NOTE_/
     /^OPT_/
     $Base_gem_slots
     $Base_hand_limit
@@ -47,7 +48,7 @@ BEGIN {
 	UI
 	CHAR
 	ITEM
-	ENCHANTED_RUBY
+	BOUGHT_RUBY
 	AUTO_ACTIVATE_GEMS
 	SCORE_AT_TURN_START
 	ADVANCED_KNOWLEDGE_THIS_TURN
@@ -85,7 +86,7 @@ make_ro_accessor (
 
 make_rw_accessor (
     a_char                         => PLAYER_CHAR,
-    a_enchanted_ruby               => PLAYER_ENCHANTED_RUBY,
+    a_bought_ruby                  => PLAYER_BOUGHT_RUBY,
     a_auto_activate_gems           => PLAYER_AUTO_ACTIVATE_GEMS,
     a_advanced_knowledge_this_turn => PLAYER_ADVANCED_KNOWLEDGE_THIS_TURN,
     a_score_at_turn_start          => PLAYER_SCORE_AT_TURN_START,
@@ -106,7 +107,13 @@ sub init {
 
     $self->a_char($char);
     $self->[PLAYER_ITEM] = [];
+}
 
+sub init_items {
+    @_ == 1 || badinvo;
+    my ($self) = @_;
+
+    my $char = $self->a_char;
     $self->add_items(
     	$Character_data[$char][CHAR_DATA_START_ITEMS]->($self));
     for ($self->gems) {
@@ -173,6 +180,7 @@ sub remove_items {
 
     for (@remove_item) {
 	debug "$Character[$self->[PLAYER_CHAR]] remove item $_";
+	# XXX $self->a_game->note_to_players
 	$_->use_up;
     }
 
@@ -322,8 +330,9 @@ sub advance_knowledge {
 	$cost = 0;
     }
 
-    if ($cost > $self->current_energy_liquid) {
-	die "not enough liquid energy (need $cost)\n";
+    my $cle = $self->current_energy_liquid;
+    if ($cost > $cle) {
+	die "not enough liquid energy (need $cost, have $cle)\n";
     }
 
     $self->pay_energy($cost)
@@ -334,8 +343,9 @@ sub advance_knowledge {
     else {
 	$k->advance;
     }
-    $self->a_advanced_knowledge_this_turn(1);
-    $self->a_game->info($self->name, " advanced ", $k->name, " to level ", $k->user_level);
+    $self->a_advanced_knowledge_this_turn(1)
+	if !$free;
+    $self->a_game->note_to_players(NOTE_KNOWLEDGE_ADVANCE, $self, $k, $cost);
 }
 
 sub auctionable_cost_mod {
@@ -364,28 +374,33 @@ sub auto_activate_gems {
     my $first_active = $#gem - $n_slots + 1;
     $first_active = 0 if $first_active < 0;
 
-    my $needed_change = 0;
+    my (@activate, @deactivate);
     for my $i (0..$#gem) {
     	my $g = $gem[$i];
 	if ($i >= $first_active) {
 	    if (!$g->is_active) {
-		$needed_change = 1;
-		$g->activate
-		    if $self->a_auto_activate_gems;
+	    	push @activate, $g;
 	    }
 	}
 	else {
 	    if ($g->is_active) {
-		$needed_change = 1;
-		$g->deactivate
-		    if $self->a_auto_activate_gems;
+	    	push @deactivate, $g;
 	    }
 	}
     }
 
-    if ($needed_change && !$self->a_auto_activate_gems) {
-    	$self->a_ui->out("\n$self: ");
-    	$self->a_ui->out_notice("You aren't using your best gems.\n");
+
+    if (!@activate && !@deactivate) {
+	return;
+    }
+
+    if (!$self->a_auto_activate_gems) {
+    	$self->a_ui->ui_note(NOTE_NOT_USING_BEST_GEMS,
+				\@activate, \@deactivate);
+    }
+    else {
+    	$_->deactivate for @deactivate;
+	$_->activate   for @activate;
     }
 }
 
@@ -401,23 +416,24 @@ sub buy_auctionable {
     	die "you can only own one $auc\n";
     }
 
-    if ($price < (my $cost = $auc->get_min_bid)) {
-	xconfess "$price < $cost";
+    if ($price < (my $cost = $auc->a_data_min_bid)) {
+    	die "bid too low (minimum $cost, bid $price)\n";
     }
 
     my $cost_mod = $self->auctionable_cost_mod($auc);
     my $net = $price + $cost_mod;
     my $cash = $self->current_energy_liquid;
+    # XXX need to be able to sell gems here
+    # XXX implement the Curse of the 9 Sages
     $cash >= $net
-	or die "not enough liquid cash, $cash < $price + $cost_mod\n";
-    # XXX using active gems
+	or die "not enough liquid cash, need $price + $cost_mod, have $cash\n";
 
     $self->pay_energy($net);
     $self->a_game->auctionable_sold($auc);
     $auc->a_player($self);
     $self->add_items($auc, $auc->free_items($self->a_game));
     $auc->bought;
-    $self->a_game->info("$self bought $auc for $net energy");
+    $self->a_game->note_to_players(NOTE_ITEM_GOT, $self, $auc, $net);
     $self->auto_activate_gems;
 }
 
@@ -435,15 +451,14 @@ sub buy_knowledge_chip {
     }
 
     my $cost = $free ? 0 : $kchip->a_cost;
-    if ($cost > $self->current_energy_liquid) {
-	die "not enough liquid energy (need $cost)\n";
+    my $cle = $self->current_energy_liquid;
+    if ($cost > $cle) {
+	die "not enough liquid energy (need $cost, have $cle)\n";
     }
 
     $self->pay_energy($cost)
-	if !$free;
-    $self->a_game->info($self->name, " ",
-	    $free ? "acquired" : "bought",
-	    " knowledge chip ", $kchip->a_cost);
+	if $cost;
+    $self->a_game->note_to_players(NOTE_ITEM_GOT, $self, $kchip, $cost);
     $kchip->bought;
 }
 
@@ -475,36 +490,37 @@ sub current_energy {
     return @e;
 }
 
-sub enchant_gem {
+sub buy_gem {
     @_ == 2 || badinvo;
     my $self = shift;
     my ($gtype) = @_;
 
-    if (!$self->can_enchant_gem_type_right_now($gtype)) {
+    if (!$self->can_buy_gem_type_right_now($gtype)) {
 	# XXY ungrammatical
-	die "not allowed to enchant $Gem[$gtype] right now\n";
+	# XXX not informative -- much nicer to explain why
+	die "not allowed to buy $Gem[$gtype] right now\n";
     }
 
     my $cost = $self->gem_cost($gtype);
     my $cash = $self->current_energy_liquid;
     if ($cost > $cash) {
-    	die "not enough liquid cash ($cost > $cash)\n";
+    	die "not enough liquid cash (need $cost, have $cash)\n";
     }
 
     $self->pay_energy($cost);
 
     my $g = Game::ScepterOfZavandor::Item::Gem->new($self, $gtype);
-    $self->a_game->info("$self enchanted a $g"); # XXX grammar
+    $self->a_game->note_to_players(NOTE_ITEM_GOT, $self, $g, $cost);
     $self->add_items($g);
 
     if ($gtype == GEM_RUBY) {
-	$self->a_enchanted_ruby(1);
+	$self->a_bought_ruby(1);
     }
 
     return $g;
 }
 
-sub can_enchant_gem_backend {
+sub can_buy_gem_backend {
     @_ == 3 || badinvo;
     my $self      = shift;
     my $gtype     = shift;
@@ -524,16 +540,16 @@ sub can_enchant_gem_backend {
 	}
 	if (@g == $limit) {
 	    # XXX message for user
-	    #die "can't enchant another $Gem[$gtype], at limit\n";
+	    #die "can't buy another $Gem[$gtype], at limit\n";
 	    return 0;
 	}
     }
 
-    if (first { $_->allows_player_to_enchant_gem_type($gtype) } $self->items) {
+    if (first { $_->allows_player_to_buy_gem_type($gtype) } $self->items) {
 	return 1;
     }
 
-    # Druids can enchant 1 ruby at knowledge of fire level 3.
+    # Druids can buy 1 ruby at knowledge of fire level 3.
 
     my $allow_level_3_ruby
 	= $self->a_game->option(OPT_ANYBODY_LEVEL_3_RUBY)
@@ -543,33 +559,39 @@ sub can_enchant_gem_backend {
     	    && $allow_level_3_ruby
     	    && grep { $_->ktype_is(KNOW_FIRE) && $_->a_level >= 2 }
 		    $self->knowledge_chips) {
-    	if ($right_now && $self->a_enchanted_ruby) {
+    	if ($right_now && $self->a_bought_ruby) {
 	    # XXX message for user
-	    #die "already enchanted special fire level 3 ruby\n";
+	    #die "already bought special fire level 3 ruby\n";
 	    return 0;
 	}
 	return 1;
     }
 
+    # XXX you don't have to turn a ruby card received from 9 sages to dust
+    # if you have a chalice of fire, or similarly for emerald/spellbook
+    #     http://www.boardgamegeek.com/article/3523554#3523554
+
     return 0;
 }
 
-sub can_enchant_gem_type_right_now {
+sub can_buy_gem_type_right_now {
     @_ == 2 || badinvo;
     my $self = shift;
     my $gtype = shift;
 
-    return $self->can_enchant_gem_backend($gtype, 1);
+    return $self->can_buy_gem_backend($gtype, 1);
 }
 
 # XXX do I have these rules correct for 9 sages?
+# - isn't having a crystale/chalice enough for emerald/ruby card?
+# - what if you could enchant a gem of that type but haven't yet?
 
-sub could_enchant_gem_type_at_some_point {
+sub could_buy_gem_type_at_some_point {
     @_ == 2 || badinvo;
     my $self = shift;
     my $gtype = shift;
 
-    return $self->can_enchant_gem_backend($gtype, 0);
+    return $self->can_buy_gem_backend($gtype, 0);
 }
 
 sub consolidate_dust {
@@ -682,16 +704,24 @@ sub destroy_active_gem {
     @_ == 1 || badinvo;
     my $self = shift;
 
-    # XXX prompt user about which to destroy
-    my @g = sort { $b <=> $a } $self->active_gems;
+    my %seen;
+    my @g = grep { !$seen{$_->a_gem_type}++ } $self->active_gems;
 
+    my $g;
     if (!@g) {
-    	$self->a_game->info($self->name, " doesn't have any active gems to destroy");
+    	$self->a_game->note_to_players(NOTE_INFO, $self->name, " doesn't have any active gems to destroy");
 	return;
     }
+    elsif (@g == 1) {
+	$g = $g[0];
+    }
+    else {
+	$g = $self->a_ui->choose_active_gem_to_destroy;
+	# XXX validate
+    }
 
-    $self->a_game->info($self->name, " destroys $g[0]");
-    $self->remove_items($g[0]);
+    $self->remove_items($g);
+    $self->a_game->note_to_players(NOTE_ITEM_GONE, $self, $g, 0);
 }
 
 # This sub enforces your hand limit.  It tries to let you keep as much
@@ -769,7 +799,12 @@ sub enforce_hand_limit {
     $new_hc == $hl or xconfess "$new_hc != $hl";
 
     if ($tot_discarded_energy) {
-	$self->a_game->info($self->name, " lost $tot_discarded_energy energy to hand limit");
+	# XXX doing this with note_to_players is problematic because it
+	# currently destroys/creates dust redundantly, and the extra messages
+	# would be ugly
+	# XXX might want a special note for this which would show all
+	# the items being lost at once?
+	$self->a_game->note_to_players(NOTE_INFO, $self->name, " lost $tot_discarded_energy energy to hand limit\n");
     }
 }
 
@@ -910,6 +945,42 @@ sub gem_value {
 		    : $gtype_or_ref;
     my $cost = $self->gem_cost($gtype);
     return int($cost / 2);
+}
+
+# Return an array listing the costs to advance the knowledge levels.
+# undef means it can't be advanced right now.
+
+sub knowledge_advancement_costs {
+    @_ == 1 || badinvo;
+    my $self = shift;
+
+    my @k              = (-1) x @Knowledge;
+    my $any_unassigned = 0;
+
+    for ($self->knowledge_chips) {
+    	if ($_->is_unbought) {
+    	    # do nothing
+    	}
+    	elsif (!$_->is_assigned) {
+	    $any_unassigned = 1;
+	}
+	elsif ($_->maxed_out) {
+	    $k[$_->a_type] = undef;
+	}
+	else {
+	    $k[$_->a_type] = $_->next_level_cost;
+	}
+    }
+
+    for (0..$#k) {
+	if (defined $k[$_] && $k[$_] == -1) {
+	    $k[$_] = $any_unassigned
+    	    	    	? $Knowledge_data[$_][KNOW_DATA_LEVEL_COST][0]
+			: undef;
+	}
+    }
+
+    return @k;
 }
 
 sub pay_energy {

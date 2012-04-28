@@ -1,4 +1,4 @@
-# $Id: Game.pm,v 1.15 2009-02-15 15:16:57 roderick Exp $
+# $Id: Game.pm,v 1.16 2012-04-28 20:02:27 roderick Exp $
 
 use strict;
 
@@ -18,6 +18,7 @@ use Game::ScepterOfZavandor::Constant	qw(
     /^DUST_DATA_/
     /^GAME_GEM_DATA/
     /^GEM_/
+    /^NOTE_/
     /^OPT_/
     @Character
     $Concentrated_additional_dust
@@ -42,14 +43,15 @@ BEGIN {
     add_array_indices 'GAME', (
 	'INITIALIZED',
 	'OPTION',
-	'PLAYER',
+	'PLAYER_TABLE_ORDER',
+	'PLAYER_TURN_ORDER',
 	'GEM_DATA',
 	'DUST_DATA',
 	'ARTIFACT_DECK',
 	'ARTIFACTS_ON_AUCTION',
 	'ARTIFACTS_AT_ONCE',
 	'SENTINEL',
-	'TURN_ORDER',
+	'TURN_ORDER_CARD',
 	'TURN_NUM',
     );
 }
@@ -60,7 +62,8 @@ sub new {
     my $self = bless [], $class;
     $self->[GAME_INITIALIZED]          = 0;
     $self->[GAME_OPTION]               = [];
-    $self->[GAME_PLAYER]               = [];
+    $self->[GAME_PLAYER_TABLE_ORDER]   = [];
+    $self->[GAME_PLAYER_TURN_ORDER]    = [];
     $self->[GAME_GEM_DATA]             = [];
     $self->[GAME_DUST_DATA]            = [@Dust_data];
     $self->[GAME_ARTIFACTS_ON_AUCTION] = [];
@@ -101,7 +104,31 @@ sub add_player {
     $player->isa(Game::ScepterOfZavandor::Player::)
 	or xconfess "non-player object ", dstr $player;
 
-    push @{ $self->[GAME_PLAYER] }, $player;
+    push @{ $self->[GAME_PLAYER_TABLE_ORDER] }, $player;
+}
+
+sub new_ui {
+    @_ == 1 || badinvo;
+    my ($self) = @_;
+
+    require Game::ScepterOfZavandor::UI::ReadLine;
+
+    my $ui = Game::ScepterOfZavandor::UI::ReadLine->new($self, *STDIN, *STDOUT);
+    # XXX opens for each player, desirable?
+    $ui->log_open(scalar safe_tmp
+		    dir => "/var/local/zavandor",
+		    mode => 0666,
+		    prefix => "zavandor.");
+    $ui->log_out(scalar(localtime), "\n");
+
+    # XXX not working
+    if (my $peer = getpeername STDIN) {
+	require Socket;
+	my ($port, $iaddr) = Socket::sockaddr_in($peer);
+	$ui->log_out("remote is ", Socket::inet_ntoa($iaddr), ":$port\n");
+    }
+
+    return $ui;
 }
 
 sub option {
@@ -136,10 +163,6 @@ sub init {
     my ($self) = @_;
 
     $self->die_if_initialized;
-
-    $self->info("");
-    $self->info("Active options:");
-    $self->info("  $Option[$_]") for grep { $self->option($_) } 0..$#Option;
 
     my $num_players = $self->num_players;
     debug_var num_players => $num_players;
@@ -230,10 +253,13 @@ sub init_items {
 	= [Game::ScepterOfZavandor::Item::Sentinel->new_deck($self)];
 
     # create turn order markers
+    #
+    # XXX options to use a different set, to give non-standard
+    # discounts/penalties
 
-    $self->[GAME_TURN_ORDER] = [];
+    $self->[GAME_TURN_ORDER_CARD] = [];
     for (0 .. $self->num_players - 1) {
-    	push @{ $self->[GAME_TURN_ORDER] },
+    	push @{ $self->[GAME_TURN_ORDER_CARD] },
 	    Game::ScepterOfZavandor::Item::TurnOrder->new($self, $_);
     }
 }
@@ -254,7 +280,7 @@ sub init_players {
     if ($self->option(OPT_CHOOSE_CHARACTER)) {
 	my @c          = @all_c;
     	my $player_num = 0;
-	for my $player ($self->players) {
+	for my $player ($self->players_in_table_order) {
 	    $player_num++;
 	    @c = @all_c
 		if $self->option(OPT_DUPLICATE_CHARACTERS);
@@ -271,16 +297,27 @@ sub init_players {
     }
     else {
 	my @c = shuffle @all_c;
-	for my $player ($self->players) {
+	for my $player ($self->players_in_table_order) {
 	    @c = shuffle @all_c
 		if $self->option(OPT_DUPLICATE_CHARACTERS);
 	    $player->init(shift @c);
 	}
-	$self->[GAME_PLAYER]
-	    = [sort { $a->a_char <=> $b->a_char } $self->players];
-
     }
-};
+
+    for ($self->players_in_table_order) {
+	$_->init_items;
+    }
+}
+
+sub note_to_players {
+    @_ >= 2 || badinvo;
+    my ($self, @rest) = @_;
+
+    for ($self->players_in_table_order) {
+	$_->a_ui->ui_note(@rest)
+	    unless $_->a_ui->a_suppress_global_messages;
+    }
+}
 
 #------------------------------------------------------------------------------
 
@@ -288,23 +325,26 @@ sub play {
     @_ == 1 || badinvo;
     my ($self) = @_;
 
+    $self->note_to_players(NOTE_GAME_START);
     while (1) {
-    	# phase 1. turn order
-
 	$self->a_turn_num(1 + $self->a_turn_num);
 
-    	my @p = $self->players_in_order;
+    	# phase 1. turn order
+
+    	my @p = $self->generate_player_order;
+	$self->[GAME_PLAYER_TURN_ORDER] = [@p];
 	if ($self->a_turn_num > 1) {
 	    for (@p) {
 		$_->remove_items($_->turn_order_card);
 	    }
 	}
 	for (0..$#p) {
-	    my $to = $self->[GAME_TURN_ORDER][$_];
+	    my $to = $self->[GAME_TURN_ORDER_CARD][$_];
 	    $to->a_player($p[$_]);
 	    $p[$_]->add_items($to);
 	    $p[$_]->a_score_at_turn_start($p[$_]->score);
 	}
+    	$self->note_to_players(NOTE_TURN_START);
 
 	# phase 1. refill artifacts
 
@@ -324,7 +364,9 @@ sub play {
 	# phase 3: player actions
 
 	for (@p) {
+	    $self->note_to_players(NOTE_ACTIONS_START, $_);
 	    $_->actions;
+	    $self->note_to_players(NOTE_ACTIONS_END, $_);
 	}
 
 	# phase 4: check victory conditions
@@ -340,47 +382,88 @@ sub play {
 	    $_->enforce_hand_limit;
 	}
     }
-
-    $self->info("Game over");
-    my $place         = 0;
-    my $nominal_place = 0;
-    my $prev_score    = undef;
-    for my $player ($self->players_in_order) {
-	$nominal_place++;
-    	my $this_score = $player->score;
-	# XXX is there a tie-breaker?
-	$place = (defined $prev_score && $this_score == $prev_score)
-    	    	    	? $place
-			: $nominal_place;
-	$self->info(sprintf "  %s. %3d %s",
-		    $place,
-		    $player->score,
-		    $player->name);
-	for my $item (sort { $a <=> $b } grep { $_->vp } $player->items) {
-	    $self->info(" " x 11, $item);
-	}
-	$prev_score = $this_score;
-    }
+    $self->note_to_players(NOTE_GAME_END);
 }
 
 #------------------------------------------------------------------------------
 
-sub auction_all {
+sub auctionable_items {
     @_ == 1 || badinvo;
     my ($self) = @_;
-    return $self->auction_artifacts, $self->auction_sentinels;
+    return $self->auctionable_artifacts, $self->auctionable_sentinels;
 }
 
-sub auction_artifacts {
+sub auctionable_artifacts {
     @_ == 1 || badinvo;
     my ($self) = @_;
     return @{ $self->[GAME_ARTIFACTS_ON_AUCTION] };
 }
 
-sub auction_sentinels {
+sub auctionable_sentinels {
     @_ == 1 || badinvo;
     my ($self) = @_;
     return @{ $self->[GAME_SENTINEL] };
+}
+
+sub auction_item {
+    @_ == 4 || badinvo;
+    my ($self, $start_player, $auc, $start_bid) = @_;
+
+    my $min = $auc->a_data_min_bid;
+    if ($start_bid < $min) {
+    	die "bid too low (minimum $min, bid $start_bid)\n";
+    }
+
+    $self->note_to_players(NOTE_AUCTION_START, $start_player, $auc, $start_bid);
+
+    my $cur_bid    = $start_bid;
+    my $cur_winner = $start_player;
+
+    my @bidder = $self->players_in_turn_order;
+    my $next_bidder = sub {
+    	push @bidder, shift @bidder;
+    };
+    # rotate @bidder until the current player is at the start
+    {
+    	my $ct = 0;
+	while ($bidder[0] != $cur_winner) {
+	    if ($ct++ > @bidder) {
+		xconfess "start player isn't a bidder";
+	    }
+	    $next_bidder->();
+	}
+    }
+
+  Bidder:
+    $next_bidder->();
+    while (@bidder > 1) {
+	my $bidder = $bidder[0];
+
+	my $new_bid;
+	while (1) {
+	    $new_bid = $bidder->a_ui->solicit_bid($auc, $cur_bid, $cur_winner);
+	    $new_bid ||= 0;
+	    if (!$new_bid || $new_bid > $cur_bid) {
+	    	last;
+	    }
+	    $bidder->a_ui->ui_note(NOTE_INVALID_BID, $auc, $cur_bid, $new_bid);
+	}
+
+	$self->note_to_players(NOTE_AUCTION_BID, $bidder, $auc, $new_bid);
+
+	if (!$new_bid) {
+	    # pass
+	    shift @bidder;
+	}
+	else {
+	    $cur_bid = $new_bid;
+	    $cur_winner = $bidder;
+	    $next_bidder->();
+	}
+    }
+
+    $self->note_to_players(NOTE_AUCTION_WON, $cur_winner, $auc, $cur_bid);
+    $cur_winner->buy_auctionable($auc, $cur_bid);
 }
 
 sub auctionable_sold {
@@ -478,34 +561,60 @@ sub log {
     print "log: ", @_, "\n";
 }
 
-# XXX
-sub info {
-    @_ > 1 || badinvo;
-    my $self = shift;
-
-    ($self->players)[0]->a_ui->info(@_, "\n");
-}
-
-sub players {
+sub players_in_table_order {
     @_ == 1 || badinvo;
     my ($self) = @_;
 
-    return @{ $self->[GAME_PLAYER] };
+    return @{ $self->[GAME_PLAYER_TABLE_ORDER] };
 }
 
-sub players_in_order {
+sub players_in_turn_order {
+    @_ == 1 || badinvo;
+    my ($self) = @_;
+
+    return @{ $self->[GAME_PLAYER_TURN_ORDER] };
+}
+
+# returns list of [place, player object] tuples
+
+sub players_by_rank {
+    @_ == 1 || badinvo;
+    my ($self) = @_;
+
+    my $place         = 0;
+    my $nominal_place = 0;
+    my $prev_score    = undef;
+    my @ret;
+
+    # There's no tie-breaker after score, the official rule is the
+    # tied players have to play another game to decide!
+
+    for my $player (sort { $b->score <=> $a->score } $self->players_in_table_order) {
+	$nominal_place++;
+    	my $this_score = $player->score;
+	$place = (defined $prev_score && $this_score == $prev_score)
+    	    	    	? $place
+			: $nominal_place;
+    	push @ret, [$place, $player];
+	$prev_score = $this_score;
+    }
+
+    return @ret;
+}
+
+sub generate_player_order {
     @_ == 1 || badinvo;
     my ($self) = @_;
 
     # Arbitrary order for players with the same score and score from
     # gems is done by doing an initial shuffle and using a stable sort.
 
-    my @p = shuffle $self->players;
+    my @p = shuffle $self->players_in_table_order;
 
     return map { $p[$_] } sort { 0
     	    or $p[$b]->score           <=> $p[$a]->score
     	    or $p[$b]->score_from_gems <=> $p[$a]->score_from_gems
-    	    or    $b                   <=>    $a
+    	    or    $a                   <=>    $b
     } 0..$#p;
 }
 
@@ -513,7 +622,7 @@ sub num_players {
     @_ == 1 || badinvo;
     my ($self) = @_;
 
-    return scalar $self->players;
+    return scalar $self->players_in_table_order;
 }
 
 
@@ -549,26 +658,8 @@ sub run_game {
     my $num_players = shift;
 
     my $g = Game::ScepterOfZavandor::Game->new;
+    my $ui = $g->new_ui;
 
-    require Game::ScepterOfZavandor::UI::ReadLine;
-    my $new_ui = sub {
-	my $ui = Game::ScepterOfZavandor::UI::ReadLine->new($g, *STDIN, *STDOUT);
-	# XXX opens for each player?
-	$ui->log_open(scalar safe_tmp
-			dir => "/var/local/zavandor",
-	    	    	mode => 0666,
-		        prefix => "zavandor.");
-	$ui->log_out(scalar(localtime), "\n");
-	# XXX not working
-	if (my $peer = getpeername STDIN) {
-	    require Socket;
-	    my ($port, $iaddr) = Socket::sockaddr_in($peer);
-	    $ui->log_out("remote is ", Socket::inet_ntoa($iaddr), ":$port\n");
-	}
-	return $ui;
-    };
-
-    my $ui = $new_ui->();
     $ui->out("The Scepter of Zavandor\n");
     # XXX set up web site
     # XXX add this link to help
@@ -582,7 +673,15 @@ sub run_game {
 
     my @p;
     for (1 .. $num_players) {
-    	my $this_ui = $_ == 1 ? $ui : $new_ui->();
+    	my $this_ui;
+	if ($_ == 1) {
+	    $this_ui = $ui;
+	}
+	else {
+	    $this_ui = $g->new_ui;
+	    $this_ui->a_suppress_global_messages(1);
+	}
+
     	push @p,
 	    Game::ScepterOfZavandor::Player->new($g, $this_ui);
 	$g->add_player($p[-1]);

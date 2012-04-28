@@ -1,13 +1,6 @@
-- $Id: Notes,v 1.10 2009-02-15 15:16:53 roderick Exp $
+- $Id: Notes,v 1.11 2012-04-28 20:02:25 roderick Exp $
 
 - things you should be able to do but can't
-
-    - choose which gem to destroy for a magic mirror or shadow cloak
-      (currently it destroys the most epensive one)
-
-    - choose which knowledge track to advance if you get a free advancement
-      (currently it always uses the most expensive one), and allow choosing
-      owned but unassigned knowledge chips
 
     - explicity choose what to pay with, if you want
 
@@ -15,12 +8,17 @@
 
     - you can sell gems, increase knowledge of gems, then buy gems, but
       you shouldn't be able to
+	- Z-Man rules don't say anything about this limitation
     - you can't combine purchases to prevent losing a dust
+    	- per the FAQ this can include an item bought at auction, you
+    	  just have to pay before starting a new auction
     - you can auction a magic mirror or shadow cloak even if you have no
       active gems
 
 - knapsack problems
 
+    - pick gems to sell (inactive +/- active) when the important thing
+      is hand limit
     - make dust (due to lack of 1 dust)
     	- cost minimized
 	- value <= and maximized
@@ -40,13 +38,30 @@
 
 - before release
 
+    - Z-Man rules use "buy" instead of "enchant", go through and change
+      my nomenclature, and look for similar changes in the rules
+    - rename from plain "zavandor" due to "Mines of Zavandor"
+    - Z-Man rules + 9 Sages
+    	- you can look at the cards as soon as you get them?
+	- you turn in cards for dust immediately, so (eg) if you got
+	  emerald cards and then bought a spellbook you'd be stuck with
+	  dust
+    - you don't have to turn a ruby card received from 9 sages to dust
+      if you have a chalice of fire, or similarly for emerald/spellbook
+    - how should cards drawo for the fairy's 2 sapphire 9 sages cards be
+      affected by "less random start" option?
     - label toad/raven artifacts as such in their descriptions
     - 1-player puzzle mode, need some sort of game timer.
     - telnet access
+    	- investigate shellinabox
 	- telnet url can contain window size hint?
 	- telnet works from Firefox but with prompt
 	- telnet doesn't work from IE
 	- other solutions
+	    - termlib
+		- http://www.masswerk.at/termlib/
+		- might work without any server-side so check this one
+		  out
 	    - ajaxterm
 	    	- needs server side
 		- trying this one
@@ -57,8 +72,6 @@
 	    	- needs server side
 	    - webtty
 	    	- needs server side
-	    - termlib
-		- http://www.masswerk.at/termlib/
 	    - webterm (Java)
 	    	http://awacs.dhs.org/software/webterm/Documentation/
 	    - jcterm (Java, SSH)
@@ -66,57 +79,42 @@
     - web page
     - knapsack problems (paying for item and discarding when over limit)
     - combining purchases to avoid making dust
-    - can't sell gems/advance knowledge of gems/buy gems
     - logging
     	- everything read/written
 	- specially formatted logfile
     - cheesy undo via Storable?
 
 - todo
+    - distinction between player name and character name
     - option for which turn order cards to use
     - undo
     - show things you can afford to do
     - search for die/croak, deal more gracefully with some of them
     - many assertion-type tests
-
-- rules to remember
-
-    - faq says
-	- The phases 3a, 3b and 3c may be done in any order, although you may
-	  NOT split any of the phases, like selling
-	  gems (3a), increase gems knowledge (3b) and then buy gems (3a again).
-      but it also earlier says
-    - player 1 penalty applies if anybody has 10 points (eg another
-      player won an auction on player 1's turn and player 1 goes again)?
-      It says this in rules 2.0.  It would also apply to poisitions 5
-      and 6, but position 2's penalty only applies if position 2 has 10
-      points.
+    - have unbought sentinels show you the bonus points for each player
+    - problems with selling gems
+	- selling a gem reports via ui_note that it was deactivated, but
+	  not sold
+	- selling an inactive gem doesn't work?
+	- don't auto-sell gems when auto-activate-gems is disabled?
+	- don't auto-sell a gem of type X when buying a gem of type X
+	    - happened when I was switching from diamonds to opals, I
+	      deactivated a bunch of diamonds and started buying opals,
+	      it would sell an opal then buy an opal
 
 - questions
-    - 9 sages -- what if you can make the gem (spellbook for emerald,
-      level 3 fire druid for ruby) but haven't?
     - are gems limited?
     - is dust limited?
-    - can't hand limit go over 13 if you have multiple crystal balls?
     - what happens if you run out of cards?
-
+    - can't hand limit go over 13 if you have multiple crystal balls?
+    - should you be able to decline a free knowledge advancement?
 
 - user interface
 
-    - cbreak interface
-    - network interface
-    	- inetd version, just like stdio version
-	- standard runner with -M...Game -e ...Game->run or such
-    	- prompt about number of players, options, character selection
-    - y/n/Y/N questions (Y == y and do this from now on)
-    - list of options (enchant gem, auction, disactivate gems, etc)
-    	- some with sublist of options (which type to enchant, what to
-    	  auction, what to disactivate)
-    - numeric (auction)
-    - informational message
-    	- but to display things graphically you'll need this to be
-    	  non-textual as well
-    - error from something you tried to do
+    - in-game chatting
+    - lobby, with chatting
+    - async games with notification
+    - AJAX interface
 
 - variations to implement
 

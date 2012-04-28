@@ -1,4 +1,4 @@
-# $Id: Constant.pm,v 1.18 2009-02-15 15:16:56 roderick Exp $
+# $Id: Constant.pm,v 1.19 2012-04-28 20:02:27 roderick Exp $
 
 use strict;
 
@@ -12,7 +12,7 @@ use RS::Handy		qw(badinvo data_dump dstr xcroak);
 
 use vars qw($VERSION @EXPORT @EXPORT_OK);
 BEGIN {
-    $VERSION = q$Revision: 1.18 $ =~ /(\d\S+)/ ? $1 : '?';
+    $VERSION = q$Revision: 1.19 $ =~ /(\d\S+)/ ? $1 : '?';
     @EXPORT_OK = qw(
 	$Base_gem_slots
 	$Base_hand_limit
@@ -46,6 +46,8 @@ BEGIN {
 	@Knowledge_data
 	$Knowledge_9sages_card_count
 	$Knowledge_top_vp
+	@Note
+	%Note
 	@Option
 	%Option
 	@Sentinel
@@ -61,6 +63,42 @@ use subs grep { /^[a-z]/    } @EXPORT, @EXPORT_OK;
 use vars grep { /^[\$\@\%]/ } @EXPORT, @EXPORT_OK;
 
 BEGIN {
+    @Note = (
+    	# XXX drop this
+    	"info",
+
+    	# notes from game rather than a player, XXX use a different
+    	# namespace for these?
+	"game_end",		# no args
+	"game_start",		# no args
+	"turn_start",		# no args
+
+	"actions_end",		# player
+	"actions_start",	# player
+	"auction_bid",		# player, item, amount bid or 0 for pass
+	"auction_start",	# player, item, amount bid
+	"auction_won",		# player, item, amount spent
+	"gem_activate",		# player, gem
+	"gem_deactivate",	# player, gem
+	"knowledge_advance",	# player, chip, cost
+
+	# XXX join all gaining and losing of items into a single note type?
+	"item_got",		# player, item, cost
+    	"item_gone",		# player, item, amount received
+	#"energy_discard",	# player, item(s) (due to hand limit)
+	#"energy_gain",		# player, item(s)
+	#"gem_buy",		# player, gem, cost
+	#"gem_destroy",		# player, gem
+	#"gem_sell",		# player, gem, amount
+	#"knowledge_buy",	# player, chip, cost
+
+    	# sent to single player
+	"not_using_best_gems",	# [gems to activate], [gems to deactivate]
+	"invalid_bid",		# auc, current bid, amount bid
+    );
+    %Note = map { $Note[$_] => $_ } 0..$#Note;
+    add_array_indices 'NOTE', @Note;
+
     @Character = qw(witch elf druid fairy mage kobold);
     %Character = map { $Character[$_] => $_ } 0..$#Character;
     add_array_indices 'CHAR', @Character;

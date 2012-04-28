@@ -1,4 +1,4 @@
-# $Id: ReadLine.pm,v 1.9 2009-02-15 15:17:00 roderick Exp $
+# $Id: ReadLine.pm,v 1.10 2012-04-28 20:02:27 roderick Exp $
 
 use strict;
 
@@ -7,12 +7,12 @@ package Game::ScepterOfZavandor::UI::ReadLine;
 use base qw(Game::ScepterOfZavandor::UI::Stdio);
 
 use Term::ReadLine	();
-use Game::Util 		qw(add_array_index debug);
+use Game::Util 		qw(add_array_indices debug);
 use RS::Handy		qw(badinvo data_dump define dstr xcroak);
 use Symbol		qw(qualify_to_ref);
 
 BEGIN {
-    add_array_index 'UI', $_ for map { "READLINE_$_" } qw(OBJ);
+    add_array_indices 'UI', map { "READLINE_$_" } qw(OBJ);
 }
 
 my $Readline;

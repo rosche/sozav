@@ -1,4 +1,4 @@
-# $Id: TurnOrder.pm,v 1.6 2008-08-08 11:31:37 roderick Exp $
+# $Id: TurnOrder.pm,v 1.7 2012-04-28 20:02:27 roderick Exp $
 
 use strict;
 
@@ -6,7 +6,7 @@ package Game::ScepterOfZavandor::Item::TurnOrder;
 
 use base qw(Game::ScepterOfZavandor::Item);
 
-use Game::Util	qw($Debug add_array_index debug make_ro_accessor make_rw_accessor);
+use Game::Util	qw($Debug add_array_indices debug make_ro_accessor make_rw_accessor);
 use RS::Handy	qw(badinvo data_dump dstr xconfess);
 use Scalar::Util qw(looks_like_number weaken);
 
@@ -52,7 +52,7 @@ sub is_active {
 
     my $any_vp_ge = $self->data(TURN_DATA_ACTIVE_IF_ANY_VP_GE);
     if ($any_vp_ge && grep { $_->a_score_at_turn_start >= $any_vp_ge }
-			$self->a_game->players) {
+			$self->a_game->players_in_table_order) {
 	return 1;
     }
 

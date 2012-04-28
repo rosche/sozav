@@ -1,4 +1,4 @@
-# $Id: Deck.pm,v 1.8 2008-08-08 11:31:34 roderick Exp $
+# $Id: Deck.pm,v 1.9 2012-04-28 20:02:27 roderick Exp $
 
 use strict;
 
@@ -6,7 +6,7 @@ package Game::ScepterOfZavandor::Deck;
 
 use base qw(Game::Util::Deck);
 
-use Game::Util	qw($Debug add_array_index debug make_ro_accessor);
+use Game::Util	qw($Debug add_array_indices debug make_ro_accessor);
 use List::Util	qw(sum);
 use RS::Handy	qw(badinvo data_dump dstr xconfess);
 
@@ -21,8 +21,8 @@ use Game::ScepterOfZavandor::Constant qw(
 use Game::ScepterOfZavandor::Item::Energy ();
 
 BEGIN {
-    add_array_index 'DECK', 'GAME';
-    add_array_index 'DECK', 'GTYPE';
+    add_array_indices 'DECK', 'GAME';
+    add_array_indices 'DECK', 'GTYPE';
 }
 
 sub new {

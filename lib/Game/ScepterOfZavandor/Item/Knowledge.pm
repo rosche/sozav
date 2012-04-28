@@ -1,4 +1,4 @@
-# $Id: Knowledge.pm,v 1.10 2009-02-15 15:16:59 roderick Exp $
+# $Id: Knowledge.pm,v 1.11 2012-04-28 20:02:27 roderick Exp $
 
 use strict;
 
@@ -6,7 +6,7 @@ package Game::ScepterOfZavandor::Item::Knowledge;
 
 use base qw(Game::ScepterOfZavandor::Item);
 
-use Game::Util	qw($Debug add_array_index debug make_ro_accessor make_rw_accessor);
+use Game::Util	qw($Debug add_array_indices debug make_ro_accessor make_rw_accessor);
 use RS::Handy	qw(badinvo data_dump dstr xconfess);
 use Scalar::Util qw(looks_like_number weaken);
 
@@ -23,7 +23,7 @@ use Game::ScepterOfZavandor::Constant qw(
 );
 
 BEGIN {
-    add_array_index 'ITEM', $_ for map { "KNOW_$_" } (
+    add_array_indices 'ITEM', map { "KNOW_$_" } (
 	'COST',		# > 0 -> unbought, = 0 -> bought, possibly unallocated
 	'TYPE',		# undef -> unassigned
 	'LEVEL',	# 0-3
@@ -60,7 +60,7 @@ sub set_type {
 
     for ($self->a_player->knowledge_chips) {
 	if ($_->ktype_is($ktype)) {
-	    die "player already has $_";
+	    die "player already has $_\n";
 	}
     }
 
@@ -114,7 +114,7 @@ sub advance {
     my $max_level = $#{ $self->data(KNOW_DATA_LEVEL_COST) };
 
     !$self->maxed_out
-    	or die "already advanced to the top for $self";
+    	or die "already advanced to the top for $self\n";
 
     my $new_level = $self->a_level + 1;
     debug "$self advance to level raw $new_level";
@@ -134,7 +134,7 @@ sub advance {
     }
 }
 
-sub allows_player_to_enchant_gem_type {
+sub allows_player_to_buy_gem_type {
     @_ == 2 || badinvo;
     my $self  = shift;
     my $gtype = shift;
@@ -193,8 +193,7 @@ sub is_advancable {
     @_ == 1 || badinvo;
     my $self = shift;
 
-    # XXX include bought but unassigned chips?
-    return $self->is_assigned && !$self->maxed_out;
+    return $self->is_bought && !$self->maxed_out;
 }
 
 sub is_assigned {
@@ -257,7 +256,7 @@ sub next_level_cost {
     my $self = shift;
 
     !$self->maxed_out
-    	or die "already advanced to the top for $self";
+    	or die "already advanced to the top for $self\n";
 
     return $self->data(KNOW_DATA_LEVEL_COST)->[1+$self->a_level];
 }
@@ -276,7 +275,10 @@ sub produce_energy {
 	my $val = 0;
 	for (@card) {
 	    my $keep
-		= $self->a_player->could_enchant_gem_type_at_some_point(
+		# XXX if you have an artifact which produces this gem type
+		# you should be able to keep the card -- if you acquire
+		# one this turn I think you get to keep the cards then too
+		= $self->a_player->could_buy_gem_type_at_some_point(
 					$_->a_deck->a_gem_type)
 			|| !$self->a_game->option(OPT_9_SAGES_DUST);
 	    debug "9 sages keep $keep $_";

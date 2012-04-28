@@ -1,4 +1,4 @@
-# $Id: Artifact.pm,v 1.11 2008-08-08 11:31:36 roderick Exp $
+# $Id: Artifact.pm,v 1.12 2012-04-28 20:02:27 roderick Exp $
 
 use strict;
 
@@ -6,12 +6,13 @@ package Game::ScepterOfZavandor::Item::Artifact;
 
 use base qw(Game::ScepterOfZavandor::Item::Auctionable);
 
-use Game::Util	qw($Debug add_array_index debug make_ro_accessor);
+use Game::Util	qw($Debug add_array_indices debug make_ro_accessor);
 use RS::Handy	qw(badinvo data_dump dstr shuffle xcroak);
 
 use Game::ScepterOfZavandor::Constant qw(
     /^ARTI_/
     /^ITEM_/
+    /^NOTE_/
     /^OPT_/
     @Artifact
     @Artifact_data
@@ -70,7 +71,7 @@ sub as_string_fields {
     $add_x->(ARTI_DATA_HAND_LIMIT,        "hand limit");
 
     if (defined(my $n = $self->data(ARTI_DATA_CAN_BUY_GEM))) {
-    	$add->("enchant=$Gem[$n]");
+    	$add->("buy=$Gem[$n]");
     }
 
     if (defined(my $n = $self->data(ARTI_DATA_FREE_GEM))) {
@@ -120,7 +121,7 @@ sub new_deck {
 
 #------------------------------------------------------------------------------
 
-sub allows_player_to_enchant_gem_type {
+sub allows_player_to_buy_gem_type {
     @_ == 2 || badinvo;
     my $self = shift;
     my $want_gtype = shift;
@@ -134,7 +135,7 @@ sub bought {
     my $self = shift;
 
     for (1..$self->data(ARTI_DATA_DESTROY_GEM)) {
-    	for my $p ($self->a_game->players) {
+    	for my $p ($self->a_game->players_in_table_order) {
 	    next if $p == $self->a_player;
 	    $p->destroy_active_gem;
 	}
@@ -147,16 +148,15 @@ sub bought {
     }
 
     for (1..$self->data(ARTI_DATA_ADVANCE_KNOWLEDGE)) {
-	# XXX let user advance an unassigned chip
     	# XXX let user not advance if desired?
-	my @k = $self->a_player->knowledge_chips_advancable;
-	if (!@k) {
-	    $self->a_game->info($self->a_player, " lost knowledge advance, no track to advance");
+    	my $ktype = $self->a_player->a_ui->choose_knowledge_type_to_advance;
+	if (!defined $ktype) {
+	    $self->a_game->note_to_players(NOTE_INFO,
+			    $self->a_player,
+			    " lost knowledge advance, no track to advance\n");
 	}
 	else {
-	    # XXX ask user which to advance
-	    @k = sort { $a->next_level_cost <=> $b->next_level_cost } @k;
-	    $self->a_player->advance_knowledge($k[-1]->a_type, 1);
+	    $self->a_player->advance_knowledge($ktype, 1);
 	}
     }
 }

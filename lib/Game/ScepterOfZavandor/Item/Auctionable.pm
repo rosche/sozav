@@ -1,4 +1,4 @@
-# $Id: Auctionable.pm,v 1.10 2008-08-11 23:53:46 roderick Exp $
+# $Id: Auctionable.pm,v 1.11 2012-04-28 20:02:27 roderick Exp $
 
 use strict;
 
@@ -11,7 +11,8 @@ use overload (
 );
 
 use Carp	qw(confess);
-use Game::Util	qw(add_array_index debug make_ro_accessor make_rw_accessor);
+use Game::Util	qw(add_array_indices debug
+		    make_ro_accessor make_ro_accessor_multi make_rw_accessor);
 use RS::Handy	qw(badinvo data_dump dstr xconfess);
 
 use Game::ScepterOfZavandor::Constant qw(
@@ -23,7 +24,7 @@ use Game::ScepterOfZavandor::Constant qw(
 );
 
 BEGIN {
-    add_array_index 'ITEM', $_ for map { "AUC_$_" } qw(TYPE);
+    add_array_indices 'ITEM', map { "AUC_$_" } qw(TYPE);
 }
 
 # function
@@ -63,27 +64,43 @@ sub new {
 }
 
 make_ro_accessor (
-    a_auc_type => ITEM_AUC_TYPE,
+    a_auc_type	=> ITEM_AUC_TYPE,
 );
 
+make_ro_accessor_multi [Game::ScepterOfZavandor::Item->data_ix], (
+    a_data_name		=> AUC_DATA_NAME,
+    a_data_min_bid	=> AUC_DATA_MIN_BID,
+);
+
+# XXX shouldn't these use make_ro_accessor
 # XXX do this generically, use these instead of ->data
-for my $i (0..$#Auctionable_data_field) {
-    no strict 'refs';
-    *{ "get_" . lc $Auctionable_data_field[$i] } = sub {
-	@_ == 1 || badinvo;
-	return $_[0]->data($i);
-    }
-}
+#for my $i (0..$#Auctionable_data_field) {
+#    no strict 'refs';
+#    *{ "get_" . lc $Auctionable_data_field[$i] } = sub {
+#	@_ == 1 || badinvo;
+#	return $_[0]->data($i);
+#    }
+#}
 
 sub as_string_fields {
     @_ || badinvo;
     my $self = shift;
     my @r = $self->SUPER::as_string_fields(@_);
+
     # XXX shorter field for sentinels to keep it under 80 cols?
     unshift @r,
-	sprintf "%-21s", $self->data(AUC_DATA_NAME);
-    push @r,
-	"min=" . $self->get_min_bid;
+	sprintf "%-21s", $self->a_data_name;
+
+    if (!$self->a_player) {
+	push @r,
+	    "min=" . $self->a_data_min_bid;
+	for my $p ($self->a_game->players_in_table_order) {
+	    if (my $cost_mod = $p->auctionable_cost_mod($self)) {
+		push @r, "$p:$cost_mod";
+	    }
+	}
+    }
+
     return @r;
 }
 

@@ -1,4 +1,4 @@
-# $Id: Sentinel.pm,v 1.9 2008-08-11 23:53:47 roderick Exp $
+# $Id: Sentinel.pm,v 1.10 2012-04-28 20:02:27 roderick Exp $
 
 use strict;
 
@@ -6,7 +6,7 @@ package Game::ScepterOfZavandor::Item::Sentinel;
 
 use base qw(Game::ScepterOfZavandor::Item::Auctionable);
 
-use Game::Util	qw(add_array_index debug make_ro_accessor);
+use Game::Util	qw(add_array_indices debug make_ro_accessor);
 use RS::Handy	qw(badinvo data_dump dstr shuffle xconfess);
 
 use Game::ScepterOfZavandor::Constant qw(
@@ -44,6 +44,14 @@ sub as_string_fields {
     if (my $max = $self->data(SENT_DATA_MAX_BONUS_VP)) {
     	push @r, "(max bonus $max)";
     }
+
+    my $owner = $self->a_player;
+    for my $p ($owner ? ($owner) : $self->a_game->players_in_table_order) {
+    	my $b = $self->vp_extra_for_player($p)
+	    or next;
+	push @r, "$p:$b";
+    }
+
     return @r;
 }
 
@@ -60,17 +68,13 @@ sub new_deck {
     return @a;
 }
 
-sub vp_extra {
-    @_ == 1 || badinvo;
+sub vp_extra_for_player {
+    @_ == 2 || badinvo;
     my $self = shift;
-
-    if (!$self->a_player) {
-	return 0;
-    }
+    my $p    = shift;
 
     my $auc_type  = $self->a_auc_type;
     my $ct        = $self->a_auc_type;
-    my $p         = $self->a_player;
 
     if (0) {
 
@@ -116,6 +120,17 @@ sub vp_extra {
     }
 
     return $bvp;
+}
+
+sub vp_extra {
+    @_ == 1 || badinvo;
+    my $self = shift;
+
+    if (!$self->a_player) {
+	return 0;
+    }
+
+    return $self->vp_extra_for_player($self->a_player);
 }
 
 1

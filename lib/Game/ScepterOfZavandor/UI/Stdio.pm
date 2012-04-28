@@ -1,4 +1,6 @@
-# $Id: Stdio.pm,v 1.18 2009-02-15 15:17:01 roderick Exp $
+# $Id: Stdio.pm,v 1.19 2012-04-28 20:02:27 roderick Exp $
+#
+# XXX some of the code here should likely be shared with non-Stdio UIs.
 
 use strict;
 
@@ -6,7 +8,7 @@ package Game::ScepterOfZavandor::UI::Stdio;
 
 use base qw(Game::ScepterOfZavandor::UI);
 
-use Game::Util 		qw(add_array_index add_array_indices
+use Game::Util 		qw(add_array_indices add_array_indices
 			    debug eval_block valid_ix_plus_1);
 use List::Util		qw(first);
 use List::MoreUtils	qw(natatime);
@@ -39,7 +41,7 @@ our %Action_abbrev;
 our @Action_group;
 
 BEGIN {
-    add_array_index 'UI', $_ for map { "STDIO_$_" } qw(IN_FH OUT_FH);
+    add_array_indices 'UI', map { "STDIO_$_" } qw(IN_FH OUT_FH);
 
     add_array_indices 'ACTION', qw(
 	ABBREV
@@ -182,11 +184,30 @@ sub start_actions {
     $player->auto_activate_gems;
 }
 
+sub show_knowledge_advancement_costs {
+    @_ == 1 || badinvo;
+    my $self = shift;
+
+    my @c = $self->a_player->knowledge_advancement_costs;
+    my @s = map { sprintf "%2d %s",
+		    $c[$_], $Knowledge_data[$_][KNOW_DATA_NAME] }
+		grep { defined $c[$_] } 0..$#c;
+    my $label = "Knowledge advancement:";
+    for (@s) {
+	$self->out($label, " $_\n");
+	$label = ' ' x length $label;
+    }
+}
+
 sub one_action {
     @_ == 1 || badinvo;
     my $self = shift;
 
     $self->status_short;
+
+    if (!$self->a_player->a_advanced_knowledge_this_turn) {
+    	$self->show_knowledge_advancement_costs;
+    }
 
     my $s = $self->in;
     return unless defined $s && $s ne '';
@@ -227,13 +248,11 @@ sub status_short {
 
     $self->out("Turn ", $self->a_game->a_turn_num,
 	       ", on auction:\n");
-    if (my @a = grep { !$_->is_sentinel } $self->a_game->auction_all) {
+    if (my @a = $self->a_game->auctionable_artifacts) {
 	for (0..$#a) {
 	    my $a = $a[$_];
 	    my $n = $_ + 1;
-	    my $mod = $self->a_player->auctionable_cost_mod($a);
-	    $self->out(sprintf "${Indent}%2d %s%s\n", $n, $a,
-	    	    	$mod == 0 ? "" : sprintf " (%+d)", $mod);
+	    $self->out(sprintf "${Indent}%2d %s\n", $n, $a);
 	}
     }
     else {
@@ -246,7 +265,7 @@ sub status_short {
     }
 
     $self->out(sprintf "%-72s %s\n", "Player status:", $knowledge_title);
-    for my $p ($self->a_game->players) {
+    for my $p ($self->a_game->players_in_table_order) {
     	my $knowledge = '';
 	for my $ktype (0..$#Knowledge) {
 	    my $k = first { $_->ktype_is($ktype) } $p->knowledge_chips;
@@ -339,7 +358,7 @@ add_action (
     ACTION_GROUP_GEM,
     ["gem-name"],
     [
-	"- activate an enchanted (but inactive) gem from your pentagon",
+	"- activate an inactive gem from your pentagon",
 	"- you don't ordinarily have to do this, it's only necessary",
     	"  if you've used the deactivate-gem command",
     ],
@@ -364,7 +383,7 @@ sub action_activate_gem {
 
 add_action (
     'advance-knowledge',
-    'a',
+    'k',
     ACTION_GROUP_KNOWLEDGE,
     ["[knowledge-track]"],
     [
@@ -380,14 +399,10 @@ sub action_advance_knowledge {
 
     my $ktype;
     if (!defined $kname_or_type) {
-	my @k = $self->a_player->knowledge_chips_advancable;
-	if (@k == 0) {
+    	$ktype = $self->choose_knowledge_type_to_advance;
+	if (!defined $ktype) {
 	    die "no advancable knowledge chips\n";
 	}
-	elsif (@k > 1) {
-	    die "multiple advancable knowledge chips\n";
-	}
-	$ktype = $k[0]->a_type;
     }
     else {
 	$ktype = $Knowledge{$kname_or_type};
@@ -424,37 +439,36 @@ sub action_auto_activate_gems {
 }
 
 add_action (
-    'buy-auctionable',
-    "b",
+    'auction',
+    "a",
     ACTION_GROUP_AUCTION,
-    ["item-number", "[price]"],
+    ["item-number", "[starting-bid]"],
     [
-	"- buy the given item (hold the actual auction in your head)",
+	"- start an auction for the given item",
 	"- if the price isn't given the minimum bid is used",
 	"- the item-number can be either an artifact or a sentinel",
     ],
 );
-
-sub action_buy_auctionable {
+sub action_auction {
     @_ == 2 || @_ == 3 || badinvo;
-    my $self  = shift;
-    my $aix   = shift;
-    my $price = shift;
+    my $self      = shift;
+    my $aix       = shift;
+    my $start_bid = shift;
 
-    my @a = $self->a_game->auction_all;
+    my @a = $self->a_game->auctionable_items;
     $aix >= 1 && $aix <= @a
     	or die "invalid auction index ", dstr $aix, "\n";
-
     my $auc = $a[$aix - 1];
-    $price = $auc->get_min_bid
-    	if !defined $price;
-    $self->a_player->buy_auctionable($auc, $price);
+    $start_bid = $auc->a_data_min_bid
+    	if !defined $start_bid;
+
+    $self->a_game->auction_item($self->a_player, $auc, $start_bid);
     return 1;
 }
 
 add_action (
     'buy-knowledge-chip',
-    "k",
+    "c",
     ACTION_GROUP_KNOWLEDGE,
     ["[cost]"],
     [
@@ -630,7 +644,7 @@ sub _action_help_backend {
     if ($self->can_underline && !$brief) {
 	$self->out("\n");
 	$self->out("${i}You can use abbreviations which are noted ", $self->underline("like this"), ".\n");
-	$self->out(qq(${i}Eg, "e o" will enchant an opal.\n));
+	$self->out(qq(${i}Eg, "b o" will buy an opal.\n));
     }
 
 
@@ -705,8 +719,8 @@ sub action_items {
     # XXX option for anybody
     # XXX option disabled for druid
     if ($player->a_char == CHAR_DRUID) {
-	$self->out_char(sprintf "%s enchanted a ruby\n",
-			    $player->a_enchanted_ruby ? "has" : "has not");
+	$self->out_char(sprintf "%s bought a ruby\n",
+			    $player->a_bought_ruby ? "has" : "has not");
     }
     $self->out_char("items:\n");
     for (sort { $a <=> $b } $player->items) {
@@ -716,16 +730,16 @@ sub action_items {
 }
 
 add_action (
-    'enchant-gem',
-    "e",
+    'buy-gem',
+    "b",
     ACTION_GROUP_GEM,
     ["gem-type"],
     [
-	"- enchant (buy) a gem",
+	"- buy a gem",
     ],
 );
 
-sub action_enchant_gem {
+sub action_buy_gem {
     @_ == 2 || badinvo;
     my $self = shift;
     my $gname = shift;
@@ -735,7 +749,7 @@ sub action_enchant_gem {
     	die "invalid gem name ", dstr $gname, "\n";
     }
 
-    $self->a_player->enchant_gem($gtype)
+    $self->a_player->buy_gem($gtype)
 	or die "didn't get a gem back\n";
     $self->a_player->auto_activate_gems;
 
@@ -803,7 +817,7 @@ sub action_sentinels {
 
     $self->out("Sentinels available for auction:\n");
 
-    my @a = $player->a_game->auction_all;
+    my @a = $player->a_game->auctionable_items;
     my $s_available = 0;
 
     for (0..$#a) {
@@ -811,9 +825,7 @@ sub action_sentinels {
 	next unless $a->is_sentinel;
     	$s_available++;
 	my $n = $_ + 1;
-	my $mod = $player->auctionable_cost_mod($a);
-	$self->out(sprintf "${Indent}%2d %s%s\n", $n, $a,
-		    $mod == 0 ? "" : sprintf " (%+d)", $mod);
+	$self->out(sprintf "${Indent}%2d %s\n", $n, $a);
     }
     if (!$s_available) {
 	$self->out("${Indent}none!\n");
@@ -825,6 +837,24 @@ sub action_sentinels {
     $self->out($s_purchased, " sentinel", plural($s_purchased),
     	    	" have been purchased ($s_to_go more to end the game)\n");
 
+    return 1;
+}
+
+add_action (
+    'test',
+    undef,
+    ACTION_GROUP_OTHER,
+    [],
+    [
+	"- ignore, used during development",
+    ],
+);
+
+sub action_test {
+    @_ == 1 || badinvo;
+    my $self = shift;
+
+    $self->a_player->destroy_active_gem;
     return 1;
 }
 

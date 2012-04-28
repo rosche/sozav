@@ -1,4 +1,4 @@
-# $Id: Test.pm,v 1.1 2009-02-15 15:20:07 roderick Exp $
+# $Id: Test.pm,v 1.2 2012-04-28 20:02:27 roderick Exp $
 
 use strict;
 
@@ -6,11 +6,11 @@ package Game::ScepterOfZavandor::UI::Test;
 
 use base qw(Game::ScepterOfZavandor::UI);
 
-use Game::Util	qw(add_array_index debug make_rw_accessor);
+use Game::Util	qw(add_array_indices debug make_rw_accessor);
 use RS::Handy	qw(xdie);
 
 BEGIN {
-    add_array_index 'UI', $_ for map { "TEST_$_" } qw(WANT_CHAR);
+    add_array_indices 'UI', map { "TEST_$_" } qw(WANT_CHAR);
 }
 
 make_rw_accessor (

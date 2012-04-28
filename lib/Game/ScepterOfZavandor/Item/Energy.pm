@@ -1,4 +1,4 @@
-# $Id: Energy.pm,v 1.11 2009-02-15 15:16:59 roderick Exp $
+# $Id: Energy.pm,v 1.12 2012-04-28 20:02:27 roderick Exp $
 
 use strict;
 
@@ -8,14 +8,14 @@ package Game::ScepterOfZavandor::Item::Energy;
 
 use base qw(Game::ScepterOfZavandor::Item);
 
-use Game::Util		qw(add_array_index debug make_ro_accessor);
+use Game::Util		qw(add_array_indices debug make_ro_accessor);
 use RS::Handy		qw(badinvo data_dump dstr xconfess);
 
 #use Game::ScepterOfZavandor::Constant qw(
 #);
 
 BEGIN {
-    add_array_index 'ITEM', $_ for map { "ENERGY_$_" } qw(VALUE);
+    add_array_indices 'ITEM', map { "ENERGY_$_" } qw(VALUE);
 
     # XXX min, average, max possible values for this type of thing
     # (differs for cards), use to show min, average, max energy a
@@ -86,7 +86,7 @@ package Game::ScepterOfZavandor::Item::Energy::Card;
 
 use base qw(Game::ScepterOfZavandor::Item::Energy);
 
-use Game::Util		qw(add_array_index debug make_ro_accessor);
+use Game::Util		qw(add_array_indices debug make_ro_accessor);
 use RS::Handy		qw(badinvo data_dump dstr xconfess);
 use Scalar::Util	qw(weaken);
 
@@ -96,7 +96,7 @@ use Game::ScepterOfZavandor::Constant qw(
 );
 
 BEGIN {
-    add_array_index 'ITEM', $_ for map { "ENERGY_CARD_$_" } qw(DECK);
+    add_array_indices 'ITEM', map { "ENERGY_CARD_$_" } qw(DECK);
 }
 
 sub new {

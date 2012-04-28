@@ -1,4 +1,4 @@
-# $Id: Gem.pm,v 1.14 2009-02-15 15:16:59 roderick Exp $
+# $Id: Gem.pm,v 1.15 2012-04-28 20:02:27 roderick Exp $
 
 use strict;
 
@@ -6,19 +6,20 @@ package Game::ScepterOfZavandor::Item::Gem;
 
 use base qw(Game::ScepterOfZavandor::Item);
 
-use Game::Util	qw(add_array_index debug make_ro_accessor);
+use Game::Util	qw(add_array_indices debug make_ro_accessor);
 use RS::Handy	qw(badinvo data_dump dstr xconfess);
 use Scalar::Util qw(weaken);
 
 use Game::ScepterOfZavandor::Constant qw(
     /^GEM_/
     /^ITEM_/
+    /^NOTE_/
     @Gem
     @Gem_data
 );
 
 BEGIN {
-    add_array_index 'ITEM', $_ for map { "GEM_$_" }
+    add_array_indices 'ITEM', map { "GEM_$_" }
 	qw(TYPE DECK ACTIVE_VP ACTIVE);
 }
 
@@ -76,6 +77,7 @@ sub activate {
     	or xconfess "no free gem slots";
 
     $self->[ITEM_GEM_ACTIVE] = 1;
+    $self->a_game->note_to_players(NOTE_GEM_ACTIVATE, $self->a_player, $self);
 }
 
 sub deactivate {
@@ -87,6 +89,7 @@ sub deactivate {
     debug "deactivate $self";
 
     $self->[ITEM_GEM_ACTIVE] = 0;
+    $self->a_game->note_to_players(NOTE_GEM_DEACTIVATE, $self->a_player, $self);
 }
 
 sub is_active {
