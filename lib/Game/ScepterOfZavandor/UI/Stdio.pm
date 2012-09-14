@@ -1,4 +1,4 @@
-# $Id: Stdio.pm,v 1.19 2012-04-28 20:02:27 roderick Exp $
+# $Id: Stdio.pm,v 1.20 2012-09-14 01:16:54 roderick Exp $
 #
 # XXX some of the code here should likely be shared with non-Stdio UIs.
 
@@ -6,7 +6,7 @@ use strict;
 
 package Game::ScepterOfZavandor::UI::Stdio;
 
-use base qw(Game::ScepterOfZavandor::UI);
+use base qw(Game::ScepterOfZavandor::UI::Human);
 
 use Game::Util 		qw(add_array_indices add_array_indices
 			    debug eval_block valid_ix_plus_1);
@@ -167,29 +167,19 @@ sub get_action_names {
     @_ == 1 || badinvo;
     my $class = shift;
 
-    return sort keys %Action;
+    # sort in separate expression so it can't be in scalar context
+    my @a = sort keys %Action;
+    return @a;
 }
 
 #------------------------------------------------------------------------------
-
-sub start_actions {
-    @_ == 1 || badinvo;
-    my $self = shift;
-
-    my $player = $self->a_player;
-
-    # Auto-activate gems to deal with losing something to a mirror/cloak,
-    # or buying an elixir on somebody else's turn.
-
-    $player->auto_activate_gems;
-}
 
 sub show_knowledge_advancement_costs {
     @_ == 1 || badinvo;
     my $self = shift;
 
     my @c = $self->a_player->knowledge_advancement_costs;
-    my @s = map { sprintf "%2d %s",
+    my @s = map { sprintf "\$%2d %s",
 		    $c[$_], $Knowledge_data[$_][KNOW_DATA_NAME] }
 		grep { defined $c[$_] } 0..$#c;
     my $label = "Knowledge advancement:";
@@ -242,8 +232,6 @@ sub status_short {
     @_ == 1 || badinvo;
     my $self  = shift;
 
-    # XXX I often want to know the next cost for my knowledge advancements
-
     $self->out("\n");
 
     $self->out("Turn ", $self->a_game->a_turn_num,
@@ -264,7 +252,7 @@ sub status_short {
 	$knowledge_title .= $_->[KNOW_DATA_ABBREV];
     }
 
-    $self->out(sprintf "%-72s %s\n", "Player status:", $knowledge_title);
+    $self->out(sprintf "%-73s %s\n", "Player status:", $knowledge_title);
     for my $p ($self->a_game->players_in_table_order) {
     	my $knowledge = '';
 	for my $ktype (0..$#Knowledge) {
@@ -290,7 +278,9 @@ sub status_short {
     	my @spec = (
 
 	    "%s"
-		=> [$p == $self->a_player ? color('bold') . ">" : " "],
+		=> [$self->a_player && $p == $self->a_player
+			? color('bold') . ">"
+			: " "],
 
 	    " %-6s"
 		=> [$p->name],
@@ -311,9 +301,11 @@ sub status_short {
 		    $p->current_hand_count,
 		    $p->hand_limit),
 
-	    $rel->("gems",
-		    0+$p->active_gems,
-		    $p->num_gem_slots),
+	    #$rel->("gems",
+	    #	    0+$p->active_gems,
+	    #	    $p->num_gem_slots),
+
+	    " g:%-11s" => [$self->status_short_gems($p)],
 
 	    " know %s"
 		=> [$knowledge],
@@ -328,6 +320,22 @@ sub status_short {
 	}
     	$self->out(sprintf "$fmt%s\n", @arg, color 'reset');
     }
+}
+
+sub status_short_gems {
+    @_ == 2 || badinvo;
+    my $self = shift;
+    my $p    = shift;
+
+    my $s = '';
+    my @g = grep { $_->is_active } reverse $p->gems_by_cost;
+    for (@g) {
+    	$s .= $_->abbrev;
+    }
+    for (@g+1 .. $p->num_gem_slots) {
+	$s .= "-";
+    }
+    return $s;
 }
 
 #------------------------------------------------------------------------------
@@ -487,11 +495,11 @@ sub action_buy_knowledge_chip {
     	looks_like_number $cost
 	    or die "invalid-looking knowledge chip cost ", dstr $cost, "\n";
 	$kchip = first { $_->a_cost == $cost }
-		$self->a_player->knowledge_chips_unbought
+		$self->a_player->knowledge_chips_unbought_by_cost
 	    or die "no unbought chip with cost $cost\n";
     }
     else {
-	($kchip) = $self->a_player->knowledge_chips_unbought
+	($kchip) = $self->a_player->knowledge_chips_unbought_by_cost
 	    or die "no unbought chips\n";
     }
     $self->a_player->buy_knowledge_chip($kchip, 0);
@@ -634,7 +642,8 @@ sub _action_help_backend {
     	    );
     $self->out(sprintf $fmt,
 		"inc",  "income min/average/max",
-		"gems",  "active gems(vs slots)",
+		#"gems",  "active gems(vs slots)",
+		"g:",  "active gem/empty slot list",
     	    );
     $self->out(sprintf $fmt,
 		"\$",  "liquid energy",
@@ -707,7 +716,7 @@ sub action_items {
 
     # XXX hand limit, gem slots
 
-    my @e = $player->current_energy;
+    my @e = $player->current_energy_detail;
     $self->out_char(sprintf "energy: %d total\n", $e[CUR_ENERGY_TOTAL]);
     $self->out_char(sprintf
 	"energy: -> %d liquid (%d + %d from inactive gems)\n",
@@ -749,10 +758,7 @@ sub action_buy_gem {
     	die "invalid gem name ", dstr $gname, "\n";
     }
 
-    $self->a_player->buy_gem($gtype)
-	or die "didn't get a gem back\n";
-    $self->a_player->auto_activate_gems;
-
+    $self->a_player->buy_gem($gtype);
     return 1;
 }
 
@@ -854,7 +860,9 @@ sub action_test {
     @_ == 1 || badinvo;
     my $self = shift;
 
-    $self->a_player->destroy_active_gem;
+    $self->out(sprintf "You %s have unbought knowledge chips.\n",
+		$self->a_player->knowledge_chips_unbought_by_cost
+		    ? "do" : "do not");
     return 1;
 }
 

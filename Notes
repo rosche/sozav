@@ -1,8 +1,13 @@
-- $Id: Notes,v 1.11 2012-04-28 20:02:25 roderick Exp $
+- $Id: Notes,v 1.12 2012-09-14 01:16:51 roderick Exp $
+
+- immediate problems
+
+    - test telnet URL on Windows
 
 - things you should be able to do but can't
 
-    - explicity choose what to pay with, if you want
+    - undo
+    - explicitly choose what to pay with, if you want
 
 - rules not implemented yet
 
@@ -12,13 +17,10 @@
     - you can't combine purchases to prevent losing a dust
     	- per the FAQ this can include an item bought at auction, you
     	  just have to pay before starting a new auction
-    - you can auction a magic mirror or shadow cloak even if you have no
-      active gems
 
 - knapsack problems
 
-    - pick gems to sell (inactive +/- active) when the important thing
-      is hand limit
+    - pick inactive gems to sell when the important thing is hand limit
     - make dust (due to lack of 1 dust)
     	- cost minimized
 	- value <= and maximized
@@ -36,19 +38,25 @@
 	- I think the result can change if you combine purchases vs. doing
 	  the same individually, so how to implement combining purchases?
 
-- before release
+- other important items
 
-    - Z-Man rules use "buy" instead of "enchant", go through and change
-      my nomenclature, and look for similar changes in the rules
+    - sometimes it takes a really long time to figure out what what to
+      discard if you're over your hand limit
+    - public money option, otherwise display as min/avg/max
+    - option for less verboseness, use this by default
+
+- before release, other items
+
     - rename from plain "zavandor" due to "Mines of Zavandor"
     - Z-Man rules + 9 Sages
     	- you can look at the cards as soon as you get them?
 	- you turn in cards for dust immediately, so (eg) if you got
 	  emerald cards and then bought a spellbook you'd be stuck with
 	  dust
-    - you don't have to turn a ruby card received from 9 sages to dust
-      if you have a chalice of fire, or similarly for emerald/spellbook
-    - how should cards drawo for the fairy's 2 sapphire 9 sages cards be
+    	    - even if that's not true, the same thing applies if you
+    	      turn it to dust at the start of the next turn rather than
+    	      at the end of it
+    - how should cards drawn for the fairy's 2 sapphire 9 sages cards be
       affected by "less random start" option?
     - label toad/raven artifacts as such in their descriptions
     - 1-player puzzle mode, need some sort of game timer.
@@ -78,11 +86,11 @@
 	    	http://www.jcraft.com/jcterm/
     - web page
     - knapsack problems (paying for item and discarding when over limit)
-    - combining purchases to avoid making dust
     - logging
     	- everything read/written
 	- specially formatted logfile
     - cheesy undo via Storable?
+    	- can't store GLOB refs
 
 - todo
     - distinction between player name and character name
@@ -95,12 +103,13 @@
     - problems with selling gems
 	- selling a gem reports via ui_note that it was deactivated, but
 	  not sold
-	- selling an inactive gem doesn't work?
 	- don't auto-sell gems when auto-activate-gems is disabled?
 	- don't auto-sell a gem of type X when buying a gem of type X
 	    - happened when I was switching from diamonds to opals, I
 	      deactivated a bunch of diamonds and started buying opals,
 	      it would sell an opal then buy an opal
+    - when using OPT_AVERAGED_CARDS Dave suggested actually using 7.5 as
+      the value for emerald cards, and adding a 0.5 dust type, do this?
 
 - questions
     - are gems limited?

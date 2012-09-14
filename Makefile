@@ -1,13 +1,14 @@
-# $Id: Makefile,v 1.7 2012-04-28 20:02:24 roderick Exp $
+# $Id: Makefile,v 1.8 2012-09-14 01:16:51 roderick Exp $
 
 all:
 
 install_dest 		= /usr/local/src/zavandor-inst
 install_rsync_args      =
 
-all_files		:= $(shell find -type f ! -name '*~' ! -name '*\#')
+all_files		:= $(shell find -type f \
+	    	    	    	! -name '*~' ! -name '*\#' ! -name '.\#*')
 
-pm_file			:= $(shell find lib -name '*.pm')
+pm_file			:= $(shell find lib -name '*.pm' ! -name '.*')
 pm_name			:= $(shell echo "$(pm_file)" | \
 				sed 's,lib/,,g; s,\.pm,,g; s,/,-,g')
 pm_test			:= $(patsubst %,t/0-load-%.t,$(pm_name))

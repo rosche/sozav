@@ -1,4 +1,4 @@
-# $Id: Deck.pm,v 1.9 2012-04-28 20:02:27 roderick Exp $
+# $Id: Deck.pm,v 1.10 2012-09-14 01:16:54 roderick Exp $
 
 use strict;
 
@@ -34,11 +34,11 @@ sub new {
     $self->[DECK_GAME ] = $game;
     $self->[DECK_GTYPE] = $gtype;
 
-    my $card_list_ix = $self->a_game->option(OPT_LOWER_DEVIANCE)
-			? GEM_DATA_CARD_LIST_LESS_DEVIANT
+    my $card_list_ix = $self->a_game->option(OPT_LOWER_VARIANCE)
+			? GEM_DATA_CARD_LIST_LESS_VARIANT
 			: GEM_DATA_CARD_LIST_NORMAL;
-$Gem_data[$gtype] or xconfess 1;
-$Gem_data[$gtype][$card_list_ix] or xconfess 2;
+    $Gem_data[$gtype] or xconfess 1;
+    $Gem_data[$gtype][$card_list_ix] or xconfess 2;
     my @card_val = @{ $Gem_data[$gtype][$card_list_ix] };
 
     if ($self->a_game->option(OPT_AVERAGED_CARDS)) {
@@ -63,9 +63,10 @@ $Gem_data[$gtype][$card_list_ix] or xconfess 2;
     if ($gtype == GEM_SAPPHIRE
 	    && $self->a_game->option(OPT_LESS_RANDOM_START)) {
     	my (@yes, @no);
+	# XXX this shouldnt affect Fairy's 9 Sages cards
 	for (@card) {
 	    my $e = $_->energy;
-	    # XXX this does nothing for OPT_LOWER_DEVIANCE, do something
+	    # XXX this does nothing for OPT_LOWER_VARIANCE, do something
 	    # else?
 	    push @{ ($e == 3 || $e == 7) ? \@no : \@yes }, $_;
 	}

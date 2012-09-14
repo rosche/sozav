@@ -1,4 +1,4 @@
-# $Id: Gem.pm,v 1.15 2012-04-28 20:02:27 roderick Exp $
+# $Id: Gem.pm,v 1.16 2012-09-14 01:16:54 roderick Exp $
 
 use strict;
 
@@ -63,6 +63,15 @@ sub spaceship {
 	    ? $b->[ITEM_GEM_TYPE] <=> $a->[ITEM_GEM_TYPE]
 	    : 0
     	or $a->SUPER::spaceship($b, $rev)
+}
+
+#------------------------------------------------------------------------------
+
+sub abbrev {
+    @_ == 1 || badinvo;
+    my $self = shift;
+
+    return $self->data(GEM_DATA_ABBREV);
 }
 
 sub activate {

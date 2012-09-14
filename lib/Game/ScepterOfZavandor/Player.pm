@@ -1,4 +1,4 @@
-# $Id: Player.pm,v 1.18 2012-04-28 20:02:27 roderick Exp $
+# $Id: Player.pm,v 1.19 2012-09-14 01:16:54 roderick Exp $
 
 use strict;
 
@@ -9,7 +9,7 @@ use overload (
     '<=>' => "spaceship",
 );
 
-use List::Util		qw(first sum);
+use List::Util		qw(first max min sum);
 use Game::Util  	qw($Debug debug_var add_array_indices debug debug_var
 			    knapsack_0_1 make_ro_accessor make_rw_accessor);
 use RS::Handy		qw(badinvo data_dump dstr xconfess);
@@ -46,6 +46,7 @@ BEGIN {
     add_array_indices 'PLAYER', qw(
 	GAME
 	UI
+	CHAR_PREFERENCE
 	CHAR
 	ITEM
 	BOUGHT_RUBY
@@ -64,8 +65,8 @@ BEGIN {
 #       high you can bid
 
 sub new {
-    @_ == 3 || badinvo;
-    my ($class, $game, $ui) = @_;
+    @_ == 4 || badinvo;
+    my ($class, $game, $ui, $want_char) = @_;
 
     $ui or xconfess;
 
@@ -74,14 +75,16 @@ sub new {
     weaken $self->[PLAYER_GAME];
     $self->[PLAYER_UI  ] = $ui;
     $ui->a_player($self);
+    $self->[PLAYER_CHAR_PREFERENCE] = $want_char;
     $self->a_auto_activate_gems(1);
 
     return $self;
 }
 
 make_ro_accessor (
-    a_game => PLAYER_GAME,
-    a_ui   => PLAYER_UI,
+    a_char_preference  => PLAYER_CHAR_PREFERENCE,
+    a_game             => PLAYER_GAME,
+    a_ui               => PLAYER_UI,
 );
 
 make_rw_accessor (
@@ -96,6 +99,9 @@ sub spaceship {
     @_ == 3 || badinvo;
     my ($a, $b) = @_;
 
+    if (!defined $a || !defined $b) {
+    	return undef;
+    }
     0
 	or $a->a_char  <=> $b->a_char
     	or refaddr($a) <=> refaddr($b)
@@ -146,6 +152,7 @@ sub add_items {
 
     for (@item) {
     	$_ or xconfess;
+	# XXX $self->a_game->note_to_players
 	debug "$Character[$self->[PLAYER_CHAR]] add item $_";
 	push @{ $self->[PLAYER_ITEM] }, $_;
     }
@@ -201,10 +208,22 @@ sub auctionables {
     return grep { $_->is_auctionable } $self->items;
 }
 
+sub current_energy_cards_dust {
+    @_ == 1 || badinvo;
+    my $self = shift;
+    return ($self->current_energy_detail)[CUR_ENERGY_CARDS_DUST];
+}
+
 sub current_energy_liquid {
     @_ == 1 || badinvo;
     my $self = shift;
-    return ($self->current_energy)[CUR_ENERGY_LIQUID];
+    return ($self->current_energy_detail)[CUR_ENERGY_LIQUID];
+}
+
+sub current_energy_total {
+    @_ == 1 || badinvo;
+    my $self = shift;
+    return ($self->current_energy_detail)[CUR_ENERGY_TOTAL];
 }
 
 sub current_hand_count {
@@ -217,6 +236,17 @@ sub gems {
     @_ == 1 || badinvo;
     my $self = shift;
     return grep { $_->is_gem } $self->items;
+}
+
+sub gems_by_cost {
+    @_ == 1 || badinvo;
+    my $self = shift;
+
+    my @g = $self->gems;
+    # sort in separate expression so it can't be in scalar context
+    @g = sort { $self->gem_cost($a->a_gem_type)
+		    <=> $self->gem_cost($b->a_gem_type) } @g;
+    return @g;
 }
 
 sub hand_limit {
@@ -232,6 +262,15 @@ sub inactive_gems {
     return grep { !$_->is_active } $self->gems;
 }
 
+sub knowledge_chip_for_track {
+    @_ == 2 || badinvo;
+    my $self = shift;
+    my $ktype = shift;
+
+    return first { $_->is_assigned && $_->a_type == $ktype }
+	    $self->knowledge_chips;
+}
+
 sub knowledge_chips {
     @_ == 1 || badinvo;
     my $self = shift;
@@ -242,15 +281,39 @@ sub knowledge_chips_advancable {
     @_ == 1 || badinvo;
     my $self = shift;
 
-    # XXX include bought but uncommitted chips?
+    # NB includes unassigned chips
     return grep { $_->is_advancable } $self->knowledge_chips;
 }
 
-sub knowledge_chips_unbought {
+sub knowledge_chips_unassigned {
     @_ == 1 || badinvo;
     my $self = shift;
 
-    return grep { $_->is_unbought } $self->knowledge_chips;
+    return grep { $_->is_bought && $_->is_unassigned } $self->knowledge_chips;
+}
+
+sub knowledge_chips_unbought_by_cost {
+    @_ == 1 || badinvo;
+    my $self = shift;
+
+    # sort in separate expression so it can't be in scalar context
+    my @k = sort { $a->a_cost <=> $b->a_cost }
+		grep { $_->is_unbought }
+		    $self->knowledge_chips;
+    return @k;
+}
+
+sub knowledge_track_next_level_cost {
+    @_ == 2 || badinvo;
+    my $self  = shift;
+    my $ktype = shift;
+
+    if (my $kc = $self->knowledge_chip_for_track($ktype)) {
+    	return $kc->maxed_out ? undef : $kc->next_level_cost;
+    }
+    else {
+    	return $Knowledge_data[$ktype][KNOW_DATA_LEVEL_COST][0];
+    }
 }
 
 sub name {
@@ -312,31 +375,22 @@ sub advance_knowledge {
 	die "already advanced knowledge this turn\n";
     }
 
-    my $cost = 0;
     my $k = first { $_->ktype_is($ktype) } $self->knowledge_chips;
     if (!$k) {
 	$k = first { $_->is_bought && $_->is_unassigned } $self->knowledge_chips
 	    or die "not on $Knowledge[$ktype] knowledge track and no unassigned chips\n";
-	# XXX
-	$cost = $Knowledge_data[$ktype][KNOW_DATA_LEVEL_COST][0];
     }
     else {
 	$k->maxed_out
 	    and die "$k already maxed out\n";
-	$cost = $k->next_level_cost;
     }
 
+    my $cost = $self->knowledge_track_next_level_cost($ktype);
     if ($free) {
 	$cost = 0;
     }
+    $self->pay_energy($cost);
 
-    my $cle = $self->current_energy_liquid;
-    if ($cost > $cle) {
-	die "not enough liquid energy (need $cost, have $cle)\n";
-    }
-
-    $self->pay_energy($cost)
-	if $cost;
     if ($k->is_unassigned) {
 	$k->set_type($ktype);
     }
@@ -346,6 +400,34 @@ sub advance_knowledge {
     $self->a_advanced_knowledge_this_turn(1)
 	if !$free;
     $self->a_game->note_to_players(NOTE_KNOWLEDGE_ADVANCE, $self, $k, $cost);
+}
+
+sub allowed_to_start_auction {
+    @_ == 2 || badinvo;
+    my $self = shift;
+    my $auc  = shift;
+
+    if ($auc->destroys_active_gems && !$self->active_gems) {
+    	return 0;
+    }
+    return 1;
+}
+
+sub allowed_to_own_auctionable {
+    @_ == 2 || badinvo;
+    my $self = shift;
+    my $auc  = shift;
+
+    return !$auc->own_only_one
+	    || !grep { $_->a_auc_type == $auc->a_auc_type }
+		$self->auctionables;
+}
+
+sub am_over_hand_limit {
+    @_ == 1 || badinvo;
+    my $self = shift;
+
+    return $self->current_hand_count > $self->hand_limit;
 }
 
 sub auctionable_cost_mod {
@@ -389,7 +471,6 @@ sub auto_activate_gems {
 	}
     }
 
-
     if (!@activate && !@deactivate) {
 	return;
     }
@@ -410,9 +491,7 @@ sub buy_auctionable {
     my $auc   = shift;
     my $price = shift;
 
-    if ($auc->own_only_one
-	    && grep { $_->a_auc_type == $auc->a_auc_type }
-		    $self->auctionables) {
+    if (!$self->allowed_to_own_auctionable($auc)) {
     	die "you can only own one $auc\n";
     }
 
@@ -421,14 +500,10 @@ sub buy_auctionable {
     }
 
     my $cost_mod = $self->auctionable_cost_mod($auc);
-    my $net = $price + $cost_mod;
-    my $cash = $self->current_energy_liquid;
-    # XXX need to be able to sell gems here
-    # XXX implement the Curse of the 9 Sages
-    $cash >= $net
-	or die "not enough liquid cash, need $price + $cost_mod, have $cash\n";
-
+    # XXX test negative
+    my $net = max 0, $price + $cost_mod;
     $self->pay_energy($net);
+
     $self->a_game->auctionable_sold($auc);
     $auc->a_player($self);
     $self->add_items($auc, $auc->free_items($self->a_game));
@@ -444,25 +519,19 @@ sub buy_knowledge_chip {
     my $free  = shift;	# true if from an artifact or at startup or such
 
     if (!$kchip) {
-	my @kc = sort { $a->a_cost <=> $b->a_cost}
-		    $self->knowledge_chips_unbought
+	my @kc = $self->knowledge_chips_unbought_by_cost
 	    or die "no unbought knowledge chips\n";
 	$kchip = $kc[$free ? -1 : 0];
     }
 
     my $cost = $free ? 0 : $kchip->a_cost;
-    my $cle = $self->current_energy_liquid;
-    if ($cost > $cle) {
-	die "not enough liquid energy (need $cost, have $cle)\n";
-    }
+    $self->pay_energy($cost);
 
-    $self->pay_energy($cost)
-	if $cost;
     $self->a_game->note_to_players(NOTE_ITEM_GOT, $self, $kchip, $cost);
     $kchip->bought;
 }
 
-sub current_energy {
+sub current_energy_detail {
     @_ == 1 || badinvo;
     my $self = shift;
 
@@ -502,16 +571,12 @@ sub buy_gem {
     }
 
     my $cost = $self->gem_cost($gtype);
-    my $cash = $self->current_energy_liquid;
-    if ($cost > $cash) {
-    	die "not enough liquid cash (need $cost, have $cash)\n";
-    }
-
     $self->pay_energy($cost);
 
     my $g = Game::ScepterOfZavandor::Item::Gem->new($self, $gtype);
     $self->a_game->note_to_players(NOTE_ITEM_GOT, $self, $g, $cost);
     $self->add_items($g);
+    $self->auto_activate_gems;
 
     if ($gtype == GEM_RUBY) {
 	$self->a_bought_ruby(1);
@@ -583,15 +648,36 @@ sub can_buy_gem_type_right_now {
 }
 
 # XXX do I have these rules correct for 9 sages?
-# - isn't having a crystale/chalice enough for emerald/ruby card?
-# - what if you could enchant a gem of that type but haven't yet?
+# - isn't having a crystal/chalice enough for emerald/ruby card?
+# - what if you could buy a gem of that type but haven't yet?
 
-sub could_buy_gem_type_at_some_point {
+sub have_ability_to_buy_gem_type {
     @_ == 2 || badinvo;
     my $self = shift;
     my $gtype = shift;
 
     return $self->can_buy_gem_backend($gtype, 0);
+}
+
+sub have_ability_to_acquire_cards_of_gem_type {
+    @_ == 2 || badinvo;
+    my $self = shift;
+    my $gtype = shift;
+
+    if ($self->have_ability_to_buy_gem_type($gtype)) {
+	debug "can buy gem type $gtype";
+	return 1;
+    }
+
+    for my $i ($self->items) {
+	if ($i->produces_energy_of_gem_type($gtype)) {
+	    debug "item produces cards of gem type $gtype ($i)";
+	    return 1;
+	}
+    }
+
+    debug "can't acquire cards of gem type $gtype";
+    return 0;
 }
 
 sub consolidate_dust {
@@ -988,11 +1074,22 @@ sub pay_energy {
     my $self = shift;
     my $tot  = shift;
 
+    my $paid = 0;
+
+    if ($tot <= 0) {
+	return $paid;
+    }
+
+    while ((my $short = $tot - $self->current_energy_liquid) > 0) {
+	if (!$self->active_gems) {
+	    die "XXX Curse of the 9 Sages unimplemented";
+	}
+	$self->a_ui->choose_active_gem_to_sell($short)->deactivate;
+    }
+
     # XXX allow UI to say what to pay with, on general pricinple and
     # more realistically because you might want to sell gems early
     # knowing you'll be going up the gem track
-
-    $tot > 0 or xconfess;
 
     # XXX proper algorithm for choosing what to pay with, 0-1 knapsack
     # problem?
@@ -1001,28 +1098,31 @@ sub pay_energy {
     # sorting by ratio would do this effectively, as inactive gems have
     # infinite ratio
     push @cash, sort { $a <=> $b } grep { $_->is_energy } $self->items;
+    # XXX this fails for various cases -- eg you owe 15 and have 2
+    # inactive opals, a sapphire, and a dimaond
     push @cash, sort { $b <=> $a } $self->inactive_gems;
 
     my @to_use;
     for my $i (@cash) {
 	my $v = $i->energy;
 	push @to_use, $i;
-	$tot -= $v;
-	last if $tot <= 0;
+	$paid += $v;
+	last if $tot <= $paid;
     }
 
-    if ($tot > 0) {
+    if ($tot > $paid) {
     	xconfess "short by $tot energy";
     }
 
-    # XXX removing an inactive gem causes it to add the dust back in,
-    # but I'm spending that energy, I don't want it back, need an arg or
-    # another function to deal with this
-
     $self->spend(@to_use);
-    $self->add_items(
-	    Game::ScepterOfZavandor::Item::Energy::Dust->make_dust($self, 0 - $tot))
-	if $tot < 0;
+
+    if ((my $change = $paid - $tot) > 0) {
+	my @d = Game::ScepterOfZavandor::Item::Energy::Dust->make_dust($self, $change);
+	if (@d) {
+	    $self->add_items(@d);
+	    $paid -= sum map { $_->energy } @d; # re-sum due to losing dust
+	}
+    }
 
     # consolidate dust so your hand count is accurate
 

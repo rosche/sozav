@@ -1,4 +1,4 @@
-# $Id: Knowledge.pm,v 1.11 2012-04-28 20:02:27 roderick Exp $
+# $Id: Knowledge.pm,v 1.12 2012-09-14 01:16:54 roderick Exp $
 
 use strict;
 
@@ -275,12 +275,14 @@ sub produce_energy {
 	my $val = 0;
 	for (@card) {
 	    my $keep
-		# XXX if you have an artifact which produces this gem type
-		# you should be able to keep the card -- if you acquire
-		# one this turn I think you get to keep the cards then too
-		= $self->a_player->could_buy_gem_type_at_some_point(
+		= $self->a_player->have_ability_to_acquire_cards_of_gem_type(
 					$_->a_deck->a_gem_type)
 			|| !$self->a_game->option(OPT_9_SAGES_DUST);
+	    # - XXX should you be able to keep the cards if you become
+	    # eligible to keep them during this turn?
+	    # - XXX also doing dust conversion here can lose you a dust
+	    #   without the ability to purchase with it, that isn't
+	    #   likely intentional
 	    debug "9 sages keep $keep $_";
 	    if ($keep) {
 		push @item, $_;

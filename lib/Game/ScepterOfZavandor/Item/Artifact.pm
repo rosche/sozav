@@ -1,4 +1,4 @@
-# $Id: Artifact.pm,v 1.12 2012-04-28 20:02:27 roderick Exp $
+# $Id: Artifact.pm,v 1.13 2012-09-14 01:16:54 roderick Exp $
 
 use strict;
 
@@ -130,6 +130,13 @@ sub allows_player_to_buy_gem_type {
     return defined $got_gtype && $got_gtype == $want_gtype;
 }
 
+sub destroys_active_gems {
+    @_ == 1 || badinvo;
+    my $self = shift;
+
+    return $self->data(ARTI_DATA_DESTROY_GEM);
+}
+
 sub bought {
     @_ == 1 || badinvo;
     my $self = shift;
@@ -142,7 +149,7 @@ sub bought {
     }
 
     for (1..$self->data(ARTI_DATA_KNOWLEDGE_CHIP)) {
-	$self->a_player->knowledge_chips_unbought
+	$self->a_player->knowledge_chips_unbought_by_cost
 	    or last;
 	$self->a_player->buy_knowledge_chip(undef, 1);
     }
@@ -226,6 +233,15 @@ sub produce_energy_estimate {
     my $self = shift;
 
     return $self->gem_deck_method("energy_estimate");
+}
+
+sub produces_energy_of_gem_type {
+    @_ == 2 || badinvo;
+    my $self = shift;
+    my $query_gtype = shift;
+
+    my $arti_gtype = $self->data(ARTI_DATA_GEM_ENERGY_PRODUCTION);
+    return defined $arti_gtype && $arti_gtype == $query_gtype;
 }
 
 1

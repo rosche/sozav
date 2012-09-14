@@ -1,4 +1,4 @@
-# $Id: Constant.pm,v 1.19 2012-04-28 20:02:27 roderick Exp $
+# $Id: Constant.pm,v 1.20 2012-09-14 01:16:54 roderick Exp $
 
 use strict;
 
@@ -12,7 +12,7 @@ use RS::Handy		qw(badinvo data_dump dstr xcroak);
 
 use vars qw($VERSION @EXPORT @EXPORT_OK);
 BEGIN {
-    $VERSION = q$Revision: 1.19 $ =~ /(\d\S+)/ ? $1 : '?';
+    $VERSION = q$Revision: 1.20 $ =~ /(\d\S+)/ ? $1 : '?';
     @EXPORT_OK = qw(
 	$Base_gem_slots
 	$Base_hand_limit
@@ -46,6 +46,7 @@ BEGIN {
 	@Knowledge_data
 	$Knowledge_9sages_card_count
 	$Knowledge_top_vp
+	$Max_players
 	@Note
 	%Note
 	@Option
@@ -78,6 +79,7 @@ BEGIN {
 	"auction_bid",		# player, item, amount bid or 0 for pass
 	"auction_start",	# player, item, amount bid
 	"auction_won",		# player, item, amount spent
+	"chose_character",	# player, character
 	"gem_activate",		# player, gem
 	"gem_deactivate",	# player, gem
 	"knowledge_advance",	# player, chip, cost
@@ -140,7 +142,7 @@ BEGIN {
 	'VP',
 	'LIMIT',
     	'CARD_LIST_NORMAL',
-	'CARD_LIST_LESS_DEVIANT',
+	'CARD_LIST_LESS_VARIANT',
     	'CONCENTRATED',
     );
     add_array_indices 'GAME_GEM_DATA', (
@@ -177,7 +179,7 @@ BEGIN {
 
 	# randomness
 	'less random start',
-	'lower deviance', # XXX not sure if this is the right term
+	'lower variance',
 	'averaged cards',
 
     	# other
@@ -443,16 +445,41 @@ BEGIN {
     $Gem_data[GEM_RUBY    ][GEM_DATA_LIMIT] = 5;
 
     $i = GEM_DATA_CARD_LIST_NORMAL;
-    $Gem_data[GEM_SAPPHIRE][$i] = [( 3, 7)x3,( 4, 6)x6,( 5  )x12];
-    $Gem_data[GEM_EMERALD ][$i] = [( 5,10)x3,( 6, 9)x6,( 7,8)x 9];
-    $Gem_data[GEM_DIAMOND ][$i] = [( 8,12)x3,( 9,11)x6,(10  )x12];
-    $Gem_data[GEM_RUBY    ][$i] = [(13,17)x3,(14,16)x6,(15  )x12];
+    $Gem_data[GEM_SAPPHIRE][$i] = [( 3, 7)x3,( 4, 6)x6,( 5  )x12]; # var 1.24
+    $Gem_data[GEM_EMERALD ][$i] = [( 5,10)x3,( 6, 9)x6,( 7,8)x 9]; # var 1.97
+    $Gem_data[GEM_DIAMOND ][$i] = [( 8,12)x3,( 9,11)x6,(10  )x12]; # var 1.24
+    $Gem_data[GEM_RUBY    ][$i] = [(13,17)x3,(14,16)x6,(15  )x12]; # var 1.97
 
-    $i = GEM_DATA_CARD_LIST_LESS_DEVIANT;
-    $Gem_data[GEM_SAPPHIRE][$i] = [          ( 4, 6)x9,( 5  )x12];
-    $Gem_data[GEM_EMERALD ][$i] = [          ( 6, 9)x9,( 7,8)x 9];
-    $Gem_data[GEM_DIAMOND ][$i] = [          ( 9,11)x9,(10  )x12];
-    $Gem_data[GEM_RUBY    ][$i] = [          (14,16)x9,(15  )x12];
+    # With a deck of 30 average ($n) and near average ($n-1, $n+1) value
+    # cards, these are the possible variances based on the number of
+    # average cards:
+    #
+    #  count   variance
+    #      0   1.03448275862069
+    #      2   0.96551724137931
+    #      4   0.896551724137931
+    #      6   0.827586206896552
+    #      8   0.758620689655172
+    #     10   0.689655172413793
+    #     12   0.620689655172414
+    #     14   0.551724137931034
+    #     16   0.482758620689655
+    #     18   0.413793103448276
+    #     20   0.344827586206897
+    #     22   0.275862068965517
+    #     24   0.206896551724138
+    #     26   0.137931034482759
+    #     28   0.0689655172413793
+    #     30   0
+
+    # XXX above list looks like it should be 12 rather than 20 average cards
+
+    $i = GEM_DATA_CARD_LIST_LESS_VARIANT;
+    $Gem_data[GEM_SAPPHIRE][$i] = [          ( 4, 6)x5,( 5  )x20]; # var 0.62
+    $Gem_data[GEM_EMERALD ][$i] = [          ( 6, 9)x3,( 7,8)x15]; # var 0.6
+    $Gem_data[GEM_DIAMOND ][$i] = [          ( 9,11)x5,(10  )x20]; # var 0.62
+    $Gem_data[GEM_RUBY    ][$i] = [          (14,16)x5,(15  )x20]; # var 0.62
+
 }
 
 BEGIN {
@@ -468,6 +495,7 @@ BEGIN {
     	[5, 3], # 5
     	[6, 3], # 6
     );
+    $Max_players = $#Config_by_num_players;
 
     for ([\@Artifact, \@Artifact_data],
 	    [\@Sentinel, \@Sentinel_data]) {

@@ -1,4 +1,4 @@
-# $Id: Item.pm,v 1.16 2012-04-28 20:02:27 roderick Exp $
+# $Id: Item.pm,v 1.17 2012-09-14 01:16:54 roderick Exp $
 
 use strict;
 
@@ -228,6 +228,13 @@ sub produce_energy_estimate {
     @_ == 1 || badinvo;
     my $self = shift;
     return;
+}
+
+sub produces_energy_of_gem_type {
+    @_ == 2 || badinvo;
+    my $self = shift;
+    my $gtype = shift;
+    return 0;
 }
 
 # Call this after removing an item from a person's inventory.  There's no

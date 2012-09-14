@@ -1,4 +1,4 @@
-# $Id: Game.pm,v 1.16 2012-04-28 20:02:27 roderick Exp $
+# $Id: Game.pm,v 1.17 2012-09-14 01:16:54 roderick Exp $
 
 use strict;
 
@@ -11,7 +11,7 @@ use Game::Util	qw($Debug add_array_indices debug debug_var
 use List::MoreUtils qw(minmax);
 use List::Util	qw(sum);
 use RS::Handy	qw(badinvo create_constant_subs data_dump dstr
-		    pwuid safe_tmp shuffle xconfess);
+		    safe_tmp shuffle xconfess);
 
 use Game::ScepterOfZavandor::Constant	qw(
     /^CHAR_/
@@ -28,6 +28,7 @@ use Game::ScepterOfZavandor::Constant	qw(
     $Game_end_sentinels_sold_count
     @Gem
     @Gem_data
+    $Max_players
     @Option
     %Option
     @Sentinel_real_ix_xxx
@@ -38,6 +39,7 @@ use Game::ScepterOfZavandor::Item::Sentinel	();
 use Game::ScepterOfZavandor::Item::TurnOrder	();
 use Game::ScepterOfZavandor::Deck		();
 use Game::ScepterOfZavandor::Player		();
+use Game::ScepterOfZavandor::Undo		();
 
 BEGIN {
     add_array_indices 'GAME', (
@@ -45,6 +47,7 @@ BEGIN {
 	'OPTION',
 	'PLAYER_TABLE_ORDER',
 	'PLAYER_TURN_ORDER',
+	'KIBITZER',
 	'GEM_DATA',
 	'DUST_DATA',
 	'ARTIFACT_DECK',
@@ -64,6 +67,7 @@ sub new {
     $self->[GAME_OPTION]               = [];
     $self->[GAME_PLAYER_TABLE_ORDER]   = [];
     $self->[GAME_PLAYER_TURN_ORDER]    = [];
+    $self->[GAME_KIBITZER]             = [];
     $self->[GAME_GEM_DATA]             = [];
     $self->[GAME_DUST_DATA]            = [@Dust_data];
     $self->[GAME_ARTIFACTS_ON_AUCTION] = [];
@@ -97,23 +101,45 @@ sub die_if_initialized {
     }
 }
 
+sub _add_object_to_array {
+    @_ == 4 || badinvo;
+    my ($self, $otype, $ix, $obj) = @_;
+
+    $obj->isa($otype)
+	or xconfess "wrong object type ", dstr $obj;
+    push @{ $self->[$ix] }, $obj;
+}
+
+sub add_kibitzer {
+    @_ == 2 || badinvo;
+    my ($self, $kibitzer) = @_;
+
+    require Game::ScepterOfZavandor::UI::Kibitzer; # squelch warning
+    $self->_add_object_to_array(
+    	    	Game::ScepterOfZavandor::UI::Kibitzer::,
+		GAME_KIBITZER,
+		$kibitzer);
+}
+
 sub add_player {
     @_ == 2 || badinvo;
     my ($self, $player) = @_;
 
-    $player->isa(Game::ScepterOfZavandor::Player::)
-	or xconfess "non-player object ", dstr $player;
-
-    push @{ $self->[GAME_PLAYER_TABLE_ORDER] }, $player;
+    $self->_add_object_to_array(
+    	    	Game::ScepterOfZavandor::Player::,
+		GAME_PLAYER_TABLE_ORDER,
+		$player);
 }
 
 sub new_ui {
-    @_ == 1 || badinvo;
-    my ($self) = @_;
+    @_ >= 2 || badinvo;
+    my ($self, $type, @arg) = @_;
 
-    require Game::ScepterOfZavandor::UI::ReadLine;
+    my $ui_class = "Game::ScepterOfZavandor::$type";
+    eval "require $ui_class";
+    die if $@;
 
-    my $ui = Game::ScepterOfZavandor::UI::ReadLine->new($self, *STDIN, *STDOUT);
+    my $ui = $ui_class->new($self, @arg);
     # XXX opens for each player, desirable?
     $ui->log_open(scalar safe_tmp
 		    dir => "/var/local/zavandor",
@@ -270,35 +296,52 @@ sub init_players {
     @_ == 1 || badinvo;
     my $self = shift;
 
-    my @all_c = 0..$#Character;
+    my %all_c = map { $_ => 1 } 0..$#Character;
     if ($self->option(OPT_NO_DRUID)
 	    && ($self->option(OPT_DUPLICATE_CHARACTERS)
-    	    	    || $self->num_players < @all_c)) {
-	@all_c = grep { $_ != CHAR_DRUID } @all_c;
+    	    	    || $self->num_players < keys %all_c)) {
+	delete $all_c{+CHAR_DRUID};
     }
 
+    # assign characters already chosen
+
+    my %avail_c = %all_c;
+    for my $player ($self->players_in_table_order) {
+    	my $c = $player->a_char_preference;
+	if (defined $c) {
+	    $player->init($c);
+	    delete $avail_c{$c};
+	}
+    }
+
+    # assign other characters
+
     if ($self->option(OPT_CHOOSE_CHARACTER)) {
-	my @c          = @all_c;
     	my $player_num = 0;
 	for my $player ($self->players_in_table_order) {
 	    $player_num++;
-	    @c = @all_c
+	    next if defined $player->a_char;
+	    %avail_c = %all_c
 		if $self->option(OPT_DUPLICATE_CHARACTERS);
 	    my $c = $player->a_ui->choose_character($player_num,
-							sort { $a <=> $b } @c);
-	    $c //= splice @c, int rand @c, 1;
-	    my @new = grep { $_ != $c } @c;
-	    if (@c != @new + 1) {
-		xconfess "$player chose bad character ", dstr $c;
+					sort { $a <=> $b } keys %avail_c);
+	    if (!defined $c) {
+	    	my @c = keys %avail_c;
+		$c = $c[rand @c];
 	    }
-	    @c = @new;
+	    if (!delete $avail_c{$c}) {
+		xconfess "player $player_num chose bad character ", dstr $c;
+	    }
+	    # XXX borked
+	    $self->note_to_players(NOTE_CHOSE_CHARACTER, $player_num, $c);
 	    $player->init($c);
 	}
     }
     else {
-	my @c = shuffle @all_c;
+	my @c = shuffle keys %all_c;
 	for my $player ($self->players_in_table_order) {
-	    @c = shuffle @all_c
+	    next if defined $player->a_char;
+	    @c = shuffle keys %all_c
 		if $self->option(OPT_DUPLICATE_CHARACTERS);
 	    $player->init(shift @c);
 	}
@@ -313,9 +356,8 @@ sub note_to_players {
     @_ >= 2 || badinvo;
     my ($self, @rest) = @_;
 
-    for ($self->players_in_table_order) {
-	$_->a_ui->ui_note(@rest)
-	    unless $_->a_ui->a_suppress_global_messages;
+    for ($self->kibitzers, map { $_->a_ui } $self->players_in_table_order) {
+	$_->ui_note_global(@rest);
     }
 }
 
@@ -327,6 +369,10 @@ sub play {
 
     $self->note_to_players(NOTE_GAME_START);
     while (1) {
+	# XXX
+	#$Storable::forgive_me = 1;
+	#Game::ScepterOfZavandor::Undo::store $self, 't.storable';
+
 	$self->a_turn_num(1 + $self->a_turn_num);
 
     	# phase 1. turn order
@@ -414,12 +460,23 @@ sub auction_item {
     	die "bid too low (minimum $min, bid $start_bid)\n";
     }
 
+    if (!$start_player->allowed_to_start_auction($auc)) {
+    	die "$start_player isn't currently allowed to start an auction for $auc";
+    }
+
+    if (!$start_player->allowed_to_own_auctionable($auc)) {
+    	die "$start_player isn't allowed to own $auc";
+    }
+
     $self->note_to_players(NOTE_AUCTION_START, $start_player, $auc, $start_bid);
 
     my $cur_bid    = $start_bid;
     my $cur_winner = $start_player;
 
     my @bidder = $self->players_in_turn_order;
+
+    @bidder = grep { $_->allowed_to_own_auctionable($auc) } @bidder;
+
     my $next_bidder = sub {
     	push @bidder, shift @bidder;
     };
@@ -561,6 +618,13 @@ sub log {
     print "log: ", @_, "\n";
 }
 
+sub kibitzers {
+    @_ == 1 || badinvo;
+    my ($self) = @_;
+
+    return @{ $self->[GAME_KIBITZER] };
+}
+
 sub players_in_table_order {
     @_ == 1 || badinvo;
     my ($self) = @_;
@@ -653,50 +717,106 @@ sub prompt_for_options {
     }
 }
 
-sub run_game {
-    @_ == 0 || @_ == 1 || badinvo;
-    my $num_players = shift;
+sub prompt_for_players {
+    @_ == 2 || badinvo;
+    my $self = shift;
+    my $ui   = shift;
 
-    my $g = Game::ScepterOfZavandor::Game->new;
-    my $ui = $g->new_ui;
+    my $none   = 'none';
+    my $human  = 'human';
+    my $random = 'random';
+
+    my @ui_choices = ('none', $human, qw(AI::Naive));
+    my @ui         = ($none) x $Max_players;
+    my @char       = (undef) x $Max_players;
+
+    $ui[0] = $human;
+    $ui[1] = 'AI::Naive';
+    while (1) {
+	my $w = 20;
+	$ui->out("\n");
+	$ui->out("Players:\n");
+	$ui->out("\n");
+	$ui->out(sprintf "      %-${w}s     %-${w}s\n", 'player type', 'character');
+	$ui->out(sprintf "      %-${w}s     %-${w}s\n", '-----------', '---------');
+	for my $ix (0..$Max_players - 1) {
+	    $ui->out(sprintf "  %2d. %-${w}s %2d. %s\n",
+	    	    	$ix+1, $ui[$ix],
+			$ix+1+$Max_players,
+			    $ui[$ix] eq $none
+				? $none
+				: defined $char[$ix]
+				    ? $Character[$char[$ix]]
+				    : $random);
+	}
+
+	my $i = $ui->prompt("Type the number of the item to change, "
+				. "or Enter to continue: ",
+			    ["", 1..$Max_players * 2]);
+	last unless defined $i && $i ne '';
+
+	if ($i <= $Max_players) {
+	    my $pl = $i;
+	    # XXX use prompt_for_index
+	    $ui->out("\n");
+	    $ui->out("Player types:\n");
+	    for (0..$#ui_choices) {
+		$ui->out(sprintf "    %d. %s\n", $_+1, $ui_choices[$_]);
+	    }
+	    my $i = $ui->prompt("Type the number type for player $pl, "
+				. "or Enter to leave unchanged: ",
+				    ["", 1..@ui_choices]);
+    	    if ($i ne '') {
+	    	$ui[$pl-1] = $ui_choices[$i-1];
+	    }
+	}
+	else {
+	    my $pl = $i - $Max_players;
+	    $char[$pl-1] = $ui->choose_character($pl, 0..$#Character);
+	}
+    }
+
+    for (0..$#ui) {
+    	my $ui_name = $ui[$_];
+    	next if $ui_name eq $none;
+	my @arg = ($ui_name eq $human)
+		    ? ("UI::ReadLine", *STDIN, *STDOUT)
+		    : ($ui_name);
+	my $ui = $self->new_ui(@arg);
+	if ($ui->can('a_suppress_global_messages')) {
+	    $ui->a_suppress_global_messages(1);
+	}
+	$self->add_player(
+		Game::ScepterOfZavandor::Player->new($self, $ui, $char[$_]));
+    }
+}
+
+sub run_game_prompt_for_info {
+    @_ == 2 || badinvo;
+    my ($self, $ui) = @_;
 
     $ui->out("The Scepter of Zavandor\n");
     # XXX set up web site
     # XXX add this link to help
     #$ui->out("more info at http://www.argon.org/zavandor/\n");
 
-    if (!defined $num_players) {
-	$ui->out("\n");
-	$num_players = $ui->prompt("How may players? (1-6) ", [1..6]);
-	$g->prompt_for_options($ui);
-    }
+    # XXX take options and user choices as an arg, store last time's in
+    # a cookie or from command line
 
-    my @p;
-    for (1 .. $num_players) {
-    	my $this_ui;
-	if ($_ == 1) {
-	    $this_ui = $ui;
-	}
-	else {
-	    $this_ui = $g->new_ui;
-	    $this_ui->a_suppress_global_messages(1);
-	}
+    $self->prompt_for_players($ui);
+    $self->prompt_for_options($ui);
+}
 
-    	push @p,
-	    Game::ScepterOfZavandor::Player->new($g, $this_ui);
-	$g->add_player($p[-1]);
-    }
+sub run_game {
+    my @ui = @_;
+
+    my $g = Game::ScepterOfZavandor::Game->new;
+
+    my $ui = $g->new_ui("UI::Kibitzer", *STDIN, *STDOUT);
+    $g->add_kibitzer($ui);
+
+    $g->run_game_prompt_for_info($ui);
     $g->init;
-
-    if (0 && @p == 1) {
-    	my $p = $p[0];
-	for (1..4) {
-	    $p[0]->add_items(Game::ScepterOfZavandor::Item::Gem->new(
-    	    	    	    	$p, GEM_RUBY));
-	}
-	$p->auto_activate_gems;
-    }
-
     $g->play;
 }
 
