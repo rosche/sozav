@@ -1,4 +1,4 @@
-# $Id: Naive.pm,v 1.1 2012-09-14 01:16:54 roderick Exp $
+# $Id: Naive.pm,v 1.2 2012-09-15 15:36:40 roderick Exp $
 
 use strict;
 
@@ -66,12 +66,42 @@ sub solicit_bid {
 
 #------------------------------------------------------------------------------
 
+sub best_sentinels {
+    @_ == 1 || badinvo;
+    my ($self) = @_;
+
+    my $p = $self->a_player;
+    my @s = $self->a_game->auctionable_sentinels
+    	or return 0; # can't happen
+
+    my $max_vp = -1;
+    my @best;
+    for my $s (@s) {
+    	my $this_vp = $s->vp_extra_for_player($p);
+	if ($this_vp > $max_vp) {
+	    $max_vp = $this_vp;
+	    @best = ($s);
+	}
+	elsif ($this_vp == $max_vp) {
+	    push @best, $s;
+	}
+    }
+
+    return @best;
+}
+
 sub next_knowledge_track_to_start {
     @_ == 1 || badinvo;
     my $self = shift;
 
+    my $p = $self->a_player;
+    if ($p->knowledge_chip_for_track(KNOW_FIRE)
+	    && !$p->knowledge_chip_for_track(KNOW_GEMS)) {
+    	return KNOW_GEMS;
+    }
+
     for my $ktype (KNOW_ARTIFACTS, KNOW_ACCUM, KNOW_9SAGES) {
-	if (!$self->a_player->knowledge_chip_for_track($ktype)) {
+	if (!$p->knowledge_chip_for_track($ktype)) {
 	    return $ktype;
 	}
     }
@@ -85,6 +115,14 @@ sub want_auctionable {
 
     my $p = $self->a_player;
     my $auc_type = $auc->a_auc_type;
+
+    # don't buy anything if you're going for rubies
+
+    if (my $k = $p->knowledge_chip_for_track(KNOW_FIRE)) {
+    	if (!$k->maxed_out) {
+	    return 0;
+	}
+    }
 
     # don't buy 2 spellbooks or elixir if you have a spellbook
     #
@@ -107,10 +145,14 @@ sub want_auctionable {
 	return 0;
     }
 
-    # don't buy sentinel worth no bonus VP
+    # don't buy sentinel worth less than the best bonus VP you can get
 
-    if ($auc->is_sentinel && !$auc->vp_extra_for_player($p)) {
-    	return 0;
+    if ($auc->is_sentinel) {
+    	if (my @s = $self->best_sentinels) {
+	    if ($auc->vp_extra_for_player($p) < $s[0]->vp_extra_for_player($p)) {
+		return 0;
+	    }
+	}
     }
 
     # don't buy artifact with free knowledge if you have nothing to advance
@@ -127,10 +169,19 @@ sub want_auctionable {
 #------------------------------------------------------------------------------
 
 sub maybe_advance_knowledge {
-    @_ == 3 || badinvo;
-    my ($self, $p, $liquid) = @_;
+    @_ == 4 || badinvo;
+    my ($self, $p, $liquid, $before_gem_purchase) = @_;
 
     if ($p->a_advanced_knowledge_this_turn) {
+	return 0;
+    }
+
+    if ($before_gem_purchase) {
+    	my $k = $p->knowledge_chip_for_track(KNOW_GEMS);
+	if ($k && $k->is_advancable && $liquid >= $k->next_level_cost + 10) {
+	    $p->advance_knowledge($k->a_type, 0);
+	    return 1;
+	}
 	return 0;
     }
 
@@ -139,8 +190,15 @@ sub maybe_advance_knowledge {
 	if ($liquid < $k->next_level_cost) {
 	    return 0;
 	}
-	$p->advance_knowledge($k->a_type, 0);
-	return 1;
+	if ($k->a_type == KNOW_FIRE
+		&& $p->can_buy_gem_type_right_now(GEM_RUBY)) {
+	    # as druid don't advance to level 4 until you've bought your
+	    # level 3 ruby
+	}
+	else {
+	    $p->advance_knowledge($k->a_type, 0);
+	    return 1;
+	}
     }
 
     if ($p->knowledge_chips_unassigned) {
@@ -248,35 +306,16 @@ sub maybe_buy_sentinel {
     @_ == 3 || badinvo;
     my ($self, $p, $liquid) = @_;
 
-    my @s = $self->a_game->auctionable_sentinels
-    	or return 0; # can't happen
-
+    my @s = $self->best_sentinels
+    	or return 0;
+    @s = grep { $self->want_auctionable($_) } @s
+    	or return 0;
     if ($p->current_energy_liquid < $s[0]->a_data_min_bid
 					+ $p->auctionable_cost_mod($s[0])) {
     	return 0;
     }
 
-    my $max_vp = -1;
-    my @best;
-    for my $s (@s) {
-	if (!$self->want_auctionable($s)) {
-	    next;
-	}
-    	my $this_vp = $s->vp_extra_for_player($p);
-	if ($this_vp > $max_vp) {
-	    $max_vp = $this_vp;
-	    @best = ($s);
-	}
-	elsif ($this_vp == $max_vp) {
-	    push @best, $s;
-	}
-    }
-
-    if (!@best) {
-    	return 0; # bad news
-    }
-
-    my $s = (shuffle @best)[0];
+    my $s = $s[rand @s];
     $p->a_game->auction_item($p, $s, $s->a_data_min_bid);
     return 1;
 }
@@ -305,18 +344,26 @@ sub one_action {
 	return 1;
     }
 
+    if ($self->maybe_advance_knowledge($p, $liquid, 1)) {
+	return 1;
+    }
+
     my $bought_gem = $self->maybe_buy_gem($p, $liquid);
     if ($bought_gem) {
 	return 1;
     }
 
-    if ($self->maybe_advance_knowledge($p, $liquid)) {
+    if ($self->maybe_advance_knowledge($p, $liquid, 0)) {
 	return 1;
     }
 
     if (!defined $bought_gem) {
 	# If I wanted to buy a gem but couldn't afford it don't
 	# try the lower-priority actions.
+	if (($self->next_knowledge_track_to_start // -1) == KNOW_GEMS
+    	    	&& $self->maybe_buy_knowledge_chip($p, $liquid)) {
+	    return 1;
+	}
     }
     else {
 	if ($self->maybe_buy_auctionable($p, $liquid)) {
