@@ -1,4 +1,4 @@
-# $Id: Game.pm,v 1.17 2012-09-14 01:16:54 roderick Exp $
+# $Id: Game.pm,v 1.18 2012-09-17 20:03:33 roderick Exp $
 
 use strict;
 
@@ -318,7 +318,7 @@ sub init_players {
 
     if ($self->option(OPT_CHOOSE_CHARACTER)) {
     	my $player_num = 0;
-	for my $player ($self->players_in_table_order) {
+	for my $player (shuffle $self->players_in_table_order) {
 	    $player_num++;
 	    next if defined $player->a_char;
 	    %avail_c = %all_c
@@ -338,7 +338,7 @@ sub init_players {
 	}
     }
     else {
-	my @c = shuffle keys %all_c;
+	my @c = shuffle keys %avail_c;
 	for my $player ($self->players_in_table_order) {
 	    next if defined $player->a_char;
 	    @c = shuffle keys %all_c
@@ -725,8 +725,9 @@ sub prompt_for_players {
     my $none   = 'none';
     my $human  = 'human';
     my $random = 'random';
+    my $ai     = 'AI::Naive';
 
-    my @ui_choices = ('none', $human, qw(AI::Naive));
+    my @ui_choices = ('none', $human, $ai);
     my @ui         = ($none) x $Max_players;
     my @char       = (undef) x $Max_players;
 
@@ -737,12 +738,14 @@ sub prompt_for_players {
 	$ui->out("\n");
 	$ui->out("Players:\n");
 	$ui->out("\n");
+	$ui->out("  1-$Max_players. configure for N player game with 1 human\n");
+	$ui->out("\n");
 	$ui->out(sprintf "      %-${w}s     %-${w}s\n", 'player type', 'character');
 	$ui->out(sprintf "      %-${w}s     %-${w}s\n", '-----------', '---------');
 	for my $ix (0..$Max_players - 1) {
 	    $ui->out(sprintf "  %2d. %-${w}s %2d. %s\n",
-	    	    	$ix+1, $ui[$ix],
-			$ix+1+$Max_players,
+	    	    	$ix+1+$Max_players, $ui[$ix],
+			$ix+1+$Max_players*2,
 			    $ui[$ix] eq $none
 				? $none
 				: defined $char[$ix]
@@ -752,11 +755,19 @@ sub prompt_for_players {
 
 	my $i = $ui->prompt("Type the number of the item to change, "
 				. "or Enter to continue: ",
-			    ["", 1..$Max_players * 2]);
+			    ["", 1..$Max_players * 3]);
 	last unless defined $i && $i ne '';
 
 	if ($i <= $Max_players) {
 	    my $pl = $i;
+	    $ui[0] = $human;
+	    for (2..$Max_players) {
+	    	$ui[$_-1] = $_ <= $pl ? $ai : $none;
+	    }
+	}
+
+	elsif ($i <= 2*$Max_players) {
+	    my $pl = $i - $Max_players;
 	    # XXX use prompt_for_index
 	    $ui->out("\n");
 	    $ui->out("Player types:\n");
@@ -770,8 +781,9 @@ sub prompt_for_players {
 	    	$ui[$pl-1] = $ui_choices[$i-1];
 	    }
 	}
+
 	else {
-	    my $pl = $i - $Max_players;
+	    my $pl = $i - 2*$Max_players;
 	    $char[$pl-1] = $ui->choose_character($pl, 0..$#Character);
 	}
     }
