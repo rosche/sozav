@@ -1,4 +1,4 @@
-# $Id: UI.pm,v 1.12 2012-09-14 01:16:54 roderick Exp $
+# $Id: UI.pm,v 1.13 2012-09-18 13:51:27 roderick Exp $
 
 use strict;
 
@@ -10,6 +10,7 @@ use RS::Handy	qw(badinvo data_dump dstr process_arg_pairs xconfess);
 use Scalar::Util qw(weaken);
 
 use Game::ScepterOfZavandor::Constant	qw(
+    /^NOTE_/
     @Note
 );
 
@@ -108,6 +109,18 @@ for (qw(
 	}
     };
     die if $@;
+}
+
+sub maybe_confirm_payment {
+    @_ == 2 || badinvo;
+    my ($self, $payment) = @_;
+
+    if ($payment > $self->a_player->current_energy_total) {
+    	$self->ui_note(NOTE_CANT_AFFORD, $payment);
+    	return 0;
+    }
+
+    return 1;
 }
 
 sub tag_abbrev {

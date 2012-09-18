@@ -1,4 +1,4 @@
-# $Id: Util.pm,v 1.12 2012-04-28 20:02:27 roderick Exp $
+# $Id: Util.pm,v 1.13 2012-09-18 13:51:27 roderick Exp $
 
 package Game::Util;
 
@@ -7,11 +7,11 @@ use strict;
 use base qw(Exporter);
 
 use RS::Handy	qw(badinvo data_dump dstr fileline xconfess);
-use Scalar::Util qw(looks_like_number);
+use Scalar::Util qw(looks_like_number refaddr);
 
 use vars qw($VERSION @EXPORT @EXPORT_OK);
 
-$VERSION = q$Revision: 1.12 $ =~ /(\d\S+)/ ? $1 : '?';
+$VERSION = q$Revision: 1.13 $ =~ /(\d\S+)/ ? $1 : '?';
 
 BEGIN {
     @EXPORT = qw(
@@ -27,7 +27,7 @@ BEGIN {
 	make_ro_accessor_multi
 	make_rw_accessor
 	make_accessor_pkg
-	same_object
+	same_referent
 	valid_ix
 	valid_ix_plus_1
     );

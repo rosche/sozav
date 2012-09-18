@@ -1,4 +1,4 @@
-# $Id: Auctionable.pm,v 1.11 2012-04-28 20:02:27 roderick Exp $
+# $Id: Auctionable.pm,v 1.12 2012-09-18 13:51:27 roderick Exp $
 
 use strict;
 
@@ -105,6 +105,9 @@ sub as_string_fields {
 }
 
 sub bought {
+}
+
+sub destroys_active_gems {
 }
 
 sub free_items {

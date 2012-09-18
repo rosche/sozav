@@ -1,4 +1,4 @@
-# $Id: Artifact.pm,v 1.13 2012-09-14 01:16:54 roderick Exp $
+# $Id: Artifact.pm,v 1.14 2012-09-18 13:51:27 roderick Exp $
 
 use strict;
 
@@ -6,7 +6,8 @@ package Game::ScepterOfZavandor::Item::Artifact;
 
 use base qw(Game::ScepterOfZavandor::Item::Auctionable);
 
-use Game::Util	qw($Debug add_array_indices debug make_ro_accessor);
+use Game::Util	qw($Debug add_array_indices debug make_ro_accessor
+		    same_referent);
 use RS::Handy	qw(badinvo data_dump dstr shuffle xcroak);
 
 use Game::ScepterOfZavandor::Constant qw(
@@ -143,8 +144,9 @@ sub bought {
 
     for (1..$self->data(ARTI_DATA_DESTROY_GEM)) {
     	for my $p ($self->a_game->players_in_table_order) {
-	    next if $p == $self->a_player;
-	    $p->destroy_active_gem;
+	    if (!same_referent $p, $self->a_player) {
+		$p->destroy_active_gem;
+	    }
 	}
     }
 

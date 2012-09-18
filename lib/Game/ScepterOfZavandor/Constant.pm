@@ -1,4 +1,4 @@
-# $Id: Constant.pm,v 1.20 2012-09-14 01:16:54 roderick Exp $
+# $Id: Constant.pm,v 1.21 2012-09-18 13:51:27 roderick Exp $
 
 use strict;
 
@@ -12,7 +12,7 @@ use RS::Handy		qw(badinvo data_dump dstr xcroak);
 
 use vars qw($VERSION @EXPORT @EXPORT_OK);
 BEGIN {
-    $VERSION = q$Revision: 1.20 $ =~ /(\d\S+)/ ? $1 : '?';
+    $VERSION = q$Revision: 1.21 $ =~ /(\d\S+)/ ? $1 : '?';
     @EXPORT_OK = qw(
 	$Base_gem_slots
 	$Base_hand_limit
@@ -95,6 +95,7 @@ BEGIN {
 	#"knowledge_buy",	# player, chip, cost
 
     	# sent to single player
+	"cant_afford",		# payment amount
 	"not_using_best_gems",	# [gems to activate], [gems to deactivate]
 	"invalid_bid",		# auc, current bid, amount bid
     );

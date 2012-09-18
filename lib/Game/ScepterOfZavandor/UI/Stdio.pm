@@ -1,4 +1,4 @@
-# $Id: Stdio.pm,v 1.20 2012-09-14 01:16:54 roderick Exp $
+# $Id: Stdio.pm,v 1.21 2012-09-18 13:51:27 roderick Exp $
 #
 # XXX some of the code here should likely be shared with non-Stdio UIs.
 
@@ -9,7 +9,7 @@ package Game::ScepterOfZavandor::UI::Stdio;
 use base qw(Game::ScepterOfZavandor::UI::Human);
 
 use Game::Util 		qw(add_array_indices add_array_indices
-			    debug eval_block valid_ix_plus_1);
+			    debug eval_block same_referent valid_ix_plus_1);
 use List::Util		qw(first);
 use List::MoreUtils	qw(natatime);
 use RS::Handy		qw(badinvo data_dump dstr plural xconfess);
@@ -252,7 +252,7 @@ sub status_short {
 	$knowledge_title .= $_->[KNOW_DATA_ABBREV];
     }
 
-    $self->out(sprintf "%-73s %s\n", "Player status:", $knowledge_title);
+    $self->out(sprintf "%-72s %s\n", "Player status:", $knowledge_title);
     for my $p ($self->a_game->players_in_table_order) {
     	my $knowledge = '';
 	for my $ktype (0..$#Knowledge) {
@@ -278,7 +278,7 @@ sub status_short {
     	my @spec = (
 
 	    "%s"
-		=> [$self->a_player && $p == $self->a_player
+		=> [same_referent $p, $self->a_player
 			? color('bold') . ">"
 			: " "],
 
@@ -470,6 +470,9 @@ sub action_auction {
     $start_bid = $auc->a_data_min_bid
     	if !defined $start_bid;
 
+    if (!defined $self->vet_bid($auc, $start_bid)) {
+    	return 1;
+    }
     $self->a_game->auction_item($self->a_player, $auc, $start_bid);
     return 1;
 }

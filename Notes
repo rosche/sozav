@@ -1,7 +1,13 @@
-- $Id: Notes,v 1.12 2012-09-14 01:16:51 roderick Exp $
+- $Id: Notes,v 1.13 2012-09-18 13:51:24 roderick Exp $
 
 - immediate problems
 
+    - confirm gem purchase if it will require selling active gems
+    - option to give everybody a 5 sapphire card at game start
+    - option to abort buying a gem instead of selling an active one if
+      you're short
+    - when selling gems to pay for something, show how much you'll get
+      for each gem
     - test telnet URL on Windows
 
 - things you should be able to do but can't

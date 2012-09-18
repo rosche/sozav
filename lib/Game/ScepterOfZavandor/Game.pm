@@ -1,4 +1,4 @@
-# $Id: Game.pm,v 1.18 2012-09-17 20:03:33 roderick Exp $
+# $Id: Game.pm,v 1.19 2012-09-18 13:51:27 roderick Exp $
 
 use strict;
 
@@ -738,7 +738,7 @@ sub prompt_for_players {
 	$ui->out("\n");
 	$ui->out("Players:\n");
 	$ui->out("\n");
-	$ui->out("  1-$Max_players. configure for N player game with 1 human\n");
+	$ui->out(" 1-$Max_players. configure for N player game with 1 human\n");
 	$ui->out("\n");
 	$ui->out(sprintf "      %-${w}s     %-${w}s\n", 'player type', 'character');
 	$ui->out(sprintf "      %-${w}s     %-${w}s\n", '-----------', '---------');

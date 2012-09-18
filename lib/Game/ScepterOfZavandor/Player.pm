@@ -1,4 +1,4 @@
-# $Id: Player.pm,v 1.19 2012-09-14 01:16:54 roderick Exp $
+# $Id: Player.pm,v 1.20 2012-09-18 13:51:27 roderick Exp $
 
 use strict;
 
@@ -389,7 +389,9 @@ sub advance_knowledge {
     if ($free) {
 	$cost = 0;
     }
-    $self->pay_energy($cost);
+    elsif (!$self->confirm_and_pay_energy($cost)) {
+	return;
+    }
 
     if ($k->is_unassigned) {
 	$k->set_type($ktype);
@@ -442,6 +444,24 @@ sub auctionable_cost_mod {
     my $cost_mod = sum map { $_->cost_mod_on_auc_type($auc_type) } $self->items;
     #debug "$cost_mod cost_mod on $auc_or_type";
     return $cost_mod
+}
+
+sub auctionable_max_bid {
+    @_ == 2 || badinvo;
+    my $self        = shift;
+    my $auc_or_type = shift;
+
+    return $self->current_energy_total
+		- $self->auctionable_cost_mod($auc_or_type);
+}
+
+sub auctionable_max_bid_from_liquid {
+    @_ == 2 || badinvo;
+    my $self        = shift;
+    my $auc_or_type = shift;
+
+    return $self->current_energy_liquid
+		- $self->auctionable_cost_mod($auc_or_type);
 }
 
 sub auto_activate_gems {
@@ -525,7 +545,9 @@ sub buy_knowledge_chip {
     }
 
     my $cost = $free ? 0 : $kchip->a_cost;
-    $self->pay_energy($cost);
+    if (!$self->confirm_and_pay_energy($cost)) {
+	return;
+    }
 
     $self->a_game->note_to_players(NOTE_ITEM_GOT, $self, $kchip, $cost);
     $kchip->bought;
@@ -571,7 +593,9 @@ sub buy_gem {
     }
 
     my $cost = $self->gem_cost($gtype);
-    $self->pay_energy($cost);
+    if (!$self->confirm_and_pay_energy($cost)) {
+	return;
+    }
 
     my $g = Game::ScepterOfZavandor::Item::Gem->new($self, $gtype);
     $self->a_game->note_to_players(NOTE_ITEM_GOT, $self, $g, $cost);
@@ -795,7 +819,7 @@ sub destroy_active_gem {
 
     my $g;
     if (!@g) {
-    	$self->a_game->note_to_players(NOTE_INFO, $self->name, " doesn't have any active gems to destroy");
+    	$self->a_game->note_to_players(NOTE_INFO, $self->name, " doesn't have any active gems to destroy\n");
 	return;
     }
     elsif (@g == 1) {
@@ -1077,7 +1101,7 @@ sub pay_energy {
     my $paid = 0;
 
     if ($tot <= 0) {
-	return $paid;
+	return;
     }
 
     while ((my $short = $tot - $self->current_energy_liquid) > 0) {
@@ -1127,6 +1151,17 @@ sub pay_energy {
     # consolidate dust so your hand count is accurate
 
     $self->consolidate_dust;
+}
+
+sub confirm_and_pay_energy {
+    @_ == 2 || badinvo;
+    my ($self, $payment) = @_;
+
+    if (!$self->a_ui->maybe_confirm_payment($payment)) {
+    	return 0;
+    }
+    $self->pay_energy($payment);
+    return 1;
 }
 
 # Take some things out of your inventory.  Return the amount of energy

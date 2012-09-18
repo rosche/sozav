@@ -1,4 +1,4 @@
-# $Id: Human.pm,v 1.1 2012-09-14 01:16:54 roderick Exp $
+# $Id: Human.pm,v 1.2 2012-09-18 13:51:27 roderick Exp $
 
 use strict;
 
@@ -7,7 +7,7 @@ package Game::ScepterOfZavandor::UI::Human;
 use base qw(Game::ScepterOfZavandor::UI);
 
 use Game::Util 	qw(add_array_indices debug
-		    make_ro_accessor make_rw_accessor);
+		    make_ro_accessor make_rw_accessor same_referent);
 use RS::Handy	qw(badinvo data_dump dstr process_arg_pairs xconfess);
 use List::Util	qw(max);
 
@@ -158,10 +158,11 @@ sub choose_active_gem {
     my $verb = shift;
 
     my %num_active;
+    my $p = $self->a_player;
     my @g = sort { $Gem_data[$a->a_gem_type][GEM_DATA_COST]
 		    <=> $Gem_data[$b->a_gem_type][GEM_DATA_COST] }
 		grep { !$num_active{$_->a_gem_type}++ }
-		    $self->a_player->active_gems;
+		    $p->active_gems;
 
     if (!@g || @g == 1) {
 	return $g[0];
@@ -173,6 +174,8 @@ sub choose_active_gem {
 	my $abbrev = $Gem_data[$gtype][GEM_DATA_ABBREV];
 	$abbrev_to_gem{$abbrev} = $_;
 	my $desc = $Gem[$gtype];
+	$desc .= sprintf " (\$%d/\$%d)",
+		    $p->gem_cost($gtype), $p->gem_value($gtype);
 	if ((my $n = $num_active{$gtype}) > 1) {
 	    $desc .= " x$n";
 	}
@@ -259,11 +262,77 @@ sub solicit_bid {
     @_ == 4 || badinvo;
     my ($self, $auc, $cur_bid, $cur_winner) = @_;
 
-    my $cur_player = $self->a_player;
-    # XXX note your discounts/penalties
+    my $p = $self->a_player;
+
+    if ($cur_bid >= $p->auctionable_max_bid($auc)) {
+	$self->out("You can't afford to bid.\n");
+    	return 0;
+    }
+
     $self->out("Current bid on ", $auc->a_data_name,
-		" is $cur_bid by $cur_winner.\n");
-    return $self->in("$cur_player:  Your bid (0 to pass)? ");
+		" is \$$cur_bid by $cur_winner.\n");
+    my $mod = $p->auctionable_cost_mod($auc);
+    if ($mod) {
+    	$self->out(sprintf "You have a net %s of \$%d on this item.  "
+			    . "Your maximum (liquid) bid is \$%d.\n",
+		    $mod < 0 ? ("discount", -$mod) : ("penalty", $mod),
+		    $p->auctionable_max_bid_from_liquid($auc));
+    }
+
+    my $bid = undef;
+    while (!defined $bid) {
+	$bid = $self->in("$p:  Your bid (0 to pass)? ");
+	$bid = $self->vet_bid($auc, $bid);
+    }
+    return $bid;
+}
+
+sub vet_bid {
+    @_ == 3 || badinvo;
+    my ($self, $auc, $bid) = @_;
+
+    if ($bid !~ /^\d*$/) {
+	$self->out("Invalid bid\n");
+	return undef;
+    }
+
+    if ($bid eq '' || $bid == 0) {
+	return 0;
+    }
+
+    my $p = $self->a_player;
+    my $max_tot = $p->auctionable_max_bid($auc);
+    if ($bid > $max_tot) {
+	$self->out("You can't afford to bid over $max_tot.\n");
+	return undef;
+    }
+
+    if (!$self->maybe_confirm_payment($bid + $p->auctionable_cost_mod($auc))) {
+	return undef;
+    }
+
+    return $bid;
+}
+
+sub maybe_confirm_payment {
+    @_ == 2 || badinvo;
+    my ($self, $payment) = @_;
+
+    if (!$self->SUPER::maybe_confirm_payment($payment)) {
+	return 0;
+    }
+
+    my $liq  = $self->a_player->current_energy_liquid;
+    my $left = $liq - $payment;
+    if ($left >= 0) {
+    	return 1;
+    }
+
+    my $conf = $self->in(sprintf
+		    "This will require you to sell "
+		    . "\$%d worth of active gems, type Y to confirm: ",
+		    -$left);
+    return defined $conf && $conf =~ /^[Yy]$/;
 }
 
 #------------------------------------------------------------------------------
@@ -331,7 +400,7 @@ sub ui_note_actions_start {
 # XXX it'd be good to short this status only to kibitzers, but with my current
 # interface I'm always a kibitizer
 #    $self->status_short
-#    	unless $self->a_player && $player == $self->a_player;
+#    	unless same_referent $player, $self->a_player;
     $self->info($player->name, " starting actions\n");
 }
 
@@ -347,9 +416,9 @@ sub ui_note_auction_start {
     my ($self, $player, $auc, $bid) = @_;
 
     $self->status_short
-    	unless $self->a_player && $player == $self->a_player;
+    	unless same_referent $player, $self->a_player;
     $self->info($player->name, " started auction for ",
-		$auc->a_data_name, " with bid of $bid\n");
+		$auc->a_data_name, " with bid of \$$bid\n");
 
     # A sentinel won't have been in the standard display of
     # auctionables, so show the details.
@@ -362,13 +431,13 @@ sub ui_note_auction_start {
 sub ui_note_auction_bid {
     @_ == 4 || badinvo;
     my ($self, $player, $auc, $bid) = @_;
-    $self->info($player->name, " bid $bid for ", $auc->a_data_name, "\n");
+    $self->info($player->name, " bid \$$bid for ", $auc->a_data_name, "\n");
 }
 
 sub ui_note_auction_won {
     @_ == 4 || badinvo;
     my ($self, $player, $auc, $bid) = @_;
-    $self->info($player->name, " won ", $auc->a_data_name, " for $bid\n");
+    $self->info($player->name, " won ", $auc->a_data_name, " for \$$bid\n");
 }
 
 sub ui_note_chose_character {
@@ -431,10 +500,18 @@ sub ui_note_knowledge_advance {
 		$k->name, " to level ", $k->user_level, " for \$$cost\n");
 }
 
+# single player ---------------------------------------------------------------
+
+sub ui_note_cant_afford {
+    @_ == 2 || badinvo;
+    my ($self, $payment) = @_;
+    $self->info("You can't afford a payment of \$$payment\n");
+}
+
 sub ui_note_not_using_best_gems {
     @_ == 3 || badinvo;
     my ($self, $ractivate, $rdeactivate) = @_;
-    $self->info($self->a_player, " not using best gems, suggest ",
+    $self->info("You aren't using your best gems, suggest ",
 		join ", ",
 		    (@$rdeactivate ? "dropping @$rdeactivate" : ()),
 		    (@$ractivate   ? "adding @$ractivate" : ()));
@@ -443,8 +520,7 @@ sub ui_note_not_using_best_gems {
 sub ui_note_invalid_bid {
     @_ == 4 || badinvo;
     my ($self, $auc, $cur_bid, $new_bid) = @_;
-    $self->info($self->a_player,
-	" made an invalid bid (current bid $cur_bid, your bid $new_bid)\n");
+    $self->info("Your bid of $new_bid is invalid (current bid $cur_bid)\n");
 }
 
 #------------------------------------------------------------------------------
