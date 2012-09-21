@@ -1,4 +1,4 @@
-# $Id: Sentinel.pm,v 1.10 2012-04-28 20:02:27 roderick Exp $
+# $Id: Sentinel.pm,v 1.11 2012-09-21 12:34:53 roderick Exp $
 
 use strict;
 
@@ -49,7 +49,7 @@ sub as_string_fields {
     for my $p ($owner ? ($owner) : $self->a_game->players_in_table_order) {
     	my $b = $self->vp_extra_for_player($p)
 	    or next;
-	push @r, "$p:$b";
+	push @r, sprintf "bonus-vp=%s:%d", $p, $b;
     }
 
     return @r;

@@ -1,4 +1,4 @@
-# $Id: Auctionable.pm,v 1.12 2012-09-18 13:51:27 roderick Exp $
+# $Id: Auctionable.pm,v 1.13 2012-09-21 12:34:53 roderick Exp $
 
 use strict;
 
@@ -96,7 +96,7 @@ sub as_string_fields {
 	    "min=" . $self->a_data_min_bid;
 	for my $p ($self->a_game->players_in_table_order) {
 	    if (my $cost_mod = $p->auctionable_cost_mod($self)) {
-		push @r, "$p:$cost_mod";
+		push @r, sprintf "%s:\$%+d", $p, $cost_mod;
 	    }
 	}
     }

@@ -1,4 +1,4 @@
-# $Id: Deck.pm,v 1.10 2012-09-14 01:16:54 roderick Exp $
+# $Id: Deck.pm,v 1.11 2012-09-21 12:34:53 roderick Exp $
 
 use strict;
 
@@ -63,7 +63,7 @@ sub new {
     if ($gtype == GEM_SAPPHIRE
 	    && $self->a_game->option(OPT_LESS_RANDOM_START)) {
     	my (@yes, @no);
-	# XXX this shouldnt affect Fairy's 9 Sages cards
+	# XXX this shouldnt affect Fairy's 9 Sages cards?
 	for (@card) {
 	    my $e = $_->energy;
 	    # XXX this does nothing for OPT_LOWER_VARIANCE, do something

@@ -1,4 +1,4 @@
-# $Id: Player.pm,v 1.20 2012-09-18 13:51:27 roderick Exp $
+# $Id: Player.pm,v 1.21 2012-09-21 12:34:53 roderick Exp $
 
 use strict;
 
@@ -11,7 +11,7 @@ use overload (
 
 use List::Util		qw(first max min sum);
 use Game::Util  	qw($Debug debug_var add_array_indices debug debug_var
-			    knapsack_0_1 make_ro_accessor make_rw_accessor);
+			    knapsack_0_1 make_ro_accessor make_rw_accessor same_referent);
 use RS::Handy		qw(badinvo data_dump dstr xconfess);
 use Scalar::Util	qw(refaddr weaken);
 use Set::Scalar	 	  ();
@@ -467,6 +467,13 @@ sub auctionable_max_bid_from_liquid {
 sub auto_activate_gems {
     @_ == 1 || badinvo;
     my $self = shift;
+
+    # This can get called on other player's turns (knowledge advance or
+    # gem slot from winning auction).
+
+    if (!same_referent $self, $self->a_game->a_cur_player) {
+    	return;
+    }
 
     my $n_slots  = $self->num_gem_slots;
     my @gem      = sort { $b <=> $a } $self->gems;

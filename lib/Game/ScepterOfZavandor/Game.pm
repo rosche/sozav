@@ -1,4 +1,4 @@
-# $Id: Game.pm,v 1.19 2012-09-18 13:51:27 roderick Exp $
+# $Id: Game.pm,v 1.20 2012-09-21 12:34:53 roderick Exp $
 
 use strict;
 
@@ -43,6 +43,7 @@ use Game::ScepterOfZavandor::Undo		();
 
 BEGIN {
     add_array_indices 'GAME', (
+	'CUR_PLAYER',
 	'INITIALIZED',
 	'OPTION',
 	'PLAYER_TABLE_ORDER',
@@ -80,6 +81,9 @@ sub new {
     $self->option(OPT_VERBOSE           , 1);
     $self->option(OPT_DRUID_LEVEL_3_RUBY, 1);
     $self->option(OPT_9_SAGES_DUST      , 1);
+    $self->option(OPT_1_DUST            , 1);
+    $self->option(OPT_5_SAPPHIRE_START  , 1);
+    $self->option(OPT_LESS_RANDOM_START , 1);
 
     return $self;
 }
@@ -89,7 +93,8 @@ make_ro_accessor (
 );
 
 make_rw_accessor (
-    a_turn_num => GAME_TURN_NUM,
+    a_cur_player => GAME_CUR_PLAYER,
+    a_turn_num   => GAME_TURN_NUM,
 );
 
 sub die_if_initialized {
@@ -410,9 +415,11 @@ sub play {
 	# phase 3: player actions
 
 	for (@p) {
+	    $self->a_cur_player($_);
 	    $self->note_to_players(NOTE_ACTIONS_START, $_);
 	    $_->actions;
 	    $self->note_to_players(NOTE_ACTIONS_END, $_);
+	    $self->a_cur_player(undef);
 	}
 
 	# phase 4: check victory conditions
@@ -788,6 +795,7 @@ sub prompt_for_players {
 	}
     }
 
+    my $got_global_messages;
     for (0..$#ui) {
     	my $ui_name = $ui[$_];
     	next if $ui_name eq $none;
@@ -796,10 +804,15 @@ sub prompt_for_players {
 		    : ($ui_name);
 	my $ui = $self->new_ui(@arg);
 	if ($ui->can('a_suppress_global_messages')) {
-	    $ui->a_suppress_global_messages(1);
+	    if ($got_global_messages++) {
+		$ui->a_suppress_global_messages(1);
+	    }
 	}
 	$self->add_player(
 		Game::ScepterOfZavandor::Player->new($self, $ui, $char[$_]));
+    }
+    if (!$got_global_messages) {
+	$self->add_kibitzer($ui);
     }
 }
 
@@ -824,10 +837,11 @@ sub run_game {
 
     my $g = Game::ScepterOfZavandor::Game->new;
 
-    my $ui = $g->new_ui("UI::Kibitzer", *STDIN, *STDOUT);
-    $g->add_kibitzer($ui);
-
-    $g->run_game_prompt_for_info($ui);
+    {
+	my $ui = $g->new_ui("UI::Kibitzer", *STDIN, *STDOUT);
+	#$g->add_kibitzer($ui);
+	$g->run_game_prompt_for_info($ui);
+    }
     $g->init;
     $g->play;
 }

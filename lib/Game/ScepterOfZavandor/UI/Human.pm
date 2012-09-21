@@ -1,4 +1,4 @@
-# $Id: Human.pm,v 1.2 2012-09-18 13:51:27 roderick Exp $
+# $Id: Human.pm,v 1.3 2012-09-21 12:34:53 roderick Exp $
 
 use strict;
 
@@ -387,6 +387,7 @@ sub ui_note_turn_start {
     my $self = shift;
 
     my $g = $self->a_game;
+    $self->info("-" x 77, "\n");
     $self->info(sprintf "Turn %s starting, player order: %s\n",
     	    	    $g->a_turn_num,
     	    	    join " ", $g->players_in_turn_order);

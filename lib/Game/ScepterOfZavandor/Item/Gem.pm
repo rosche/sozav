@@ -1,4 +1,4 @@
-# $Id: Gem.pm,v 1.16 2012-09-14 01:16:54 roderick Exp $
+# $Id: Gem.pm,v 1.17 2012-09-21 12:34:53 roderick Exp $
 
 use strict;
 
@@ -14,6 +14,7 @@ use Game::ScepterOfZavandor::Constant qw(
     /^GEM_/
     /^ITEM_/
     /^NOTE_/
+    /^OPT_/
     @Gem
     @Gem_data
 );
@@ -119,7 +120,23 @@ sub produce_energy {
     @_ == 1 || badinvo;
     my $self = shift;
 
-    return $self->is_active ? $self->[ITEM_GEM_DECK]->draw : ();
+    if (!$self->is_active) {
+	return;
+    }
+
+    my $game = $self->a_player->a_game;
+    if ($game->a_turn_num == 1
+	    && $game->option(OPT_5_SAPPHIRE_START)
+	    && $self->a_gem_type == GEM_SAPPHIRE) {
+	my $c = $self->[ITEM_GEM_DECK]->draw_first_matching_no_shuffle(
+		    sub { shift->energy == 5 });
+    	if ($c) {
+	    return $c;
+	}
+	warn "oops";
+    }
+
+    return $self->[ITEM_GEM_DECK]->draw;
 }
 
 sub produce_energy_estimate {

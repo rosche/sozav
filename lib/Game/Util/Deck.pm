@@ -1,4 +1,4 @@
-# $Id: Deck.pm,v 1.5 2008-08-08 11:31:39 roderick Exp $
+# $Id: Deck.pm,v 1.6 2012-09-21 12:34:53 roderick Exp $
 
 package Game::Util::Deck;
 
@@ -58,6 +58,15 @@ sub shuffle {
     $self->[DECK_DISCARD] = [];
 }
 
+sub maybe_shuffle {
+    @_ == 1 || badinvo;
+    my ($self) = @_;
+
+    if (!@{ $self->[DECK_DRAW] } && $self->[DECK_AUTO_RESHUFFLE]) {
+	$self->shuffle;
+    }
+}
+
 sub draw {
     @_ == 1 || @_ == 2 || badinvo;
     my $self = shift;
@@ -65,13 +74,23 @@ sub draw {
 
     my @r;
     for (1..$ct) {
-	if (!@{ $self->[DECK_DRAW] } && $self->[DECK_AUTO_RESHUFFLE]) {
-	    $self->shuffle;
-	}
+    	$self->maybe_shuffle;
 	push @r, shift @{ $self->[DECK_DRAW] };
     }
 
     return @r == 1 ? $r[0] : @r;
+}
+
+sub draw_first_matching_no_shuffle {
+    @_ == 2 || badinvo;
+    my ($self, $test_sub) = @_;
+
+    for my $ix (0..$#{ $self->[DECK_DRAW] }) {
+    	if ($test_sub->($self->[DECK_DRAW][$ix])) {
+	    return splice @{ $self->[DECK_DRAW] }, $ix, 1;
+	}
+    }
+    return undef;
 }
 
 sub discard {

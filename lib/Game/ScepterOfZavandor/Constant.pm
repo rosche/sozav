@@ -1,4 +1,4 @@
-# $Id: Constant.pm,v 1.21 2012-09-18 13:51:27 roderick Exp $
+# $Id: Constant.pm,v 1.22 2012-09-21 12:34:53 roderick Exp $
 
 use strict;
 
@@ -12,7 +12,7 @@ use RS::Handy		qw(badinvo data_dump dstr xcroak);
 
 use vars qw($VERSION @EXPORT @EXPORT_OK);
 BEGIN {
-    $VERSION = q$Revision: 1.21 $ =~ /(\d\S+)/ ? $1 : '?';
+    $VERSION = q$Revision: 1.22 $ =~ /(\d\S+)/ ? $1 : '?';
     @EXPORT_OK = qw(
 	$Base_gem_slots
 	$Base_hand_limit
@@ -179,6 +179,7 @@ BEGIN {
     	'1 dust',
 
 	# randomness
+	'5 sapphire start',
 	'less random start',
 	'lower variance',
 	'averaged cards',

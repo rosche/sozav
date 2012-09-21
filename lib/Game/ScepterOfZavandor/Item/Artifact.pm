@@ -1,4 +1,4 @@
-# $Id: Artifact.pm,v 1.14 2012-09-18 13:51:27 roderick Exp $
+# $Id: Artifact.pm,v 1.15 2012-09-21 12:34:53 roderick Exp $
 
 use strict;
 
@@ -85,11 +85,11 @@ sub as_string_fields {
 
     if (my $auc_type = $self->data(ARTI_DATA_COST_MOD_ARTIFACT)) {
     	my $n = $self->data(ARTI_DATA_COST_MOD_ARTIFACT_AMOUNT);
-	$add->("$Artifact[$auc_type]=$n");
+	$add->("$Artifact[$auc_type]=\$$n");
     }
 
     if (my $n = $self->data(ARTI_DATA_COST_MOD_SENTINELS)) {
-	$add->("sentinels=$n");
+	$add->("sentinels=\$$n");
     }
 
     return @r;
