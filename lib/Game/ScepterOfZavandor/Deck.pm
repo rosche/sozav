@@ -1,4 +1,4 @@
-# $Id: Deck.pm,v 1.11 2012-09-21 12:34:53 roderick Exp $
+# $Id: Deck.pm,v 1.12 2012-09-23 00:59:28 roderick Exp $
 
 use strict;
 
@@ -89,10 +89,6 @@ sub new {
 	    print "$_\n" for @d;
 	}
     }
-
-    # XXX For OPT_LESS_RANDOM_START give each player a 5 to start?  You
-    # can't just seed the top of the deck because of the fairy's 9 sages
-    # cards.
 
     return $self;
 }
