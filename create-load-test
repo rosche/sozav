@@ -1,0 +1,29 @@
+#!/usr/bin/perl -w
+use strict;
+
+# $Id: create-load-test,v 1.1 2012-09-23 01:14:22 roderick Exp $
+
+# I create separate tests for loading each module to be sure each one
+# requires the things it uses.
+
+@ARGV or die;
+for my $file (@ARGV) {
+    $file =~ m|^t/0-load-(.+)\.t$|
+    	or die "invalid file name $file\n";
+    my $pkg = $1;
+    $pkg =~ s/-/::/g;
+
+    my $s = <<EOF;
+#!perl -w
+use strict;
+BEGIN { \$SIG{__WARN__} = sub { die @_ } }
+use Test::More tests => 1;
+require_ok "$pkg";
+EOF
+
+    if (!open FILE, ">", $file
+    	    or !print FILE $s
+	    or !close FILE) {
+    	die "error writing to $file: $!\n";
+    }
+}

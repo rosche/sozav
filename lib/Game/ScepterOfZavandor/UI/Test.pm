@@ -1,4 +1,4 @@
-# $Id: Test.pm,v 1.2 2012-04-28 20:02:27 roderick Exp $
+# $Id: Test.pm,v 1.3 2012-09-23 01:14:25 roderick Exp $
 
 use strict;
 
@@ -10,12 +10,20 @@ use Game::Util	qw(add_array_indices debug make_rw_accessor);
 use RS::Handy	qw(xdie);
 
 BEGIN {
+    # XXX regular player object has a want_char now
     add_array_indices 'UI', map { "TEST_$_" } qw(WANT_CHAR);
 }
 
 make_rw_accessor (
    a_want_char => UI_TEST_WANT_CHAR,
 );
+
+sub new {
+    my $self = shift->SUPER::new(@_);
+
+    $self->a_ignore_unimplemented_notes(1);
+    return $self;
+}
 
 sub choose_character {
     my $self = shift;

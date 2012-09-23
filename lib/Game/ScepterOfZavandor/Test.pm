@@ -1,4 +1,4 @@
-# $Id: Test.pm,v 1.1 2009-02-15 15:16:57 roderick Exp $
+# $Id: Test.pm,v 1.2 2012-09-23 01:14:25 roderick Exp $
 
 use strict;
 
@@ -14,7 +14,7 @@ use Test::More	qw(no_plan);
 
 use vars qw($VERSION @EXPORT @EXPORT_OK);
 BEGIN {
-    $VERSION = q$Revision: 1.1 $ =~ /(\d\S+)/ ? $1 : '?';
+    $VERSION = q$Revision: 1.2 $ =~ /(\d\S+)/ ? $1 : '?';
     @EXPORT = qw(
 	$Game
 	$Player
@@ -81,7 +81,7 @@ sub create_test_game {
     for (1 .. $num_players) {
 	my $ui = Game::ScepterOfZavandor::UI::Test->new($g);
 	$ui->a_want_char(shift @want_char);
-    	push @p, Game::ScepterOfZavandor::Player->new($g, $ui);
+    	push @p, Game::ScepterOfZavandor::Player->new($g, $ui, undef);
 	$g->add_player($p[-1]);
     }
 

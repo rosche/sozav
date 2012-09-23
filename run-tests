@@ -1,0 +1,5 @@
+#!/bin/sh
+
+# $Id: run-tests,v 1.1 2012-09-23 01:14:22 roderick Exp $
+
+PERLLIB=lib perl -we 'use Test::Harness; runtests @ARGV' "$@"
