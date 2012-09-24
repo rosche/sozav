@@ -147,7 +147,7 @@ sub new_ui {
     my $ui = $ui_class->new($self, @arg);
     # XXX opens for each player, desirable?
     $ui->log_open(scalar safe_tmp
-		    dir => "/var/local/zavandor",
+		    dir => "/var/local/sozav",
 		    mode => 0666,
 		    prefix => "zavandor.");
     $ui->log_out(scalar(localtime), "\n");
@@ -823,7 +823,7 @@ sub run_game_prompt_for_info {
     $ui->out("The Scepter of Zavandor\n");
     # XXX set up web site
     # XXX add this link to help
-    #$ui->out("more info at http://www.argon.org/zavandor/\n");
+    #$ui->out("more info at http://www.argon.org/sozav/\n");
 
     # XXX take options and user choices as an arg, store last time's in
     # a cookie or from command line

@@ -1,7 +1,8 @@
 #!/usr/bin/perl -w
 use strict;
 
-use lib '/usr/local/src/zavandor/lib';
+use FindBin qw($Bin);
+use lib "$Bin/lib";
 
 use RS::Handy;
 use Carp ();

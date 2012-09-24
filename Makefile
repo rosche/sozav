@@ -2,7 +2,7 @@
 
 all:
 
-install_dest 		= /usr/local/src/zavandor-inst
+install_dest 		= /usr/local/src/sozav-inst
 install_rsync_args      =
 
 all_files		:= $(shell find -type f \
