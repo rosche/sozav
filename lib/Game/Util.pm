@@ -1,5 +1,3 @@
-# $Id: Util.pm,v 1.13 2012-09-18 13:51:27 roderick Exp $
-
 package Game::Util;
 
 use strict;
@@ -11,7 +9,7 @@ use Scalar::Util qw(looks_like_number refaddr);
 
 use vars qw($VERSION @EXPORT @EXPORT_OK);
 
-$VERSION = q$Revision: 1.13 $ =~ /(\d\S+)/ ? $1 : '?';
+$VERSION = 'XXX';
 
 BEGIN {
     @EXPORT = qw(

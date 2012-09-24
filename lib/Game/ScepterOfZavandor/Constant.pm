@@ -1,5 +1,3 @@
-# $Id: Constant.pm,v 1.22 2012-09-21 12:34:53 roderick Exp $
-
 use strict;
 
 package Game::ScepterOfZavandor::Constant;
@@ -12,7 +10,7 @@ use RS::Handy		qw(badinvo data_dump dstr xcroak);
 
 use vars qw($VERSION @EXPORT @EXPORT_OK);
 BEGIN {
-    $VERSION = q$Revision: 1.22 $ =~ /(\d\S+)/ ? $1 : '?';
+    $VERSION = 'XXX';
     @EXPORT_OK = qw(
 	$Base_gem_slots
 	$Base_hand_limit

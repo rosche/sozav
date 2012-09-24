@@ -1,5 +1,3 @@
-# $Id: Item.pm,v 1.17 2012-09-14 01:16:54 roderick Exp $
-
 use strict;
 
 package Game::ScepterOfZavandor::Item;

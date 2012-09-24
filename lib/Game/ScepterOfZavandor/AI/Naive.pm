@@ -1,5 +1,3 @@
-# $Id: Naive.pm,v 1.2 2012-09-15 15:36:40 roderick Exp $
-
 use strict;
 
 package Game::ScepterOfZavandor::AI::Naive;

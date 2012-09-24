@@ -1,5 +1,3 @@
-# $Id: Undo.pm,v 1.1 2012-09-14 01:16:54 roderick Exp $
-
 use strict;
 
 package Game::ScepterOfZavandor::Undo;

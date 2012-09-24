@@ -1,5 +1,3 @@
-# $Id: UI.pm,v 1.13 2012-09-18 13:51:27 roderick Exp $
-
 use strict;
 
 package Game::ScepterOfZavandor::UI;

@@ -1,5 +1,3 @@
-# $Id: Test.pm,v 1.2 2012-09-23 01:14:25 roderick Exp $
-
 use strict;
 
 package Game::ScepterOfZavandor::Test;
@@ -14,7 +12,7 @@ use Test::More	qw(no_plan);
 
 use vars qw($VERSION @EXPORT @EXPORT_OK);
 BEGIN {
-    $VERSION = q$Revision: 1.2 $ =~ /(\d\S+)/ ? $1 : '?';
+    $VERSION = 'XXX';
     @EXPORT = qw(
 	$Game
 	$Player

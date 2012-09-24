@@ -1,5 +1,3 @@
-# $Id: Sentinel.pm,v 1.11 2012-09-21 12:34:53 roderick Exp $
-
 use strict;
 
 package Game::ScepterOfZavandor::Item::Sentinel;

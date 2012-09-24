@@ -1,5 +1,3 @@
-# $Id: Deck.pm,v 1.12 2012-09-23 00:59:28 roderick Exp $
-
 use strict;
 
 package Game::ScepterOfZavandor::Deck;

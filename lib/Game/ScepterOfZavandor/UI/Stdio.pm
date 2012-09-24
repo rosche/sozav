@@ -1,5 +1,3 @@
-# $Id: Stdio.pm,v 1.21 2012-09-18 13:51:27 roderick Exp $
-#
 # XXX some of the code here should likely be shared with non-Stdio UIs.
 
 use strict;

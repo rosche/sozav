@@ -1,5 +1,3 @@
-# $Id: TurnOrder.pm,v 1.7 2012-04-28 20:02:27 roderick Exp $
-
 use strict;
 
 package Game::ScepterOfZavandor::Item::TurnOrder;

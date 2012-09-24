@@ -1,5 +1,3 @@
-# $Id: Test.pm,v 1.3 2012-09-23 01:14:25 roderick Exp $
-
 use strict;
 
 package Game::ScepterOfZavandor::UI::Test;

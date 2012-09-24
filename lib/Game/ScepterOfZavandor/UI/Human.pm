@@ -1,5 +1,3 @@
-# $Id: Human.pm,v 1.3 2012-09-21 12:34:53 roderick Exp $
-
 use strict;
 
 package Game::ScepterOfZavandor::UI::Human;

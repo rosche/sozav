@@ -1,5 +1,3 @@
-# $Id: Deck.pm,v 1.6 2012-09-21 12:34:53 roderick Exp $
-
 package Game::Util::Deck;
 
 use strict;
