@@ -2,7 +2,6 @@
 
     - undo
     - additional options:
-	- give everybody a 5 sapphire card at game start
 	- public money, otherwise display as min/avg/max
 	- less verboseness, use this by default
     - sometimes the program takes a really long time to figure out what
@@ -10,10 +9,17 @@
     - rules not implemented yet:
 	- you can sell gems, increase knowledge of gems, then buy gems, but
 	  you shouldn't be able to
-	    - Z-Man rules don't say anything about this limitation
+	    - Z-Man rules don't say anything about this limitation?
 	- you can't combine purchases to prevent losing a dust
 	    - per the FAQ this can include an item bought at auction, you
 	      just have to pay before starting a new auction
+    	    - perhaps do this by adding "debt" objects (subclass of
+    	      Energy)
+		- pay debts before starting auction or at end of turn
+		  (or immediately if you buy something on somebody
+		  else's turn)
+    	    	- but will make the hand count display wrong, need to
+    	    	  re-jigger that
 	- allow explicitly choosing what to pay with, but default to
 	  selecting automatically
 	- allow explicitly choosing what to discard for hand limit, but
