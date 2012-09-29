@@ -22,6 +22,7 @@ use Game::ScepterOfZavandor::Constant qw(
     /^GEM_/
     /^GEM_DATA_/
     /^KNOW_DATA_/
+    /^OPT_/
     @Energy_estimate
     $Game_end_sentinels_sold_count
     @Gem
@@ -245,79 +246,97 @@ sub status_short {
 	$self->out("  nothing\n");
     }
 
+    $self->out("Status:         | know   |\n");
+
     my $knowledge_title = "";
     for (@Knowledge_data) {
 	$knowledge_title .= $_->[KNOW_DATA_ABBREV];
     }
 
-    $self->out(sprintf "%-72s %s\n", "Player status:", $knowledge_title);
+    my $header = '';
     for my $p ($self->a_game->players_in_table_order) {
-    	my $knowledge = '';
-	for my $ktype (0..$#Knowledge) {
-	    my $k = first { $_->ktype_is($ktype) } $p->knowledge_chips;
-	    $knowledge .= !$k
-			    ? '-'
-			    : $k->maxed_out
-				? '*'
-				: $k->user_level;
-	}
-
 	my $rel = sub {
-	    my ($desc, $cur, $max) = @_;
-	    my $fmt = " %s %2d";
-	    my @arg = ($desc, $cur);
+	    my ($cur, $max) = @_;
+	    my $fmt = "%2d";
+	    my @arg = ($cur);
 	    $fmt .= sprintf "%-5s",
 			$cur == $max
     	    	    	    ? ""
     	    	    	    : sprintf "(%+d)", $cur - $max;
-    	    return $fmt => \@arg;
+    	    return $fmt, @arg;
     	};
 
+    	my $do_highlight = same_referent $p, $self->a_player;
     	my @spec = (
-
-	    "%s"
-		=> [same_referent $p, $self->a_player
-			? color('bold') . ">"
-			: " "],
-
-	    " %-6s"
-		=> [$p->name],
-
-	    " vp %2d(%d)"
-		=> [$p->score,
-		    $p->user_turn_order],
-
-	    "  inc " . join("/", ("%3.0f") x @Energy_estimate)
-		=> [$p->income_estimate],
-
-	    "  \$%3d"
-		=> [$p->current_energy_liquid],
-
+    	    [""        => "", "%1s", $do_highlight ? ">" : " "],
+    	    [name      => "", "%-6s",
+			    $p->name],
+	    [vp        => " | ", "%2d(%d)",
+			    $p->score, $p->user_turn_order],
+    	    [$knowledge_title => " | ", "%s",
+			    $self->status_short_knowledge($p)],
+    	    [gems      => " | ", "%-11s",
+			    $self->status_short_gems($p)],
+    	    [income    => " | ", join("/", ("%3.0f") x @Energy_estimate),
+			    $p->income_estimate],
+    	    [cash      => " | ", "%-11s",
+			    $self->status_short_cash($p)],
 	    # XXX more useful to show how much energy you'd lose to your
 	    # hand limit when you're over
-	    $rel->(" hand",
-		    $p->current_hand_count,
-		    $p->hand_limit),
-
-	    #$rel->("gems",
-	    #	    0+$p->active_gems,
-	    #	    $p->num_gem_slots),
-
-	    " g:%-11s" => [$self->status_short_gems($p)],
-
-	    " know %s"
-		=> [$knowledge],
-
+    	    [hand      => " | ", $rel->($p->current_hand_count, $p->hand_limit)],
     	);
 
-    	my $it = natatime 2, @spec;
-	my ($fmt, @arg);
-	while (my ($this_fmt, $r) = $it->()) {
-	    $fmt .= $this_fmt;
-	    push @arg, @$r;
+	my $s = '';
+    	for (@spec) {
+	    my ($title, $sep, $this_fmt, @arg) = @$_;
+
+	    my $formatted = sprintf $this_fmt, @arg;
+	    $s .= $sep . $formatted;
+
+	    if (defined $header) {
+	    	my $l = length $formatted;
+		#$title .= '-' while length($title) < length($formatted);
+    	    	$header .= $sep . sprintf "%-${l}s", $title;
+	    }
 	}
-    	$self->out(sprintf "$fmt%s\n", @arg, color 'reset');
+	$s .= "\n";
+	if (defined $header) {
+	    $self->out($header, "\n");
+	    $header = undef;
+	}
+	if ($do_highlight) {
+	    $self->out(color('bold'), $s, color 'reset');
+	}
+	else {
+	    $self->out($s);
+	}
     }
+}
+
+sub status_short_cash {
+    @_ == 2 || badinvo;
+    my $self = shift;
+    my $p    = shift;
+
+    my $visible_e;
+    if ($self->a_game->option(OPT_PUBLIC_MONEY) || same_referent $p, $self->a_player) {
+	$visible_e = $p->current_energy_liquid;
+    }
+    else {
+    	my @ep = $p->current_energy_liquid_public;
+	my $e = $ep[0];
+	#print "ep = @ep\n";
+
+	# show as exact if the value is actually visible
+	if (!grep { $_ != $e } @ep) {
+	    $visible_e = $e;
+	}
+	else {
+	    return sprintf "" . join("/", ("%3.0f") x @Energy_estimate), @ep;
+    	}
+    }
+
+    return sprintf "   \$%3d", $visible_e;
 }
 
 sub status_short_gems {
@@ -332,6 +351,23 @@ sub status_short_gems {
     }
     for (@g+1 .. $p->num_gem_slots) {
 	$s .= "-";
+    }
+    return $s;
+}
+
+sub status_short_knowledge {
+    @_ == 2 || badinvo;
+    my $self = shift;
+    my $p    = shift;
+
+    my $s = '';
+    for my $ktype (0..$#Knowledge) {
+	my $k = first { $_->ktype_is($ktype) } $p->knowledge_chips;
+	$s .= !$k
+		? '-'
+		: $k->maxed_out
+		    ? '*'
+		    : $k->user_level;
     }
     return $s;
 }
@@ -635,20 +671,19 @@ sub _action_help_backend {
 				$Knowledge_data[$_][KNOW_DATA_ABBREV])
     	} 0..$#Knowledge), "\n");
 
-    my $fmt = ${i} x 3 . "%4s = %-29s %4s = %s\n";
+    my $fmt = ${i} x 3 . "%4s = %-29s %6s = %s\n";
     $self->out("${i} Player status legend:\n");
     $self->out(sprintf $fmt,
     	    	"vp",  "victory points(turn order)",
-    	    	"hand",  "hand size(vs limit)",
+		"income",  "min/average/max",
     	    );
     $self->out(sprintf $fmt,
-		"inc",  "income min/average/max",
-		#"gems",  "active gems(vs slots)",
-		"g:",  "active gem/empty slot list",
-    	    );
-    $self->out(sprintf $fmt,
-		"\$",  "liquid energy",
     	    	"know",  "knowledge levels",
+    	    	"cash", "min/average/max or exact",
+    	    );
+    $self->out(sprintf $fmt,
+		"gems",  "active gem/empty slot list",
+    	    	"hand",  "hand size(vs limit)",
     	    );
 
     if ($self->can_underline && !$brief) {

@@ -122,7 +122,7 @@ BEGIN {
 		'cards+dust',	# XXY better name
 		'inactive gems',
 	    'active gems',
-    	@Energy_estimate,
+    	@Energy_estimate,	# publically visible info
     );
     add_array_indices 'CUR_ENERGY', @Current_energy;
 
@@ -184,6 +184,7 @@ BEGIN {
 
     	# other
 	'anybody level 3 ruby',
+	'public money',
 
 	# characters
 	'choose character',

@@ -212,6 +212,24 @@ sub current_energy_cards_dust {
     return ($self->current_energy_detail)[CUR_ENERGY_CARDS_DUST];
 }
 
+sub current_energy_liquid_public {
+    @_ == 1 || badinvo;
+    my $self = shift;
+
+    my @ep = (0) x @Energy_estimate;
+    for my $i ($self->items) {
+	if ($i->is_gem && $i->is_active) {
+	    next;
+	}
+	my @iep = $i->energy_public;
+	#print "iep = @iep for $i\n";
+	for (0..$#iep) {
+	    $ep[$_] += $iep[$_];
+	}
+    }
+    return @ep;
+}
+
 sub current_energy_liquid {
     @_ == 1 || badinvo;
     my $self = shift;

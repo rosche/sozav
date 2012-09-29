@@ -15,6 +15,7 @@ use Scalar::Util	qw(refaddr weaken);
 use Game::ScepterOfZavandor::Constant qw(
     /^ENERGY_EST_/
     /^ITEM_/
+    @Energy_estimate
     @Item_type
 );
 
@@ -214,6 +215,13 @@ sub energy {
     my $self = shift;
 
     return 0;
+}
+
+sub energy_public {
+    @_ == 1 || badinvo;
+    my $self = shift;
+
+    return (($self->energy) x @Energy_estimate);
 }
 
 sub produce_energy {

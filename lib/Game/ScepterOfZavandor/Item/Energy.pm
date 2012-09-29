@@ -14,14 +14,6 @@ use RS::Handy		qw(badinvo data_dump dstr xconfess);
 
 BEGIN {
     add_array_indices 'ITEM', map { "ENERGY_$_" } qw(VALUE);
-
-    # XXX min, average, max possible values for this type of thing
-    # (differs for cards), use to show min, average, max energy a
-    # person has
-    #
-    # XXX or maybe store this in a central array indexed by type of
-    # thing (1, 2, 5, 10 dust, 4 gem cards types, 4 concntrated energy
-    # types)
 }
 
 sub new {
@@ -122,11 +114,18 @@ sub as_string_fields {
     return @r;
 }
 
+sub energy_public {
+    @_ == 1 || badinvo;
+    my $self = shift;
+
+    return $self->a_deck->energy_estimate;
+}
+
 sub use_up {
     @_ == 1 || badinvo;
     my $self = shift;
 
-    $self->[ITEM_ENERGY_CARD_DECK]->discard($self);
+    $self->a_deck->discard($self);
 }
 
 #------------------------------------------------------------------------------
