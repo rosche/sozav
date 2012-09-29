@@ -1,9 +1,11 @@
 - important outstanding items
 
-    - undo
-    - additional options:
-	- public money, otherwise display as min/avg/max
-	- less verboseness, use this by default
+    - non-current human player doesn't see current status or "maximum
+      liquid bid" during auction
+    - add knowledge-info command
+    - add inventory command to show other player's stuff
+    - add undo feature
+    - be less verbose by default
     - sometimes the program takes a really long time to figure out what
       what to discard for a player over hand limit
     - rules not implemented yet:
