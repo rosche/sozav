@@ -430,7 +430,9 @@ sub ui_note_auction_start {
 sub ui_note_auction_bid {
     @_ == 4 || badinvo;
     my ($self, $player, $auc, $bid) = @_;
-    $self->info($player->name, " bid \$$bid for ", $auc->a_data_name, "\n");
+    $self->info($player->name,
+		    $bid ? " bid \$$bid for " : " passed on ",
+		    $auc->a_data_name, "\n");
 }
 
 sub ui_note_auction_won {
