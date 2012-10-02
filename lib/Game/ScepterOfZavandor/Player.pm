@@ -44,6 +44,7 @@ BEGIN {
     add_array_indices 'PLAYER', qw(
 	GAME
 	UI
+	NAME
 	CHAR_PREFERENCE
 	CHAR
 	ITEM
@@ -63,8 +64,8 @@ BEGIN {
 #       high you can bid
 
 sub new {
-    @_ == 4 || badinvo;
-    my ($class, $game, $ui, $want_char) = @_;
+    @_ == 5 || badinvo;
+    my ($class, $game, $ui, $name, $want_char) = @_;
 
     $ui or xconfess;
 
@@ -73,6 +74,7 @@ sub new {
     weaken $self->[PLAYER_GAME];
     $self->[PLAYER_UI  ] = $ui;
     $ui->a_player($self);
+    $self->a_name($name);
     $self->[PLAYER_CHAR_PREFERENCE] = $want_char;
     $self->a_auto_activate_gems(1);
 
@@ -86,6 +88,7 @@ make_ro_accessor (
 );
 
 make_rw_accessor (
+    a_name                         => PLAYER_NAME,
     a_char                         => PLAYER_CHAR,
     a_bought_ruby                  => PLAYER_BOUGHT_RUBY,
     a_auto_activate_gems           => PLAYER_AUTO_ACTIVATE_GEMS,
@@ -116,6 +119,10 @@ sub init {
 sub init_items {
     @_ == 1 || badinvo;
     my ($self) = @_;
+
+    if (!defined $self->name) {
+    	$self->a_name($Character[$self->a_char]);
+    }
 
     my $char = $self->a_char;
     $self->add_items(
@@ -332,9 +339,12 @@ sub knowledge_track_next_level_cost {
     }
 }
 
+# I'm keeping ->name instead of using ->a_name to match convention of
+# other classes.
+
 sub name {
     @_ == 1 || badinvo;
-    return $Character[$_[0]->[PLAYER_CHAR]];
+    return shift->a_name;
 }
 
 sub num_gem_slots {

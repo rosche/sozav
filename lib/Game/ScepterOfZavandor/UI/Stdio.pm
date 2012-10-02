@@ -269,7 +269,7 @@ sub status_short {
     	my $do_highlight = same_referent $p, $self->a_player;
     	my @spec = (
     	    [""        => "", "%1s", $do_highlight ? ">" : " "],
-    	    [name      => "", "%-6s",
+    	    [name      => "", "%-10.10s",
 			    $p->name],
 	    [vp        => " | ", "%2d(%d)",
 			    $p->score, $p->user_turn_order],

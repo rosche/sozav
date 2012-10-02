@@ -92,6 +92,18 @@ sub log_close {
     	or xconfess "error closing to $self->a_log_path: $!";
 }
 
+sub prompt_for_name {
+    @_ == 2 || badinvo;
+    my $self  = shift;
+    my $prompt  = shift;
+
+    my $n = $self->in($prompt);
+    if (defined $n && $n !~ /\S/) {
+    	$n = undef;
+    }
+    return $n;
+}
+
 # game-specific methods -----------------------------------------------------
 
 for (qw(

@@ -94,7 +94,6 @@
     	- can't store GLOB refs
 
 - todo
-    - distinction between player name and character name
     - option for which turn order cards to use
     - undo
     - show things you can afford to do

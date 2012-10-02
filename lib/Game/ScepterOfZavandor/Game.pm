@@ -299,6 +299,8 @@ sub init_players {
     @_ == 1 || badinvo;
     my $self = shift;
 
+    my @players = $self->players_in_table_order;
+
     my %all_c = map { $_ => 1 } 0..$#Character;
     if ($self->option(OPT_NO_DRUID)
 	    && ($self->option(OPT_DUPLICATE_CHARACTERS)
@@ -309,7 +311,7 @@ sub init_players {
     # assign characters already chosen
 
     my %avail_c = %all_c;
-    for my $player ($self->players_in_table_order) {
+    for my $player (@players) {
     	my $c = $player->a_char_preference;
 	if (defined $c) {
 	    $player->init($c);
@@ -321,7 +323,7 @@ sub init_players {
 
     if ($self->option(OPT_CHOOSE_CHARACTER)) {
     	my $player_num = 0;
-	for my $player (shuffle $self->players_in_table_order) {
+	for my $player (shuffle @players) {
 	    $player_num++;
 	    next if defined $player->a_char;
 	    %avail_c = %all_c
@@ -342,7 +344,7 @@ sub init_players {
     }
     else {
 	my @c = shuffle keys %avail_c;
-	for my $player ($self->players_in_table_order) {
+	for my $player (@players) {
 	    next if defined $player->a_char;
 	    @c = shuffle keys %all_c
 		if $self->option(OPT_DUPLICATE_CHARACTERS);
@@ -350,8 +352,23 @@ sub init_players {
 	}
     }
 
-    for ($self->players_in_table_order) {
+    for (@players) {
 	$_->init_items;
+    }
+
+    # uniqify names
+
+    {
+	my (%orig_name, %num_renamed);
+	for (@players) {
+	    $orig_name{$_->name}++;
+	}
+	for my $player (@players) {
+	    my $orig = $player->name;
+	    if ($orig_name{$orig} > 1) {
+	    	$player->a_name($orig . ++$num_renamed{$orig});
+	    }
+	}
     }
 }
 
@@ -735,9 +752,13 @@ sub prompt_for_players {
     my @ui_choices = ('none', $human, $ai);
     my @ui         = ($none) x $Max_players;
     my @char       = (undef) x $Max_players;
+    my @name       = (undef) x $Max_players;
 
     $ui[0] = $human;
     $ui[1] = 'AI::Naive';
+
+    $name[0] = $ui->prompt_for_name("What's your name? ");
+
     while (1) {
 	my $w = 20;
 	$ui->out("\n");
@@ -745,23 +766,29 @@ sub prompt_for_players {
 	$ui->out("\n");
 	$ui->out(" 1-$Max_players. configure for N player game with 1 human\n");
 	$ui->out("\n");
-	$ui->out(sprintf "      %-${w}s     %-${w}s\n", 'player type', 'character');
-	$ui->out(sprintf "      %-${w}s     %-${w}s\n", '-----------', '---------');
+	$ui->out(sprintf "      %-${w}s     %-${w}s     %-${w}s\n", 'player type', 'character', 'name');
+	$ui->out(sprintf "      %-${w}s     %-${w}s     %-${w}s\n", '-----------', '---------', '----');
 	for my $ix (0..$Max_players - 1) {
-	    $ui->out(sprintf "  %2d. %-${w}s %2d. %s\n",
+	    $ui->out(sprintf "  %2d. %-${w}s %2d. %-${w}s %2d. %s\n",
 	    	    	$ix+1+$Max_players, $ui[$ix],
 			$ix+1+$Max_players*2,
 			    $ui[$ix] eq $none
 				? $none
 				: defined $char[$ix]
 				    ? $Character[$char[$ix]]
-				    : $random);
+				    : $random,
+			$ix+1+$Max_players*3,
+			    $ui[$ix] eq $none
+				? $none
+				: $name[$ix] // 'from character');
 	}
 
 	my $i = $ui->prompt("Type the number of the item to change, "
 				. "or Enter to continue: ",
-			    ["", 1..$Max_players * 3]);
+			    ["", 1..$Max_players * 4]);
 	last unless defined $i && $i ne '';
+
+	# XXX this is rather ugly
 
 	if ($i <= $Max_players) {
 	    my $pl = $i;
@@ -787,9 +814,18 @@ sub prompt_for_players {
 	    }
 	}
 
-	else {
+	elsif ($i <= 3*$Max_players) {
 	    my $pl = $i - 2*$Max_players;
 	    $char[$pl-1] = $ui->choose_character($pl, 0..$#Character);
+	}
+
+	elsif ($i <= 4*$Max_players) {
+	    my $pl = $i - 3*$Max_players;
+	    $name[$pl-1] = $ui->prompt_for_name("Name for player $pl? ");
+	}
+
+	else {
+	    die;
 	}
     }
 
@@ -807,7 +843,8 @@ sub prompt_for_players {
 	    }
 	}
 	$self->add_player(
-		Game::ScepterOfZavandor::Player->new($self, $ui, $char[$_]));
+		Game::ScepterOfZavandor::Player->new(
+    	    	    $self, $ui, $name[$_], $char[$_]));
     }
     if (!$got_global_messages) {
 	$self->add_kibitzer($ui);
