@@ -132,6 +132,7 @@ sub add_player {
     	    	Game::ScepterOfZavandor::Player::,
 		GAME_PLAYER_TABLE_ORDER,
 		$player);
+    $player->a_table_ordinal($self->num_players);
 }
 
 sub new_ui {

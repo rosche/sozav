@@ -52,6 +52,7 @@ BEGIN {
 	AUTO_ACTIVATE_GEMS
 	SCORE_AT_TURN_START
 	ADVANCED_KNOWLEDGE_THIS_TURN
+	TABLE_ORDINAL
     );
 }
 
@@ -94,6 +95,7 @@ make_rw_accessor (
     a_auto_activate_gems           => PLAYER_AUTO_ACTIVATE_GEMS,
     a_advanced_knowledge_this_turn => PLAYER_ADVANCED_KNOWLEDGE_THIS_TURN,
     a_score_at_turn_start          => PLAYER_SCORE_AT_TURN_START,
+    a_table_ordinal                => PLAYER_TABLE_ORDINAL,
 );
 
 sub spaceship {
