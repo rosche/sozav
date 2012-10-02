@@ -82,6 +82,7 @@ use Scalar::Util	qw(weaken);
 
 use Game::ScepterOfZavandor::Constant qw(
     /^ITEM_/
+    /^OPT_/
     @Gem
 );
 
@@ -114,9 +115,28 @@ sub as_string_fields {
     return @r;
 }
 
+sub as_string_fields_public_info {
+    @_ || badinvo;
+    my $self = shift;
+
+    my @r = $self->SUPER::as_string_fields_public_info(@_);
+    if (!$self->a_game->option(OPT_PUBLIC_MONEY)) {
+	# not a pretty hack
+	for (@r) {
+	    s/^v=.*/v= ?/s;
+	    s/^hcr=.*//s;
+	}
+    }
+    return @r;
+}
+
 sub energy_public {
     @_ == 1 || badinvo;
     my $self = shift;
+
+    if ($self->a_game->option(OPT_PUBLIC_MONEY)) {
+    	return $self->SUPER::energy_public($self);
+    }
 
     return $self->a_deck->energy_estimate;
 }

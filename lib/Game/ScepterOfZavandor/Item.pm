@@ -165,6 +165,10 @@ sub as_string_fields {
     return @r;
 }
 
+sub as_string_fields_public_info {
+    return shift->as_string_fields(@_);
+}
+
 sub as_string {
     @_ == 3 || badinvo;
     my $self = shift;
@@ -179,6 +183,15 @@ sub as_string_as_is {
     my $self = shift;
 
     return join " ", $self->as_string_fields;
+}
+
+sub as_string_public_info {
+    @_ == 1 || badinvo;
+    my $self = shift;
+
+    return sprintf "%s(%s)",
+	$Item_type[$self->[ITEM_TYPE]],
+	join " ", $self->as_string_fields_public_info;
 }
 
 # - XXX caller shouldn't have to test item type first because of more
