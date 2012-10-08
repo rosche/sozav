@@ -18,6 +18,7 @@ use Term::ANSIColor	qw(color);
 use Game::ScepterOfZavandor::Constant qw(
     /^CHAR_/
     /^CUR_ENERGY_/
+    /^ENERGY_EST_/
     /^GAME_GEM_DATA_/
     /^GEM_/
     /^GEM_DATA_/
@@ -319,17 +320,14 @@ sub status_short_cash {
     my $p    = shift;
 
     my $visible_e;
-    if ($self->a_game->option(OPT_PUBLIC_MONEY) || same_referent $p, $self->a_player) {
+    if ($p->player_can_see_my_cash($self->a_player)) {
 	$visible_e = $p->current_energy_liquid;
     }
     else {
     	my @ep = $p->current_energy_liquid_public;
-	my $e = $ep[0];
-	#print "ep = @ep\n";
-
 	# show as exact if the value is actually visible
-	if (!grep { $_ != $e } @ep) {
-	    $visible_e = $e;
+	if (!defined $ep[ENERGY_EST_MIN]) {
+	    $visible_e = $ep[ENERGY_EST_AVG];
 	}
 	else {
 	    return sprintf "" . join("/", ("%3.0f") x @Energy_estimate), @ep;

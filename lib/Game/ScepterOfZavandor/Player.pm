@@ -236,6 +236,12 @@ sub current_energy_liquid_public {
 	    $ep[$_] += $iep[$_];
 	}
     }
+
+    if (!grep { $_ != $ep[0] } @ep) {
+    	# it was actually all publically visible
+	$ep[ENERGY_EST_MIN] = undef;
+	$ep[ENERGY_EST_MAX] = undef;
+    }
     return @ep;
 }
 
@@ -362,6 +368,15 @@ sub num_free_gem_slots {
     my $n = $self->num_gem_slots - $self->active_gems;
     $n >= 0 or xconfess;
     return $n;
+}
+
+sub player_can_see_my_cash {
+    @_ == 2 || badinvo;
+    my $self  = shift;
+    my $other = shift;
+
+    return same_referent($self, $other)
+	    || $self->a_game->option(OPT_PUBLIC_MONEY);
 }
 
 sub score {
