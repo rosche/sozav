@@ -258,7 +258,7 @@ sub xxx_make_dust {
 
 sub make_dust {
     @_ == 3 || badinvo;
-    my ($class, $player, $tot_value, $max_hand_count) = @_;
+    my ($class, $player, $tot_value) = @_;
 
     $tot_value > 0 or xconfess dstr $tot_value;
 
@@ -269,17 +269,11 @@ sub make_dust {
     # instead of doing a full knapsack thing
 
     my @r;
-    my $tot_hand_count = 0;
     $player->a_game->dust_data_loop(sub {
-    	my $v  = $_->[DUST_DATA_VALUE];
-    	my $hc = $_->[DUST_DATA_HAND_COUNT];
+    	my $v = $_->[DUST_DATA_VALUE];
 	while ($tot_value >= $v) {
-	    if ($max_hand_count && $tot_hand_count + $hc > $max_hand_count) {
-		last;
-	    }
 	    push @r, $class->new($player, $v);
 	    $tot_value -= $v;
-	    $tot_hand_count += $hc;
 	}
     });
 
