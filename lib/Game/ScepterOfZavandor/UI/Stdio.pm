@@ -9,7 +9,6 @@ use base qw(Game::ScepterOfZavandor::UI::Human);
 use Game::Util 		qw(add_array_indices add_array_indices
 			    debug eval_block same_referent valid_ix_plus_1);
 use List::Util		qw(first);
-use List::MoreUtils	qw(natatime);
 use RS::Handy		qw(badinvo data_dump dstr plural xconfess);
 use Scalar::Util	qw(looks_like_number);
 use Symbol		qw(qualify_to_ref);
@@ -247,7 +246,7 @@ sub status_short {
 	$self->out("  nothing\n");
     }
 
-    $self->out("Status:         | know   |\n");
+    $self->out("Status:             | know   |\n");
 
     my $knowledge_title = "";
     for (@Knowledge_data) {
@@ -730,44 +729,96 @@ add_action (
     'items',
     "i",
     ACTION_GROUP_OTHER,
-    [],
+    ["[player-number]"],
     [
-	"- list your items and some other info",
+	"- list a player's items and some other info",
+	"- shows your own stuff if no player-number is given",
+	"- first player in status list is 1, second is 2, etc.",
     ],
 );
 
 sub action_items {
-    @_ == 1 || badinvo;
+    @_ == 1 || @_ == 2 || badinvo;
     my $self = shift;
+    my $pnum = shift;
 
-    my $player = $self->a_player;
+    my $player;
+    if (!defined $pnum) {
+    	$player = $self->a_player;
+    }
+    else {
+    	my @p = $self->a_game->players_in_table_order;
+	my $pix = $pnum - 1;
+	if (!looks_like_number $pnum || $pix < 0 || $pix > $#p) {
+	    die "invalid player number ", dstr $pnum,
+		" (valid values are 1-", 0+@p, ")\n";
+    	}
+	$player = $p[$pix];
+    }
 
-    # XXX how many of each kind of card left?
+    my $game   = $self->a_game;
+    my $name   = $player->name;
+    my $indent = "  ";
+    my $fmt    = "$indent%10s:";
 
-    $self->out_char(" score: ", $player->score,
-    	    	    " (", $player->score_from_gems, " from gems, ",
-		    "position #", $player->user_turn_order, ")\n");
+    # XXX How many of each kind of card left in the decks?  This would
+    # be the only non-player output in this display.  A similar item is
+    # how many sentinels have been bought.
 
-    # XXX hand limit, gem slots
+    $self->out(sprintf "$fmt %s (number %d in table order)\n",
+    	    	    	"player",
+			$name,
+			$player->a_table_ordinal);
 
-    my @e = $player->current_energy_detail;
-    $self->out_char(sprintf "energy: %d total\n", $e[CUR_ENERGY_TOTAL]);
-    $self->out_char(sprintf
-	"energy: -> %d liquid (%d + %d from inactive gems)\n",
-		    @e[CUR_ENERGY_LIQUID,
-			CUR_ENERGY_CARDS_DUST,
-			CUR_ENERGY_INACTIVE_GEMS]);
-    $self->out_char(sprintf
-	"energy: -> %d from active gems\n", $e[CUR_ENERGY_ACTIVE_GEMS]);
-    # XXX option for anybody
-    # XXX option disabled for druid
-    if ($player->a_char == CHAR_DRUID) {
-	$self->out_char(sprintf "%s bought a ruby\n",
+    $self->out(sprintf "$fmt %d (%d from gems, position #%d)\n",
+			"score",
+			$player->score,
+			$player->score_from_gems,
+			$player->user_turn_order);
+
+    $self->out(sprintf "$fmt %s\n",
+			"gems",
+			$self->status_short_gems($player));
+
+    $self->out(sprintf "$fmt %d (%d used)\n",
+			"hand limit",
+			$player->hand_limit,
+			$player->current_hand_count);
+
+    if ($player->player_can_see_my_cash($self->a_player)) {
+	my @e = $player->current_energy_detail;
+	$self->out(sprintf "$fmt %d liquid (%d cash + %d from inactive gems)\n",
+			    "energy",
+			    @e[CUR_ENERGY_LIQUID,
+				CUR_ENERGY_CARDS_DUST,
+				CUR_ENERGY_INACTIVE_GEMS]);
+	$self->out(sprintf "$fmt %d including active gems\n",
+			    "energy",
+			    $e[CUR_ENERGY_TOTAL]);
+    }
+    else {
+	$self->out(sprintf "$fmt %s liquid visible\n",
+			    "energy",
+			    $self->status_short_cash($player));
+    	# XXX count from gems
+    }
+
+    if ($game->option(OPT_ANYBODY_LEVEL_3_RUBY)
+    	    || ($player->a_char == CHAR_DRUID
+    	    	&& $game->option(OPT_DRUID_LEVEL_3_RUBY))) {
+	$self->out(sprintf "$fmt %s bought a ruby\n",
+			    "ruby",
 			    $player->a_bought_ruby ? "has" : "has not");
     }
-    $self->out_char("items:\n");
+
+    #$self->out("\n");
+    $self->out("items:\n");
     for (sort { $a <=> $b } $player->items) {
-	$self->out("  $_\n")
+    	# XXX hide non-public info for other players
+	$self->out(sprintf "%s%s\n", $indent,
+		    same_referent($player, $self->a_player)
+			? "$_"
+			: $_->as_string_public_info);
     }
     return 1;
 }
