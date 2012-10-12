@@ -106,7 +106,6 @@ BEGIN {
     add_array_indices 'CHAR_DATA', (
     	'KNOWLEDGE_TRACK',
     	'START_DUST',
-	'START_ITEMS',
     );
 
     @Energy_estimate = (
@@ -379,15 +378,6 @@ BEGIN {
     $Character_data[CHAR_MAGE  ][$i] = 15;
     $Character_data[CHAR_KOBOLD][$i] = 20;
 
-    $i = CHAR_DATA_START_ITEMS;
-    $Character_data[CHAR_WITCH ][$i] = \&start_items_common;
-    $Character_data[CHAR_ELF   ][$i] = \&start_items_common;
-    $Character_data[CHAR_DRUID ][$i] = \&start_items_common;
-    $Character_data[CHAR_FAIRY ][$i] = sub {
-    	(start_items_common(@_),
-	    $_[0]->a_game->draw_from_deck(GEM_SAPPHIRE, 2)) };
-    $Character_data[CHAR_MAGE  ][$i] = \&start_items_common;
-    $Character_data[CHAR_KOBOLD][$i] = \&start_items_common;
 }
 
 BEGIN {
@@ -683,25 +673,6 @@ BEGIN {
 
 
 #------------------------------------------------------------------------------
-
-sub start_items_common {
-    my ($player) = @_;
-
-    my @i;
-
-    require Game::ScepterOfZavandor::Item::Gem;
-    for (GEM_OPAL, GEM_OPAL, GEM_SAPPHIRE) {
-    	push @i, Game::ScepterOfZavandor::Item::Gem->new($player, $_);
-    }
-
-    my $char = $player->a_char;
-    push @i, Game::ScepterOfZavandor::Item::Energy::Dust->make_dust(
-    	    	$player, $Character_data[$char][CHAR_DATA_START_DUST]);
-
-    # XXX do knowledge here?
-
-    return @i;
-}
 
 1
 

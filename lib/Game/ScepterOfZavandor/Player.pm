@@ -14,6 +14,8 @@ use RS::Handy		qw(badinvo data_dump dstr xconfess);
 use Scalar::Util	qw(refaddr weaken);
 use Set::Scalar	 	  ();
 
+use Game::ScepterOfZavandor::Item::Energy ();
+use Game::ScepterOfZavandor::Item::Gem ();
 use Game::ScepterOfZavandor::Item::Knowledge ();
 
 use Game::ScepterOfZavandor::Constant qw(
@@ -122,22 +124,29 @@ sub init_items {
     @_ == 1 || badinvo;
     my ($self) = @_;
 
+    my $char = $self->a_char;
+
     if (!defined $self->name) {
-    	$self->a_name($Character[$self->a_char]);
+    	$self->a_name($Character[$char]);
     }
 
-    my $char = $self->a_char;
-    $self->add_items(
-    	$Character_data[$char][CHAR_DATA_START_ITEMS]->($self));
-    for ($self->gems) {
-	$_->activate;
+    require Game::ScepterOfZavandor::Item::Gem;
+    for my $gtype (GEM_OPAL, GEM_OPAL, GEM_SAPPHIRE) {
+	my $g = Game::ScepterOfZavandor::Item::Gem->new($self, $gtype);
+    	$self->add_items($g);
+	$g->activate;
     }
+
+    $self->add_items(
+	Game::ScepterOfZavandor::Item::Energy::Dust->make_dust(
+    	    	$self, $Character_data[$char][CHAR_DATA_START_DUST]));
 
     my $k = Game::ScepterOfZavandor::Item::Knowledge->new($self, 0);
     $k->set_type($Character_data[$char][CHAR_DATA_KNOWLEDGE_TRACK]);
     $self->add_items($k);
     for (@Knowledge_chip_cost) {
-	$self->add_items(Game::ScepterOfZavandor::Item::Knowledge->new($self, $_));
+	$self->add_items(
+	    Game::ScepterOfZavandor::Item::Knowledge->new($self, $_));
     }
 
     debug "$Character[$char] items ", join " ", $self->items;
