@@ -65,6 +65,8 @@ sub maybe_shuffle {
     }
 }
 
+# draw and return N, possibly reshuffling
+
 sub draw {
     @_ == 1 || @_ == 2 || badinvo;
     my $self = shift;
@@ -77,6 +79,13 @@ sub draw {
     }
 
     return @r == 1 ? $r[0] : @r;
+}
+
+sub draw_1_no_shuffle {
+    @_ == 1 || badinvo;
+    my $self = shift;
+
+    return shift @{ $self->[DECK_DRAW] };
 }
 
 sub draw_first_matching_no_shuffle {

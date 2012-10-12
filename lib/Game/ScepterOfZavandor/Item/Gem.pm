@@ -126,12 +126,16 @@ sub produce_energy {
     if ($game->a_turn_num == 1
 	    && $game->option(OPT_5_SAPPHIRE_START)
 	    && $self->a_gem_type == GEM_SAPPHIRE) {
-	my $c = $self->[ITEM_GEM_DECK]->draw_first_matching_no_shuffle(
+	my $deck = $self->[ITEM_GEM_DECK];
+	my $c = $deck->draw_first_matching_no_shuffle(
 		    sub { shift->energy == 5 });
     	if ($c) {
 	    return $c;
 	}
-	warn "oops";
+	# This can't really happen.
+	my $p = $self->a_player;
+	debug "no 5 sapphire cards left, $p gets dust, deck: $deck\n";
+	return Game::ScepterOfZavandor::Item::Energy::Dust->make_dust($p, 5);
     }
 
     return $self->[ITEM_GEM_DECK]->draw;

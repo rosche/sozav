@@ -57,27 +57,10 @@ sub new {
 	map { Game::ScepterOfZavandor::Item::Energy::Card->new($self, $_) }
 	    @card_val;
 
-    my @not_in_first_deck;
-    if ($gtype == GEM_SAPPHIRE
-	    && $self->a_game->option(OPT_LESS_RANDOM_START)) {
-    	my (@yes, @no);
-	# XXX this shouldnt affect Fairy's 9 Sages cards?
-	for (@card) {
-	    my $e = $_->energy;
-	    # XXX this does nothing for OPT_LOWER_VARIANCE, do something
-	    # else?
-	    push @{ ($e == 3 || $e == 7) ? \@no : \@yes }, $_;
-	}
-	@card = @yes;
-	@not_in_first_deck = @no;
-    }
-
     # XXX have to recompute card min, max, average here
 
     $self->discard(@card);
     $self->shuffle;
-    $self->discard(@not_in_first_deck)
-    	if @not_in_first_deck;
 
     if ($Debug > 1) {
 	print "$Gem[$gtype] draw deck:\n";
@@ -107,6 +90,28 @@ sub draw {
     }
 
     return @r == 1 ? $r[0] : @r;
+}
+
+sub discard_outliers {
+    @_ == 1 || badinvo;
+    my $self = shift;
+
+    my $gem_data = $self->a_game->gem_data($self->a_gem_type);
+    my $min = $gem_data->[GAME_GEM_DATA_CARD_MIN];
+    my $max = $gem_data->[GAME_GEM_DATA_CARD_MAX];
+
+    my @new;
+    while (my $c = $self->draw_1_no_shuffle) {
+    	if ($c->energy == $min || $c->energy == $max) {
+	    $self->discard($c);
+	}
+	else {
+	    push @new, $c;
+	}
+    }
+    $self->push(@new);
+
+    debug "deck after discarding outliers: $self";
 }
 
 sub energy_estimate {

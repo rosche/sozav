@@ -212,6 +212,12 @@ sub init {
     $self->init_items($artifact_copies);
     $self->init_players;
 
+    # wait until after initializing players to modify the sapphire deck so the
+    # fairy's 9 sages cards are from the full deck
+    if ($self->option(OPT_LESS_RANDOM_START)) {
+	$self->gem_deck(GEM_SAPPHIRE)->discard_outliers;
+    }
+
     $self->[GAME_TURN_NUM]    = 0;
     $self->[GAME_INITIALIZED] = 1;
 }
