@@ -4,6 +4,10 @@ package Game::ScepterOfZavandor::Deck;
 
 use base qw(Game::Util::Deck);
 
+use overload (
+    '""'  => "as_string",
+);
+
 use Game::Util	qw($Debug add_array_indices debug make_ro_accessor);
 use List::Util	qw(sum);
 use RS::Handy	qw(badinvo data_dump dstr xconfess);
@@ -62,13 +66,16 @@ sub new {
     $self->discard(@card);
     $self->shuffle;
 
-    if ($Debug > 1) {
+    if ($Debug > 2) {
 	print "$Gem[$gtype] draw deck:\n";
 	print "$_\n" for @{ $self->[0] };
 	if (my @d = @{ $self->[1] }) {
 	    print "$Gem[$gtype] discard deck:\n";
 	    print "$_\n" for @d;
 	}
+    }
+    elsif ($Debug > 1) {
+	print "$self\n";
     }
 
     return $self;
@@ -78,6 +85,16 @@ make_ro_accessor (
     a_game     => DECK_GAME,
     a_gem_type => DECK_GTYPE,
 );
+
+sub as_string {
+    @_ == 3 || badinvo;
+    my $self = shift;
+
+    return sprintf "deck-%s(draw=[%s] discard=[%s])",
+	    $Gem[$self->a_gem_type],
+	    join(" ", map { $_->energy } $self->draw_deck_items),
+	    join(" ", map { $_->energy } $self->discard_deck_items);
+}
 
 sub draw {
     @_ || badinvo;
