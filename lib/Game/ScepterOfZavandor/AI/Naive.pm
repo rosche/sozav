@@ -4,8 +4,7 @@ package Game::ScepterOfZavandor::AI::Naive;
 
 use base qw(Game::ScepterOfZavandor::AI);
 
-#use Game::Util 	qw(add_array_indices debug
-#		    make_ro_accessor make_rw_accessor);
+use Game::Util 	qw(debug_var);
 use RS::Handy	qw(badinvo data_dump dstr process_arg_pairs shuffle xconfess);
 use List::Util	qw(max);
 #use Scalar::Util qw(weaken);
@@ -55,7 +54,28 @@ sub solicit_bid {
     }
 
     my $min = $auc->a_data_min_bid;
-    if ($cur_bid > $min * 1.05) {
+    my $max_bid = $min;
+
+    my $max_markup = 1.05;
+    if ($auc->a_auc_type == ARTI_MASK_OF_CHARISMA) {
+    	# XXX tweak depending on advancable knowledge tracks
+    	$max_markup = 1.40;
+    }
+    $max_bid *= $max_markup;
+    debug_var max_bid_after_markup => $max_bid;
+
+    if ($mod < 0) {
+	$max_bid += -$mod / 3; # assume intrinsic value in a discount
+	debug_var max_bid_after_mod => $max_bid;
+    }
+
+    # XXX pick one tweak and use it for the whole auction, then modify
+    # the tweak list
+    my @tweak = qw(-1 0 0 1 1 1 1);
+    $max_bid += $tweak[rand @tweak];
+    debug_var max_bid_after_tweak => $max_bid;
+
+    if ($cur_bid >= $max_bid) {
     	return 0;
     }
 
