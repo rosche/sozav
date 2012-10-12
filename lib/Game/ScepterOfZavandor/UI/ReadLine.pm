@@ -5,7 +5,7 @@ package Game::ScepterOfZavandor::UI::ReadLine;
 use base qw(Game::ScepterOfZavandor::UI::Stdio);
 
 use Term::ReadLine	();
-use Game::Util 		qw(add_array_indices debug);
+use Game::Util		qw(add_array_indices debug);
 use RS::Handy		qw(badinvo data_dump define dstr xcroak);
 use Symbol		qw(qualify_to_ref);
 

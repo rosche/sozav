@@ -100,7 +100,7 @@ sub die_if_initialized {
     my ($self) = @_;
 
     if ($self->[GAME_INITIALIZED]) {
-    	xconfess "game is already initialized";
+	xconfess "game is already initialized";
     }
 }
 
@@ -119,7 +119,7 @@ sub add_kibitzer {
 
     require Game::ScepterOfZavandor::UI::Kibitzer; # squelch warning
     $self->_add_object_to_array(
-    	    	Game::ScepterOfZavandor::UI::Kibitzer::,
+		Game::ScepterOfZavandor::UI::Kibitzer::,
 		GAME_KIBITZER,
 		$kibitzer);
 }
@@ -129,7 +129,7 @@ sub add_player {
     my ($self, $player) = @_;
 
     $self->_add_object_to_array(
-    	    	Game::ScepterOfZavandor::Player::,
+		Game::ScepterOfZavandor::Player::,
 		GAME_PLAYER_TABLE_ORDER,
 		$player);
     $player->a_table_ordinal($self->num_players);
@@ -206,7 +206,7 @@ sub init {
     # add 1 dust if desired
 
     if ($self->option(OPT_1_DUST)) {
-    	push @{ $self->a_dust_data }, $Dust_data_val_1;
+	push @{ $self->a_dust_data }, $Dust_data_val_1;
     }
 
     $self->init_items($artifact_copies);
@@ -230,7 +230,7 @@ sub init_card_info {
 
     my $tot = 0;
     for my $gi (0..$#Gem) {
-    	my $deck = $self->gem_deck($gi)
+	my $deck = $self->gem_deck($gi)
 	    or next;
 
 	my @value = map { $_->energy } $deck->all_deck_items
@@ -238,12 +238,12 @@ sub init_card_info {
 
 	my $ct = scalar @value;
 	$tot += $ct;
-    	my ($min, $max) = minmax @value;
+	my ($min, $max) = minmax @value;
 	my $avg  = sum(@value) / $ct;
 	debug sprintf "%-8s count %2d min %2d max %2d avg %5.2f",
 	    $Gem[$gi], $ct, $min, $max, $avg;
 
-    	my $rgame_gem_data = $self->gem_data($gi);
+	my $rgame_gem_data = $self->gem_data($gi);
 	$rgame_gem_data->[GAME_GEM_DATA_CARD_MIN] = $min;
 	$rgame_gem_data->[GAME_GEM_DATA_CARD_AVG] = $avg;
 	$rgame_gem_data->[GAME_GEM_DATA_CARD_MAX] = $max;
@@ -256,10 +256,10 @@ sub init_gem_decks {
     my $self = shift;
 
     for my $i (0..$#Gem) {
-    	next if $i == GEM_OPAL;
+	next if $i == GEM_OPAL;
 	$self->[GAME_GEM_DATA][$i] = [];
 	my $deck = Game::ScepterOfZavandor::Deck->new($self, $i);
-    	my $rdata = $self->gem_data($i);
+	my $rdata = $self->gem_data($i);
 	$rdata->[GAME_GEM_DATA_DECK] = $deck;
     }
 
@@ -295,7 +295,7 @@ sub init_items {
 
     $self->[GAME_TURN_ORDER_CARD] = [];
     for (0 .. $self->num_players - 1) {
-    	push @{ $self->[GAME_TURN_ORDER_CARD] },
+	push @{ $self->[GAME_TURN_ORDER_CARD] },
 	    Game::ScepterOfZavandor::Item::TurnOrder->new($self, $_);
     }
 }
@@ -311,7 +311,7 @@ sub init_players {
     my %all_c = map { $_ => 1 } 0..$#Character;
     if ($self->option(OPT_NO_DRUID)
 	    && ($self->option(OPT_DUPLICATE_CHARACTERS)
-    	    	    || $self->num_players < keys %all_c)) {
+		    || $self->num_players < keys %all_c)) {
 	delete $all_c{+CHAR_DRUID};
     }
 
@@ -319,7 +319,7 @@ sub init_players {
 
     my %avail_c = %all_c;
     for my $player (@players) {
-    	my $c = $player->a_char_preference;
+	my $c = $player->a_char_preference;
 	if (defined $c) {
 	    $player->init($c);
 	    delete $avail_c{$c};
@@ -329,7 +329,7 @@ sub init_players {
     # assign other characters
 
     if ($self->option(OPT_CHOOSE_CHARACTER)) {
-    	my $player_num = 0;
+	my $player_num = 0;
 	for my $player (shuffle @players) {
 	    $player_num++;
 	    next if defined $player->a_char;
@@ -338,7 +338,7 @@ sub init_players {
 	    my $c = $player->a_ui->choose_character($player_num,
 					sort { $a <=> $b } keys %avail_c);
 	    if (!defined $c) {
-	    	my @c = keys %avail_c;
+		my @c = keys %avail_c;
 		$c = $c[rand @c];
 	    }
 	    if (!delete $avail_c{$c}) {
@@ -373,7 +373,7 @@ sub init_players {
 	for my $player (@players) {
 	    my $orig = $player->name;
 	    if ($orig_name{$orig} > 1) {
-	    	$player->a_name($orig . ++$num_renamed{$orig});
+		$player->a_name($orig . ++$num_renamed{$orig});
 	    }
 	}
     }
@@ -402,9 +402,9 @@ sub play {
 
 	$self->a_turn_num(1 + $self->a_turn_num);
 
-    	# phase 1. turn order
+	# phase 1. turn order
 
-    	my @p = $self->generate_player_order;
+	my @p = $self->generate_player_order;
 	$self->[GAME_PLAYER_TURN_ORDER] = [@p];
 	if ($self->a_turn_num > 1) {
 	    for (@p) {
@@ -417,7 +417,7 @@ sub play {
 	    $p[$_]->add_items($to);
 	    $p[$_]->a_score_at_turn_start($p[$_]->score);
 	}
-    	$self->note_to_players(NOTE_TURN_START);
+	$self->note_to_players(NOTE_TURN_START);
 
 	# phase 1. refill artifacts
 
@@ -447,7 +447,7 @@ sub play {
 	# phase 4: check victory conditions
 
 	if (@Sentinel_real_ix_xxx - @{ $self->[GAME_SENTINEL] }
-	    	>= $Game_end_sentinels_sold_count) {
+		>= $Game_end_sentinels_sold_count) {
 	    last;
 	}
 
@@ -486,15 +486,15 @@ sub auction_item {
 
     my $min = $auc->a_data_min_bid;
     if ($start_bid < $min) {
-    	die "bid too low (minimum $min, bid $start_bid)\n";
+	die "bid too low (minimum $min, bid $start_bid)\n";
     }
 
     if (!$start_player->allowed_to_start_auction($auc)) {
-    	die "$start_player isn't currently allowed to start an auction for $auc";
+	die "$start_player isn't currently allowed to start an auction for $auc";
     }
 
     if (!$start_player->allowed_to_own_auctionable($auc)) {
-    	die "$start_player isn't allowed to own $auc";
+	die "$start_player isn't allowed to own $auc";
     }
 
     $self->note_to_players(NOTE_AUCTION_START, $start_player, $auc, $start_bid);
@@ -507,11 +507,11 @@ sub auction_item {
     @bidder = grep { $_->allowed_to_own_auctionable($auc) } @bidder;
 
     my $next_bidder = sub {
-    	push @bidder, shift @bidder;
+	push @bidder, shift @bidder;
     };
     # rotate @bidder until the current player is at the start
     {
-    	my $ct = 0;
+	my $ct = 0;
 	while ($bidder[0] != $cur_winner) {
 	    if ($ct++ > @bidder) {
 		xconfess "start player isn't a bidder";
@@ -530,7 +530,7 @@ sub auction_item {
 	    $new_bid = $bidder->a_ui->solicit_bid($auc, $cur_bid, $cur_winner);
 	    $new_bid ||= 0;
 	    if (!$new_bid || $new_bid > $cur_bid) {
-	    	last;
+		last;
 	    }
 	    $bidder->a_ui->ui_note(NOTE_INVALID_BID, $auc, $cur_bid, $new_bid);
 	}
@@ -558,7 +558,7 @@ sub auctionable_sold {
     my $auc  = shift;
 
     my $r = $auc->is_artifact
-    	    	? $self->[GAME_ARTIFACTS_ON_AUCTION]
+		? $self->[GAME_ARTIFACTS_ON_AUCTION]
 		: $auc->is_sentinel
 		    ? $self->[GAME_SENTINEL]
 		    : xconfess "auctionable_sold $auc";
@@ -607,7 +607,7 @@ sub gem_deck {
 	or xconfess "bad gem index ", dstr $gtype;
 
     my $rdata = $self->gem_data($gtype)
-    	or return;
+	or return;
 
     return $rdata->[GAME_GEM_DATA_DECK];
 }
@@ -621,10 +621,10 @@ sub gem_energy_desc {
     if ($gtype == GEM_OPAL) {
 	$s .= join ", ",
 		map({ "$_->" . Game::ScepterOfZavandor::Item::Energy::Dust
-    	    	    	    	->opal_count_to_energy_value($_)
+				->opal_count_to_energy_value($_)
 		} 1 .. (2 + grep { $_->[DUST_DATA_OPAL_COUNT] }
 			    @{ $self->a_dust_data })),
-    	    	"...";
+		"...";
     }
     else {
 	my $ggd = $self->gem_data($gtype);
@@ -684,11 +684,11 @@ sub players_by_rank {
 
     for my $player (sort { $b->score <=> $a->score } $self->players_in_table_order) {
 	$nominal_place++;
-    	my $this_score = $player->score;
+	my $this_score = $player->score;
 	$place = (defined $prev_score && $this_score == $prev_score)
-    	    	    	? $place
+			? $place
 			: $nominal_place;
-    	push @ret, [$place, $player];
+	push @ret, [$place, $player];
 	$prev_score = $this_score;
     }
 
@@ -705,9 +705,9 @@ sub generate_player_order {
     my @p = shuffle $self->players_in_table_order;
 
     return map { $p[$_] } sort { 0
-    	    or $p[$b]->score           <=> $p[$a]->score
-    	    or $p[$b]->score_from_gems <=> $p[$a]->score_from_gems
-    	    or    $a                   <=>    $b
+	    or $p[$b]->score           <=> $p[$a]->score
+	    or $p[$b]->score_from_gems <=> $p[$a]->score_from_gems
+	    or    $a                   <=>    $b
     } 0..$#p;
 }
 
@@ -777,7 +777,7 @@ sub prompt_for_players {
 	$ui->out(sprintf "      %-${w}s     %-${w}s     %-${w}s\n", '-----------', '---------', '----');
 	for my $ix (0..$Max_players - 1) {
 	    $ui->out(sprintf "  %2d. %-${w}s %2d. %-${w}s %2d. %s\n",
-	    	    	$ix+1+$Max_players, $ui[$ix],
+			$ix+1+$Max_players, $ui[$ix],
 			$ix+1+$Max_players*2,
 			    $ui[$ix] eq $none
 				? $none
@@ -801,7 +801,7 @@ sub prompt_for_players {
 	    my $pl = $i;
 	    $ui[0] = $human;
 	    for (2..$Max_players) {
-	    	$ui[$_-1] = $_ <= $pl ? $ai : $none;
+		$ui[$_-1] = $_ <= $pl ? $ai : $none;
 	    }
 	}
 
@@ -816,8 +816,8 @@ sub prompt_for_players {
 	    my $i = $ui->prompt("Type the number type for player $pl, "
 				. "or Enter to leave unchanged: ",
 				    ["", 1..@ui_choices]);
-    	    if ($i ne '') {
-	    	$ui[$pl-1] = $ui_choices[$i-1];
+	    if ($i ne '') {
+		$ui[$pl-1] = $ui_choices[$i-1];
 	    }
 	}
 
@@ -838,8 +838,8 @@ sub prompt_for_players {
 
     my $got_global_messages;
     for (0..$#ui) {
-    	my $ui_name = $ui[$_];
-    	next if $ui_name eq $none;
+	my $ui_name = $ui[$_];
+	next if $ui_name eq $none;
 	my @arg = ($ui_name eq $human)
 		    ? ("UI::ReadLine", *STDIN, *STDOUT)
 		    : ($ui_name);
@@ -851,7 +851,7 @@ sub prompt_for_players {
 	}
 	$self->add_player(
 		Game::ScepterOfZavandor::Player->new(
-    	    	    $self, $ui, $name[$_], $char[$_]));
+		    $self, $ui, $name[$_], $char[$_]));
     }
     if (!$got_global_messages) {
 	$self->add_kibitzer($ui);

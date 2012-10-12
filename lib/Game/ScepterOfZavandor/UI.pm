@@ -2,7 +2,7 @@ use strict;
 
 package Game::ScepterOfZavandor::UI;
 
-use Game::Util 	qw(add_array_indices debug debug_maybe
+use Game::Util	qw(add_array_indices debug debug_maybe
 		    make_ro_accessor make_rw_accessor);
 use RS::Handy	qw(badinvo data_dump dstr process_arg_pairs xconfess);
 use Scalar::Util qw(weaken);
@@ -79,7 +79,7 @@ sub log_out {
     my $fh = $self->a_log_fh
 	or return;
     print $fh @_
-    	or xconfess "error writing to $self->a_log_path: $!";
+	or xconfess "error writing to $self->a_log_path: $!";
 }
 
 sub log_close {
@@ -89,7 +89,7 @@ sub log_close {
     my $fh = $self->a_log_fh
 	or return;
     close $fh
-    	or xconfess "error closing to $self->a_log_path: $!";
+	or xconfess "error closing to $self->a_log_path: $!";
 }
 
 sub prompt_for_name {
@@ -99,7 +99,7 @@ sub prompt_for_name {
 
     my $n = $self->in($prompt);
     if (defined $n && $n !~ /\S/) {
-    	$n = undef;
+	$n = undef;
     }
     return $n;
 }
@@ -126,8 +126,8 @@ sub maybe_confirm_payment {
     my ($self, $payment) = @_;
 
     if ($payment > $self->a_player->current_energy_total) {
-    	$self->ui_note(NOTE_CANT_AFFORD, $payment);
-    	return 0;
+	$self->ui_note(NOTE_CANT_AFFORD, $payment);
+	return 0;
     }
 
     return 1;
@@ -168,7 +168,7 @@ sub ui_note_backend {
     my $meth = "ui_note_$ndesc";
     if (!$self->can($meth) && $self->a_ignore_unimplemented_notes) {
 	debug_maybe 2, "$self ui ignoring note $ndesc";
-    	return;
+	return;
     }
 
     return $self->$meth(@_);

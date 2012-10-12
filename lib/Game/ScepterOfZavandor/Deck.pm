@@ -44,7 +44,7 @@ sub new {
     my @card_val = @{ $Gem_data[$gtype][$card_list_ix] };
 
     if ($self->a_game->option(OPT_AVERAGED_CARDS)) {
-    	my $real_avg = sum(@card_val) / @card_val;
+	my $real_avg = sum(@card_val) / @card_val;
 	my $int_avg  = int $real_avg;
 
 	debug "$Gem[$gtype] card real average $real_avg";
@@ -52,7 +52,7 @@ sub new {
 	# average for emeralds is 7.5, so toggle between 7 and 8
 	my $toggle = $real_avg > $int_avg ? 1 : 0;
 
-    	for (0..$#card_val) {
+	for (0..$#card_val) {
 	    $card_val[$_] = $int_avg + ($_ % 2 ? $toggle : 0);
 	}
     }
@@ -119,7 +119,7 @@ sub discard_outliers {
 
     my @new;
     while (my $c = $self->draw_1_no_shuffle) {
-    	if ($c->energy == $min || $c->energy == $max) {
+	if ($c->energy == $min || $c->energy == $max) {
 	    $self->discard($c);
 	}
 	else {

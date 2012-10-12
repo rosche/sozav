@@ -47,11 +47,11 @@ sub as_string_fields {
     my $add = sub {
 	my $s = "@_";
 	$s =~ tr/ /-/;
-    	push @r, $s;
+	push @r, $s;
     };
 
     my $add_x = sub {
-    	my $ix = shift;
+	my $ix = shift;
 	my $n = $self->data($ix);
 	return unless $n;
 	my $s = "@_=+$n";
@@ -70,7 +70,7 @@ sub as_string_fields {
     $add_x->(ARTI_DATA_HAND_LIMIT,        "hand limit");
 
     if (defined(my $n = $self->data(ARTI_DATA_CAN_BUY_GEM))) {
-    	$add->("buy=$Gem[$n]");
+	$add->("buy=$Gem[$n]");
     }
 
     if (defined(my $n = $self->data(ARTI_DATA_FREE_GEM))) {
@@ -82,7 +82,7 @@ sub as_string_fields {
     }
 
     if (my $auc_type = $self->data(ARTI_DATA_COST_MOD_ARTIFACT)) {
-    	my $n = $self->data(ARTI_DATA_COST_MOD_ARTIFACT_AMOUNT);
+	my $n = $self->data(ARTI_DATA_COST_MOD_ARTIFACT_AMOUNT);
 	$add->("$Artifact[$auc_type]=\$$n");
     }
 
@@ -106,7 +106,7 @@ sub new_deck {
 	for (1..$copies) {
 	    my $arti = __PACKAGE__->new($game, $i);
 	    push @{ $by_letter{$arti->data(ARTI_DATA_DECK_LETTER)} }, $arti;
-    	}
+	}
     }
 
     my $deck = Game::Util::Deck->new;
@@ -141,7 +141,7 @@ sub bought {
     my $self = shift;
 
     for (1..$self->data(ARTI_DATA_DESTROY_GEM)) {
-    	for my $p ($self->a_game->players_in_table_order) {
+	for my $p ($self->a_game->players_in_table_order) {
 	    if (!same_referent $p, $self->a_player) {
 		$p->destroy_active_gem;
 	    }
@@ -155,8 +155,8 @@ sub bought {
     }
 
     for (1..$self->data(ARTI_DATA_ADVANCE_KNOWLEDGE)) {
-    	# XXX let user not advance if desired?
-    	my $ktype = $self->a_player->a_ui->choose_knowledge_type_to_advance;
+	# XXX let user not advance if desired?
+	my $ktype = $self->a_player->a_ui->choose_knowledge_type_to_advance;
 	if (!defined $ktype) {
 	    $self->a_game->note_to_players(NOTE_INFO,
 			    $self->a_player,

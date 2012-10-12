@@ -8,11 +8,11 @@ use overload (
 );
 
 use List::Util		qw(first max min sum);
-use Game::Util  	qw($Debug debug_var add_array_indices debug debug_var
+use Game::Util		qw($Debug debug_var add_array_indices debug debug_var
 			    knapsack_0_1 make_ro_accessor make_rw_accessor same_referent);
 use RS::Handy		qw(badinvo data_dump dstr xconfess);
 use Scalar::Util	qw(refaddr weaken);
-use Set::Scalar	 	  ();
+use Set::Scalar	 	();
 
 use Game::ScepterOfZavandor::Item::Energy ();
 use Game::ScepterOfZavandor::Item::Gem ();
@@ -105,11 +105,11 @@ sub spaceship {
     my ($a, $b) = @_;
 
     if (!defined $a || !defined $b) {
-    	return undef;
+	return undef;
     }
     0
 	or $a->a_char  <=> $b->a_char
-    	or refaddr($a) <=> refaddr($b)
+	or refaddr($a) <=> refaddr($b)
 }
 
 sub init {
@@ -127,19 +127,19 @@ sub init_items {
     my $char = $self->a_char;
 
     if (!defined $self->name) {
-    	$self->a_name($Character[$char]);
+	$self->a_name($Character[$char]);
     }
 
     require Game::ScepterOfZavandor::Item::Gem;
     for my $gtype (GEM_OPAL, GEM_OPAL, GEM_SAPPHIRE) {
 	my $g = Game::ScepterOfZavandor::Item::Gem->new($self, $gtype);
-    	$self->add_items($g);
+	$self->add_items($g);
 	$g->activate;
     }
 
     $self->add_items(
 	Game::ScepterOfZavandor::Item::Energy::Dust->make_dust(
-    	    	$self, $Character_data[$char][CHAR_DATA_START_DUST]));
+		$self, $Character_data[$char][CHAR_DATA_START_DUST]));
 
     my $k = Game::ScepterOfZavandor::Item::Knowledge->new($self, 0);
     $k->set_type($Character_data[$char][CHAR_DATA_KNOWLEDGE_TRACK]);
@@ -167,7 +167,7 @@ sub add_items {
     my ($self, @item) = @_;
 
     for (@item) {
-    	$_ or xconfess;
+	$_ or xconfess;
 	# XXX $self->a_game->note_to_players
 	debug "$Character[$self->[PLAYER_CHAR]] add item $_";
 	push @{ $self->[PLAYER_ITEM] }, $_;
@@ -247,7 +247,7 @@ sub current_energy_liquid_public {
     }
 
     if (!grep { $_ != $ep[0] } @ep) {
-    	# it was actually all publically visible
+	# it was actually all publically visible
 	$ep[ENERGY_EST_MIN] = undef;
 	$ep[ENERGY_EST_MAX] = undef;
     }
@@ -349,10 +349,10 @@ sub knowledge_track_next_level_cost {
     my $ktype = shift;
 
     if (my $kc = $self->knowledge_chip_for_track($ktype)) {
-    	return $kc->maxed_out ? undef : $kc->next_level_cost;
+	return $kc->maxed_out ? undef : $kc->next_level_cost;
     }
     else {
-    	return $Knowledge_data[$ktype][KNOW_DATA_LEVEL_COST][0];
+	return $Knowledge_data[$ktype][KNOW_DATA_LEVEL_COST][0];
     }
 }
 
@@ -462,7 +462,7 @@ sub allowed_to_start_auction {
     my $auc  = shift;
 
     if ($auc->destroys_active_gems && !$self->active_gems) {
-    	return 0;
+	return 0;
     }
     return 1;
 }
@@ -524,7 +524,7 @@ sub auto_activate_gems {
     # gem slot from winning auction).
 
     if (!same_referent $self, $self->a_game->a_cur_player) {
-    	return;
+	return;
     }
 
     my $n_slots  = $self->num_gem_slots;
@@ -537,15 +537,15 @@ sub auto_activate_gems {
 
     my (@activate, @deactivate);
     for my $i (0..$#gem) {
-    	my $g = $gem[$i];
+	my $g = $gem[$i];
 	if ($i >= $first_active) {
 	    if (!$g->is_active) {
-	    	push @activate, $g;
+		push @activate, $g;
 	    }
 	}
 	else {
 	    if ($g->is_active) {
-	    	push @deactivate, $g;
+		push @deactivate, $g;
 	    }
 	}
     }
@@ -555,11 +555,11 @@ sub auto_activate_gems {
     }
 
     if (!$self->a_auto_activate_gems) {
-    	$self->a_ui->ui_note(NOTE_NOT_USING_BEST_GEMS,
+	$self->a_ui->ui_note(NOTE_NOT_USING_BEST_GEMS,
 				\@activate, \@deactivate);
     }
     else {
-    	$_->deactivate for @deactivate;
+	$_->deactivate for @deactivate;
 	$_->activate   for @activate;
     }
 }
@@ -571,11 +571,11 @@ sub buy_auctionable {
     my $price = shift;
 
     if (!$self->allowed_to_own_auctionable($auc)) {
-    	die "you can only own one $auc\n";
+	die "you can only own one $auc\n";
     }
 
     if ($price < (my $cost = $auc->a_data_min_bid)) {
-    	die "bid too low (minimum $cost, bid $price)\n";
+	die "bid too low (minimum $cost, bid $price)\n";
     }
 
     my $cost_mod = $self->auctionable_cost_mod($auc);
@@ -622,7 +622,7 @@ sub current_energy_detail {
 	my $this_e = $i->energy;
 	next unless $this_e;
 
-    	$e[CUR_ENERGY_TOTAL] += $this_e;
+	$e[CUR_ENERGY_TOTAL] += $this_e;
 	if ($i->is_gem && $i->is_active) {
 	    $e[CUR_ENERGY_ACTIVE_GEMS] += $this_e;
 	}
@@ -681,7 +681,7 @@ sub can_buy_gem_backend {
     }
 
     if ($right_now && (my $limit = $Gem_data[$gtype][GEM_DATA_LIMIT])) {
-    	debug "gtype $gtype limit $limit";
+	debug "gtype $gtype limit $limit";
 	my @g = grep { $_->a_gem_type == $gtype } $self->gems;
 	if (@g > $limit) {
 	    xconfess 0+@g, " > $limit";
@@ -704,10 +704,10 @@ sub can_buy_gem_backend {
 	    || ($self->a_game->option(OPT_DRUID_LEVEL_3_RUBY)
 		    && $self->a_char == CHAR_DRUID);
     if ($gtype == GEM_RUBY
-    	    && $allow_level_3_ruby
-    	    && grep { $_->ktype_is(KNOW_FIRE) && $_->a_level >= 2 }
+	    && $allow_level_3_ruby
+	    && grep { $_->ktype_is(KNOW_FIRE) && $_->a_level >= 2 }
 		    $self->knowledge_chips) {
-    	if ($right_now && $self->a_bought_ruby) {
+	if ($right_now && $self->a_bought_ruby) {
 	    # XXX message for user
 	    #die "already bought special fire level 3 ruby\n";
 	    return 0;
@@ -799,7 +799,7 @@ sub consolidate_dust {
     }
 
     if ($old_tot - 1 == $new_tot) {
-    	# oops, lost a dust
+	# oops, lost a dust
 	die "XXX";
     }
 
@@ -847,7 +847,7 @@ sub consolidate_dust {
     my $rm_tot   = sum 0, map { $_->energy } @rm_dust;
     my $keep_tot = sum 0, map { $_->energy } @keep_dust;
     if (!!@add_dust ^ !!@rm_dust
-    	    or $add_tot != $rm_tot
+	    or $add_tot != $rm_tot
 	    or $add_tot + $keep_tot != $old_tot
 	    or $old_tot != $new_tot) {
 	xconfess map { "$_\n" }
@@ -878,7 +878,7 @@ sub destroy_active_gem {
 
     my $g;
     if (!@g) {
-    	$self->a_game->note_to_players(NOTE_INFO, $self->name, " doesn't have any active gems to destroy\n");
+	$self->a_game->note_to_players(NOTE_INFO, $self->name, " doesn't have any active gems to destroy\n");
 	return;
     }
     elsif (@g == 1) {
@@ -949,14 +949,14 @@ sub enforce_hand_limit {
     my $tot_discarded_energy = $self->spend(@dust, @rm);
     debug_var
 	tot_discarded_energy => $tot_discarded_energy,
-    	hand_count_remaining => $hl - $new_hc;
+	hand_count_remaining => $hl - $new_hc;
 
     # 3. make dust from this total as best you can
 
     if ($new_hc < $hl) {
 	my @new_dust
 	    = Game::ScepterOfZavandor::Item::Energy::Dust
-    	    	->make_dust_with_hand_limit(
+		->make_dust_with_hand_limit(
 		    $self, $tot_discarded_energy, $hl - $new_hc);
 	my $new_dust_energy = sum map { $_->energy } @new_dust;
 	debug_var new_dust_energy => $new_dust_energy;
@@ -1007,7 +1007,7 @@ sub energy_backend {
     my $active_gems = 0;
     my %gem;
     for my $i ($self->items) {
-    	if ($i->is_gem) {
+	if ($i->is_gem) {
 	    if ($i->is_active) {
 		push @{ $gem{$i->a_gem_type} }, $i;
 		$active_gems++;
@@ -1027,13 +1027,13 @@ sub energy_backend {
     # opals
 
     if (my $ro = delete $gem{+GEM_OPAL}) {
-    	debug 0+@$ro, " opals" if $Debug > 1;
+	debug 0+@$ro, " opals" if $Debug > 1;
 	my $e = Game::ScepterOfZavandor::Item::Energy::Dust
-    	    	    ->opal_count_to_energy_value(scalar @$ro);
-    	if ($is_produce) {
+		    ->opal_count_to_energy_value(scalar @$ro);
+	if ($is_produce) {
 	    $self->add_items(
 		Game::ScepterOfZavandor::Item::Energy::Dust->make_dust($self, $e));
-    	}
+	}
 	else {
 	    $ee_add_constant->($e);
 	}
@@ -1051,12 +1051,12 @@ sub energy_backend {
 			$self, $gtype),
 		    Game::ScepterOfZavandor::Item::Energy::Dust->make_dust(
 			$self, $Concentrated_additional_dust));
-    	    }
+	    }
 	    else {
 		$ee_add_constant->($Gem_data[$gtype][GEM_DATA_CONCENTRATED]);
 		$ee_add_constant->($Concentrated_additional_dust);
 	    }
-    	}
+	}
 	for (@g) {
 	    if ($is_produce) {
 		$self->add_items($_->produce_energy);
@@ -1127,10 +1127,10 @@ sub knowledge_advancement_costs {
     my $any_unassigned = 0;
 
     for ($self->knowledge_chips) {
-    	if ($_->is_unbought) {
-    	    # do nothing
-    	}
-    	elsif (!$_->is_assigned) {
+	if ($_->is_unbought) {
+	    # do nothing
+	}
+	elsif (!$_->is_assigned) {
 	    $any_unassigned = 1;
 	}
 	elsif ($_->maxed_out) {
@@ -1144,7 +1144,7 @@ sub knowledge_advancement_costs {
     for (0..$#k) {
 	if (defined $k[$_] && $k[$_] == -1) {
 	    $k[$_] = $any_unassigned
-    	    	    	? $Knowledge_data[$_][KNOW_DATA_LEVEL_COST][0]
+			? $Knowledge_data[$_][KNOW_DATA_LEVEL_COST][0]
 			: undef;
 	}
     }
@@ -1194,7 +1194,7 @@ sub pay_energy {
     }
 
     if ($tot > $paid) {
-    	xconfess "short by $tot energy";
+	xconfess "short by $tot energy";
     }
 
     $self->spend(@to_use);
@@ -1217,7 +1217,7 @@ sub confirm_and_pay_energy {
     my ($self, $payment) = @_;
 
     if (!$self->a_ui->maybe_confirm_payment($payment)) {
-    	return 0;
+	return 0;
     }
     $self->pay_energy($payment);
     return 1;

@@ -31,7 +31,7 @@ BEGIN {
 
     $SIG{__WARN__} = sub { xconfess @_ };
 #    for (qw(is fail)) {
-#    	no strict 'refs';
+#	no strict 'refs';
 #	*$_ = \&{ "Test::More::$_" };
 #    }
 }
@@ -45,7 +45,7 @@ use vars grep { /^[\$\@\%]/ } @EXPORT, @EXPORT_OK;
 #    my ($class) = shift;
 #
 #    for my $pkg_part (@_) {
-#    	my $full_class = "${Base}::${pkg_part}";
+#	my $full_class = "${Base}::${pkg_part}";
 #
 #	my $req_class = $full_class;
 #	$req_class =~ s/(::Energy)::.*/$1/;
@@ -62,7 +62,7 @@ use vars grep { /^[\$\@\%]/ } @EXPORT, @EXPORT_OK;
 sub create_test_game {
     process_arg_pairs \@_, (
 	num_players => \(my $num_players = 1),
-    	rwant_char  => \my $rwant_char,
+	rwant_char  => \my $rwant_char,
     );
 
     my @want_char = $rwant_char ? @$rwant_char : ();
@@ -79,7 +79,7 @@ sub create_test_game {
     for (1 .. $num_players) {
 	my $ui = Game::ScepterOfZavandor::UI::Test->new($g);
 	$ui->a_want_char(shift @want_char);
-    	push @p, Game::ScepterOfZavandor::Player->new($g, $ui, undef);
+	push @p, Game::ScepterOfZavandor::Player->new($g, $ui, undef);
 	$g->add_player($p[-1]);
     }
 
@@ -138,7 +138,7 @@ sub add_cards {
     my ($new_energy, $new_hand_count, $gtype, @value) = @_;
 
     for my $value (@value) {
-    	my $tries = 0;
+	my $tries = 0;
 	while (1) {
 	    my $card = $Game->draw_from_deck($gtype, 1);
 	    if ($card->energy == $value) {
@@ -149,7 +149,7 @@ sub add_cards {
 	    if ($tries++ > 100) {
 		fail "can't find card gtype=$gtype value=$value "
 			. subcall_info;
-    	    	last;
+		last;
 	    }
 	}
     }
@@ -163,13 +163,13 @@ sub add_concentrated {
 	map {
 	    Game::ScepterOfZavandor::Item::Energy::Concentrated
 		->new($Player, $gtype)
-    	} 1..$count;
+	} 1..$count;
 }
 
 sub create_dust {
     my ($val) = @_;
     return Game::ScepterOfZavandor::Item::Energy::Dust
-    	    	->make_dust($Player, $val);
+		->make_dust($Player, $val);
 }
 
 1

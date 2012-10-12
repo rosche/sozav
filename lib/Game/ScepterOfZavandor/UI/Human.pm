@@ -4,7 +4,7 @@ package Game::ScepterOfZavandor::UI::Human;
 
 use base qw(Game::ScepterOfZavandor::UI);
 
-use Game::Util 	qw(add_array_indices debug
+use Game::Util	qw(add_array_indices debug
 		    make_ro_accessor make_rw_accessor same_referent);
 use RS::Handy	qw(badinvo data_dump dstr process_arg_pairs xconfess);
 use List::Util	qw(max);
@@ -92,7 +92,7 @@ sub prompt_for_key {
     my $width = max map { length $_->[0] } @$rkvlist;
     my @key;
     for (@$rkvlist) {
-    	push @key, $_->[0];
+	push @key, $_->[0];
 	$self->out(sprintf "%s%${width}s%s %s\n",
 			    $indent, $key[-1], $sep, $_->[1]);
     }
@@ -146,7 +146,7 @@ sub choose_character {
 		    \@name,
 		    allow_empty => 1,
 		    header      => "Available characters:\n",
-    	    	    indent      => "  ");
+		    indent      => "  ");
     return defined $c ? $c[$c] : undef;
 }
 
@@ -233,7 +233,7 @@ sub choose_knowledge_type_to_advance {
 		    indent => "  ");
 
     for (0..$#ktype_advanceable) {
-    	if ($kv[$_][0] eq $abbrev) {
+	if ($kv[$_][0] eq $abbrev) {
 	    return $ktype_advanceable[$_];
 	}
     }
@@ -250,7 +250,7 @@ sub player_score_summary {
 		$player->score,
 		$player->name;
     for my $item (sort { $a <=> $b } grep { $_->vp } $player->items) {
-    	push @r, sprintf "%11s%s\n", "", $item;
+	push @r, sprintf "%11s%s\n", "", $item;
     }
 
     return @r;
@@ -264,14 +264,14 @@ sub solicit_bid {
 
     if ($cur_bid >= $p->auctionable_max_bid($auc)) {
 	$self->out("You can't afford to bid.\n");
-    	return 0;
+	return 0;
     }
 
     $self->out("Current bid on ", $auc->a_data_name,
 		" is \$$cur_bid by $cur_winner.\n");
     my $mod = $p->auctionable_cost_mod($auc);
     if ($mod) {
-    	$self->out(sprintf "You have a net %s of \$%d on this item.  "
+	$self->out(sprintf "You have a net %s of \$%d on this item.  "
 			    . "Your maximum (liquid) bid is \$%d.\n",
 		    $mod < 0 ? ("discount", -$mod) : ("penalty", $mod),
 		    $p->auctionable_max_bid_from_liquid($auc));
@@ -323,7 +323,7 @@ sub maybe_confirm_payment {
     my $liq  = $self->a_player->current_energy_liquid;
     my $left = $liq - $payment;
     if ($left >= 0) {
-    	return 1;
+	return 1;
     }
 
     my $conf = $self->in(sprintf
@@ -357,7 +357,7 @@ sub ui_note_game_start {
     $self->info("\n");
     $self->info("Players:\n");
     $self->info(sprintf "  %s\n", $_->name)
-    	for $g->players_in_table_order;
+	for $g->players_in_table_order;
 }
 
 sub ui_note_game_end {
@@ -387,8 +387,8 @@ sub ui_note_turn_start {
     my $g = $self->a_game;
     $self->info("-" x 77, "\n");
     $self->info(sprintf "Turn %s starting, player order: %s\n",
-    	    	    $g->a_turn_num,
-    	    	    join " ", $g->players_in_turn_order);
+		    $g->a_turn_num,
+		    join " ", $g->players_in_turn_order);
 }
 
 sub ui_note_actions_start {
@@ -399,7 +399,7 @@ sub ui_note_actions_start {
 # XXX it'd be good to short this status only to kibitzers, but with my current
 # interface I'm always a kibitizer
 #    $self->status_short
-#    	unless same_referent $player, $self->a_player;
+#	unless same_referent $player, $self->a_player;
     $self->info($player->name, " starting actions\n");
 }
 
@@ -415,7 +415,7 @@ sub ui_note_auction_start {
     my ($self, $player, $auc, $bid) = @_;
 
     $self->status_short
-    	unless same_referent $player, $self->a_player;
+	unless same_referent $player, $self->a_player;
     $self->info($player->name, " started auction for ",
 		$auc->a_data_name, " with bid of \$$bid\n");
 
@@ -423,7 +423,7 @@ sub ui_note_auction_start {
     # auctionables, so show the details.
 
     if ($auc->is_sentinel) {
-    	$self->info("$auc\n");
+	$self->info("$auc\n");
     }
 }
 

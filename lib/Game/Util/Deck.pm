@@ -74,7 +74,7 @@ sub draw {
 
     my @r;
     for (1..$ct) {
-    	$self->maybe_shuffle;
+	$self->maybe_shuffle;
 	push @r, shift @{ $self->[DECK_DRAW] };
     }
 
@@ -93,7 +93,7 @@ sub draw_first_matching_no_shuffle {
     my ($self, $test_sub) = @_;
 
     for my $ix (0..$#{ $self->[DECK_DRAW] }) {
-    	if ($test_sub->($self->[DECK_DRAW][$ix])) {
+	if ($test_sub->($self->[DECK_DRAW][$ix])) {
 	    return splice @{ $self->[DECK_DRAW] }, $ix, 1;
 	}
     }

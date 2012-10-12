@@ -40,7 +40,7 @@ sub as_string_fields {
     push @r,
 	sprintf("v=%2d", $self->a_value),
 	sprintf("hc=%1d", $self->a_hand_count),
-    	sprintf("hcr=%3.1f", $self->a_value / $self->a_hand_count);
+	sprintf("hcr=%3.1f", $self->a_value / $self->a_hand_count);
     return @r;
 }
 
@@ -58,9 +58,9 @@ sub spaceship {
     # This sorts items with higher value:hand-count ratio later.
 
     $b->is_energy
-    	    ? ($a->a_value/$a->a_hand_count) <=> ($b->a_value/$b->a_hand_count)
+	    ? ($a->a_value/$a->a_hand_count) <=> ($b->a_value/$b->a_hand_count)
 	    : 0
-    	or $a->SUPER::spaceship($b, $rev)
+	or $a->SUPER::spaceship($b, $rev)
 }
 
 sub use_up {
@@ -111,7 +111,7 @@ sub as_string_fields {
     my $self = shift;
     my @r = $self->SUPER::as_string_fields(@_);
     push @r,
-    	$Gem[$self->a_deck->a_gem_type];
+	$Gem[$self->a_deck->a_gem_type];
     return @r;
 }
 
@@ -135,7 +135,7 @@ sub energy_public {
     my $self = shift;
 
     if ($self->a_game->option(OPT_PUBLIC_MONEY)) {
-    	return $self->SUPER::energy_public($self);
+	return $self->SUPER::energy_public($self);
     }
 
     return $self->a_deck->energy_estimate;
@@ -174,7 +174,7 @@ sub new {
     # 1 dust even if the option isn't turned on
     for (@Game::ScepterOfZavandor::Constant::Dust_data,
 	    $Game::ScepterOfZavandor::Constant::Dust_data_val_1) {
-    	if ($_->[DUST_DATA_VALUE] == $value) {
+	if ($_->[DUST_DATA_VALUE] == $value) {
 	    $hl = $_->[DUST_DATA_HAND_COUNT];
 	    last;
 	}
@@ -200,12 +200,12 @@ sub xxx_make_dust_with_hand_limit {
     my $tot_hand_count = 0;
 
     my $add_one_kind = sub {
-    	my $rdust = shift;
+	my $rdust = shift;
 	my $v     = $rdust->[DUST_DATA_VALUE];
 	my $hc    = $rdust->[DUST_DATA_HAND_COUNT];
 	while ($tot_value >= $v) {
 	    if ($max_hand_count && $tot_hand_count + $hc > $max_hand_count) {
-	    	return;
+		return;
 	    }
 	    push @r, $class->new($player, $v);
 	    $tot_value      -= $v;
@@ -230,7 +230,7 @@ sub xxx_make_dust_with_hand_limit {
 #    while ($tot_value > 0
 #	    # XXX 10 (count 3) -> 5 2 2 2 (count 5), needs 2 extra hc
 #	    && (!$max_hand_count || $tot_hand_count < $max_hand_count)) {
-#    	for (reverse 0 .. $#r) {
+#	for (reverse 0 .. $#r) {
 #	    my $this_v  = $r[$_]->energy;
 #	    my $this_hc = $r[$_]->hand_count;
 #	    if ($this_v % 2) {
@@ -270,7 +270,7 @@ sub make_dust {
 
     my @r;
     $player->a_game->dust_data_loop(sub {
-    	my $v = $_->[DUST_DATA_VALUE];
+	my $v = $_->[DUST_DATA_VALUE];
 	while ($tot_value >= $v) {
 	    push @r, $class->new($player, $v);
 	    $tot_value -= $v;
@@ -294,8 +294,8 @@ sub make_dust_with_hand_limit {
     my @dummy = ();
     #print "tot_value=$tot_value dummy=";
     $player->a_game->dust_data_loop(sub {
-    	my $hc = $_->[DUST_DATA_HAND_COUNT];
-    	my $v  = $_->[DUST_DATA_VALUE];
+	my $hc = $_->[DUST_DATA_HAND_COUNT];
+	my $v  = $_->[DUST_DATA_VALUE];
 	for (1 .. $tot_value / $v) {
 	    #print " $v";
 	    #push @dummy, [$v, $v/$hc];
@@ -308,11 +308,11 @@ sub make_dust_with_hand_limit {
     # XXX this isn't trying to minimize hand limit?
     my ($got_cost, $got_value, @want_dummy)
 	= knapsack_0_1 \@dummy, sub { @{ +shift } }, $max_hand_count,
-    	    	    	sub { $_[0] > $_[1] || $_[2] + $_[3] > $tot_value };
+			sub { $_[0] > $_[1] || $_[2] + $_[3] > $tot_value };
 
     my @r;
     for (@want_dummy) {
-    	my ($hc, $v) = @$_;
+	my ($hc, $v) = @$_;
 	push @r, $class->new($player, $v);
     }
 
@@ -337,7 +337,7 @@ sub opal_count_to_energy_value {
 
     my $tot_value = 0;
     for (@Game::ScepterOfZavandor::Constant::Dust_data) {
-    	my $val = $_->[DUST_DATA_VALUE];
+	my $val = $_->[DUST_DATA_VALUE];
 	my $ct  = $_->[DUST_DATA_OPAL_COUNT];
 	next unless $ct;
 	while ($opal_count >= $ct) {
@@ -372,7 +372,7 @@ sub new {
     return $class->SUPER::new($player,
 				ITEM_TYPE_CONCENTRATED,
 				$Gem_data[$gtype][GEM_DATA_CONCENTRATED],
-    	    	    	    	$Concentrated_hand_count);
+				$Concentrated_hand_count);
 }
 
 # XXX include gem type
@@ -381,7 +381,7 @@ sub new {
 #    my $self = shift;
 #    my @r = $self->SUPER::as_string_fields(@_);
 #    push @r,
-#    	$Gem[$self->a_deck->a_gem_type];
+#	$Gem[$self->a_deck->a_gem_type];
 #    return @r;
 #}
 

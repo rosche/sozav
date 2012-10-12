@@ -15,7 +15,7 @@ BEGIN {
 	$Base_gem_slots
 	$Base_hand_limit
 	@Artifact
-    	%Artifact
+	%Artifact
 	@Artifact_data
 	@Artifact_data_field
 	@Auctionable
@@ -51,7 +51,7 @@ BEGIN {
 	%Option
 	@Sentinel
 	@Sentinel_real_ix_xxx
-    	%Sentinel
+	%Sentinel
 	@Sentinel_data
 	@Sentinel_data_field
 	@Turn_order
@@ -63,11 +63,11 @@ use vars grep { /^[\$\@\%]/ } @EXPORT, @EXPORT_OK;
 
 BEGIN {
     @Note = (
-    	# XXX drop this
-    	"info",
+	# XXX drop this
+	"info",
 
-    	# notes from game rather than a player, XXX use a different
-    	# namespace for these?
+	# notes from game rather than a player, XXX use a different
+	# namespace for these?
 	"game_end",		# no args
 	"game_start",		# no args
 	"turn_start",		# no args
@@ -84,7 +84,7 @@ BEGIN {
 
 	# XXX join all gaining and losing of items into a single note type?
 	"item_got",		# player, item, cost
-    	"item_gone",		# player, item, amount received
+	"item_gone",		# player, item, amount received
 	#"energy_discard",	# player, item(s) (due to hand limit)
 	#"energy_gain",		# player, item(s)
 	#"gem_buy",		# player, gem, cost
@@ -92,7 +92,7 @@ BEGIN {
 	#"gem_sell",		# player, gem, amount
 	#"knowledge_buy",	# player, chip, cost
 
-    	# sent to single player
+	# sent to single player
 	"cant_afford",		# payment amount
 	"not_using_best_gems",	# [gems to activate], [gems to deactivate]
 	"invalid_bid",		# auc, current bid, amount bid
@@ -104,30 +104,30 @@ BEGIN {
     %Character = map { $Character[$_] => $_ } 0..$#Character;
     add_array_indices 'CHAR', @Character;
     add_array_indices 'CHAR_DATA', (
-    	'KNOWLEDGE_TRACK',
-    	'START_DUST',
+	'KNOWLEDGE_TRACK',
+	'START_DUST',
     );
 
     @Energy_estimate = (
-    	'min',			# publically visible minimum
-    	'avg',			# publically visible average
-    	'max',			# publically visible maximum
+	'min',			# publically visible minimum
+	'avg',			# publically visible average
+	'max',			# publically visible maximum
     );
     add_array_indices 'ENERGY_EST', @Energy_estimate;
 
     @Current_energy = (
-    	'total',		# total = liquid + active gems
+	'total',		# total = liquid + active gems
 	    'liquid',		# liquid = cards+dust + inactive gems
 		'cards+dust',	# XXY better name
 		'inactive gems',
 	    'active gems',
-    	@Energy_estimate,	# publically visible info
+	@Energy_estimate,	# publically visible info
     );
     add_array_indices 'CUR_ENERGY', @Current_energy;
 
     add_array_indices 'DUST_DATA', (
-    	'VALUE',
-    	'HAND_COUNT',
+	'VALUE',
+	'HAND_COUNT',
 	'OPAL_COUNT',
     );
 
@@ -135,13 +135,13 @@ BEGIN {
     %Gem = map { $Gem[$_] => $_ } 0..$#Gem;
     add_array_indices 'GEM', @Gem;
     add_array_indices 'GEM_DATA', (
-    	'ABBREV',
-    	'COST',
+	'ABBREV',
+	'COST',
 	'VP',
 	'LIMIT',
-    	'CARD_LIST_NORMAL',
+	'CARD_LIST_NORMAL',
 	'CARD_LIST_LESS_VARIANT',
-    	'CONCENTRATED',
+	'CONCENTRATED',
     );
     add_array_indices 'GAME_GEM_DATA', (
 	'DECK',
@@ -161,19 +161,19 @@ BEGIN {
     add_array_indices 'KNOW_DATA', qw(
 	NAME
 	ABBREV
-    	HAND_LIMIT
-    	LEVEL_COST
+	HAND_LIMIT
+	LEVEL_COST
 	DETAIL
     );
 
     @Option = (
-    	# standard
+	# standard
 	'verbose',
 	'druid level 3 ruby',
 	'9 sages dust',
 
 	# common
-    	'1 dust',
+	'1 dust',
 
 	# randomness
 	'5 sapphire start',
@@ -181,7 +181,7 @@ BEGIN {
 	'lower variance',
 	'averaged cards',
 
-    	# other
+	# other
 	'anybody level 3 ruby',
 	'public money',
 
@@ -242,7 +242,7 @@ BEGIN {
     add_array_indices 'AUC_DATA', @Auctionable_data_field;
 
     @Artifact_data_field = (
-    	@Auctionable_data_field,
+	@Auctionable_data_field,
 	'DECK_LETTER',			# A-D
 	'COST_MOD_ARTIFACT',		# artifact you get a cost_mod on
 	'COST_MOD_ARTIFACT_AMOUNT',	# cost_mod of N on specified artifact
@@ -251,16 +251,16 @@ BEGIN {
 	'KNOWLEDGE_CHIP',		# stage N knowledge chips
 	'ADVANCE_KNOWLEDGE',		# advance N knowledge stages
 	'GEM_SLOTS',			# add N gem slots
-    	'HAND_LIMIT',			# add N to hand limit
+	'HAND_LIMIT',			# add N to hand limit
 	'CAN_BUY_GEM',			# you can by gem type GTYPE
-    	'FREE_GEM',			# you get a free gem of type GTYPE
+	'FREE_GEM',			# you get a free gem of type GTYPE
 	'GEM_ENERGY_PRODUCTION',	# produces an energy card of type GTYPE
 	'DESTROY_GEM',			# destroy N gems of each other player
     );
     add_array_indices 'ARTI_DATA', @Artifact_data_field;
 
     @Sentinel_data_field = (
-    	@Auctionable_data_field,
+	@Auctionable_data_field,
 	'DESC',
 	'MAX_BONUS_VP',
 	'VP_PER',
@@ -272,11 +272,11 @@ BEGIN {
     @Turn_order = (1..6);
     add_array_indices 'TURN', @Turn_order;
     add_array_indices 'TURN_DATA', qw(
-    	NAME
+	NAME
 	ACTIVE_IF_MY_VP_GE
 	ACTIVE_IF_ANY_VP_GE
-    	ARTIFACT_COST_MOD
-    	SENTINEL_COST_MOD
+	ARTIFACT_COST_MOD
+	SENTINEL_COST_MOD
     );
 }
 
@@ -384,8 +384,8 @@ BEGIN {
     # These have to be ordered by descending hand count efficiency.
 
     for ([10 => 3, 3], [5 => 2, 2], [2 => 1, 1], [1 => 1]) {
-    	my ($v, $hl, $opal_count) = @$_;
-    	my $r = [];
+	my ($v, $hl, $opal_count) = @$_;
+	my $r = [];
 	$r->[DUST_DATA_VALUE]      = $v;
 	$r->[DUST_DATA_HAND_COUNT] = $hl;
 	$r->[DUST_DATA_OPAL_COUNT] = $opal_count;
@@ -478,20 +478,20 @@ BEGIN {
 
     # XXX
     @Config_by_num_players = (
-    	undef, # 0
-    	[4, 2], # XXX undef, # 1
-    	[2, 1], # 2
-    	[3, 2], # 3
-    	[4, 2], # 4
-    	[5, 3], # 5
-    	[6, 3], # 6
+	undef, # 0
+	[4, 2], # XXX undef, # 1
+	[2, 1], # 2
+	[3, 2], # 3
+	[4, 2], # 4
+	[5, 3], # 5
+	[6, 3], # 6
     );
     $Max_players = $#Config_by_num_players;
 
     for ([\@Artifact, \@Artifact_data],
 	    [\@Sentinel, \@Sentinel_data]) {
-    	my ($ritem, $rdata) = @$_;
-    	for my $i (0..$#{ $ritem }) {
+	my ($ritem, $rdata) = @$_;
+	for my $i (0..$#{ $ritem }) {
 	    $rdata->[$i] = [];
 	    $rdata->[$i][AUC_DATA_NAME]    = $ritem->[$i];
 	    $rdata->[$i][AUC_DATA_MIN_BID] = undef;
@@ -500,8 +500,8 @@ BEGIN {
     }
 
     for (@Sentinel_real_ix_xxx) {
-    	$Sentinel_data[$_][AUC_DATA_MIN_BID        ] = 120;
-    	$Sentinel_data[$_][AUC_DATA_VP             ] = 5;
+	$Sentinel_data[$_][AUC_DATA_MIN_BID        ] = 120;
+	$Sentinel_data[$_][AUC_DATA_VP             ] = 5;
 	$Sentinel_data[$_][SENT_DATA_MAX_BONUS_VP  ] = undef;
 	$Sentinel_data[$_][SENT_DATA_VP_PER        ] = undef;
 	$Sentinel_data[$_][SENT_DATA_BONUS_GEM     ] = undef;
@@ -509,7 +509,7 @@ BEGIN {
     }
 
     for (0..$#Artifact) {
-    	my $r = $Artifact_data[$_];
+	my $r = $Artifact_data[$_];
 	$r->[ARTI_DATA_DECK_LETTER]              = undef;
 	$r->[ARTI_DATA_COST_MOD_ARTIFACT]        = undef;
 	$r->[ARTI_DATA_COST_MOD_ARTIFACT_AMOUNT] = 0;
@@ -630,7 +630,7 @@ BEGIN {
     $Sentinel_data[SENT_TOAD      ][SENT_DATA_DESC        ]
 	= 'runestone, spellbook, crystal of protection, elixir';
     $Sentinel_data[SENT_TOAD      ][SENT_DATA_BONUS_AUC_TYPE]
-    	= { map { $_ => 1 } (
+	= { map { $_ => 1 } (
 	    AUC_RUNESTONE,
 	    AUC_CRYSTAL_OF_PROTECTION,
 	    AUC_SPELLBOOK,
@@ -641,11 +641,11 @@ BEGIN {
     $Sentinel_data[SENT_RAVEN     ][SENT_DATA_DESC        ]
 	= 'crystal ball, magic belt, mask of charisma, magic wand';
     $Sentinel_data[SENT_RAVEN     ][SENT_DATA_BONUS_AUC_TYPE]
-    	= { map { $_ => 1 } (
-    	    AUC_CRYSTAL_BALL,
-    	    AUC_MASK_OF_CHARISMA,
-    	    AUC_MAGIC_BELT,
-    	    AUC_MAGIC_WAND,
+	= { map { $_ => 1 } (
+	    AUC_CRYSTAL_BALL,
+	    AUC_MASK_OF_CHARISMA,
+	    AUC_MAGIC_BELT,
+	    AUC_MAGIC_WAND,
 	) };
 
     $Sentinel_data[SENT_TOMCAT    ][SENT_DATA_BONUS_GEM   ] = GEM_OPAL;
@@ -694,7 +694,7 @@ XXX
     - ask user about what to pay with
     - ask user about which knowledge to advance
     - combine purchases where possible
-    	- maybe always allow 1 dust, then remove it when appropriate
+	- maybe always allow 1 dust, then remove it when appropriate
 	- but this likely wouldn't let you do everything you could by
 	  combining purchases for real
     - at game end (or in info) show how much energy player drew vs. average

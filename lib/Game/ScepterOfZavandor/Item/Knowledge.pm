@@ -25,7 +25,7 @@ BEGIN {
 	'COST',		# > 0 -> unbought, = 0 -> bought, possibly unallocated
 	'TYPE',		# undef -> unassigned
 	'LEVEL',	# 0-3
-    	'9SAGES_CARDS',	# cards drawn for 9 sages for next turn
+	'9SAGES_CARDS',	# cards drawn for 9 sages for next turn
     );
 }
 
@@ -51,10 +51,10 @@ sub set_type {
     # a lot of places
     defined $ktype && looks_like_number($ktype)
 	    && $ktype >= 0 && $ktype <= $#Knowledge
-    	or xconfess dstr $ktype;
+	or xconfess dstr $ktype;
 
     !defined $self->a_type
-    	or xconfess dstr $self->a_type, " -> $ktype";
+	or xconfess dstr $self->a_type, " -> $ktype";
 
     for ($self->a_player->knowledge_chips) {
 	if ($_->ktype_is($ktype)) {
@@ -89,18 +89,18 @@ sub as_string_fields {
     my $type  = $self->a_type;
 
     if ($cost > 0) {
-    	push @r, "cost=$cost"
+	push @r, "cost=$cost"
     }
     elsif (!defined $type) {
 	push @r, "unassigned";
     }
     else {
-    	my $title = $self->a_player->a_ui->tag_abbrev($Knowledge[$type],
+	my $title = $self->a_player->a_ui->tag_abbrev($Knowledge[$type],
 			$Knowledge_data[$type][KNOW_DATA_ABBREV]);
 	push @r,
 	    $title,
 	    "l=$level",
-    	    $self->maxed_out ? () : "next_cost=" . $self->next_level_cost;
+	    $self->maxed_out ? () : "next_cost=" . $self->next_level_cost;
     }
     return @r;
 }
@@ -112,7 +112,7 @@ sub advance {
     my $max_level = $#{ $self->data(KNOW_DATA_LEVEL_COST) };
 
     !$self->maxed_out
-    	or die "already advanced to the top for $self\n";
+	or die "already advanced to the top for $self\n";
 
     my $new_level = $self->a_level + 1;
     debug "$self advance to level raw $new_level";
@@ -138,8 +138,8 @@ sub allows_player_to_buy_gem_type {
     my $gtype = shift;
 
     if ($gtype == GEM_RUBY && $self->ktype_is(KNOW_FIRE)) {
-    	debug "testing kfire detail=", $self->detail;
-    	return $self->detail;
+	debug "testing kfire detail=", $self->detail;
+	return $self->detail;
     }
 
     return 0;
@@ -254,7 +254,7 @@ sub next_level_cost {
     my $self = shift;
 
     !$self->maxed_out
-    	or die "already advanced to the top for $self\n";
+	or die "already advanced to the top for $self\n";
 
     return $self->data(KNOW_DATA_LEVEL_COST)->[1+$self->a_level];
 }
@@ -286,14 +286,14 @@ sub produce_energy {
 		push @item, $_;
 	    }
 	    else {
-	    	$val += $_->energy;
+		$val += $_->energy;
 		$_->use_up;
 	    }
 	}
 	if ($val) {
 	    push @item,
 		Game::ScepterOfZavandor::Item::Energy::Dust->make_dust(
-    	    	    	$self->a_player, $val);
+			$self->a_player, $val);
 	}
 	debug "9 sages items @item\n";
 	return @item;
@@ -307,7 +307,7 @@ sub produce_energy_estimate {
     my $self = shift;
 
     if ($self->ktype_is(KNOW_EFLOW) && (my $dust = $self->detail)) {
-    	my @ee;
+	my @ee;
 	$ee[ENERGY_EST_MIN] = $dust;
 	$ee[ENERGY_EST_AVG] = $dust;
 	$ee[ENERGY_EST_MAX] = $dust;

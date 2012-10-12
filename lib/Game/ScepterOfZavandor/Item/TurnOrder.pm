@@ -30,7 +30,7 @@ sub as_string_fields {
     my @r = ($self->name);
     for ([arti => TURN_DATA_ARTIFACT_COST_MOD],
 	    [sent => TURN_DATA_SENTINEL_COST_MOD]) {
-    	my ($desc, $ix) = @$_;
+	my ($desc, $ix) = @$_;
 	my $n = $self->data($ix)
 	    or next;
 	push @r, sprintf "%s=%+d", $desc, $n;
@@ -74,7 +74,7 @@ sub cost_mod_on_auc_type {
     }
 
     if (Game::ScepterOfZavandor::Item::Auctionable::auc_type_is_artifact $auc_type) {
-    	return $self->data(TURN_DATA_ARTIFACT_COST_MOD);
+	return $self->data(TURN_DATA_ARTIFACT_COST_MOD);
     }
 
     if (Game::ScepterOfZavandor::Item::Auctionable::auc_type_is_sentinel $auc_type) {

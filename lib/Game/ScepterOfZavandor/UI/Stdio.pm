@@ -6,7 +6,7 @@ package Game::ScepterOfZavandor::UI::Stdio;
 
 use base qw(Game::ScepterOfZavandor::UI::Human);
 
-use Game::Util 		qw(add_array_indices add_array_indices
+use Game::Util		qw(add_array_indices add_array_indices
 			    debug eval_block same_referent valid_ix_plus_1);
 use List::Util		qw(first);
 use RS::Handy		qw(badinvo data_dump dstr plural xconfess);
@@ -45,13 +45,13 @@ BEGIN {
     add_array_indices 'ACTION', qw(
 	ABBREV
 	GROUP
-    	ARG
+	ARG
 	DESC
     );
 
     @Action_group = qw(
-    	gem
-    	knowledge
+	gem
+	knowledge
 	auction
 	other
     );
@@ -195,7 +195,7 @@ sub one_action {
     $self->status_short;
 
     if (!$self->a_player->a_advanced_knowledge_this_turn) {
-    	$self->show_knowledge_advancement_costs;
+	$self->show_knowledge_advancement_costs;
     }
 
     my $s = $self->in;
@@ -214,12 +214,12 @@ sub one_action {
     my $mcmd = munge_action_name $cmd;
     my $method = "action_$mcmd";
     if (!$self->can($method)) {
-    	xconfess "no method defined for action $mcmd";
+	xconfess "no method defined for action $mcmd";
     }
 
     my $ret = eval_block { $self->$method(@arg) };
     if ($@) {
-    	$self->out("\n", $self->a_player, ": ");
+	$self->out("\n", $self->a_player, ": ");
 	$self->out_error($@);
 	$ret = 1;
     }
@@ -261,42 +261,42 @@ sub status_short {
 	    my @arg = ($cur);
 	    $fmt .= sprintf "%-5s",
 			$cur == $max
-    	    	    	    ? ""
-    	    	    	    : sprintf "(%+d)", $cur - $max;
-    	    return $fmt, @arg;
-    	};
+			    ? ""
+			    : sprintf "(%+d)", $cur - $max;
+	    return $fmt, @arg;
+	};
 
-    	my $do_highlight = same_referent $p, $self->a_player;
-    	my @spec = (
-    	    [""        => "", "%1s", $do_highlight ? ">" : " "],
-    	    [name      => "", "%-10.10s",
+	my $do_highlight = same_referent $p, $self->a_player;
+	my @spec = (
+	    [""        => "", "%1s", $do_highlight ? ">" : " "],
+	    [name      => "", "%-10.10s",
 			    $p->name],
 	    [vp        => " | ", "%2d(%d)",
 			    $p->score, $p->user_turn_order],
-    	    [$knowledge_title => " | ", "%s",
+	    [$knowledge_title => " | ", "%s",
 			    $self->status_short_knowledge($p)],
-    	    [gems      => " | ", "%-11s",
+	    [gems      => " | ", "%-11s",
 			    $self->status_short_gems($p)],
-    	    [income    => " | ", join("/", ("%3.0f") x @Energy_estimate),
+	    [income    => " | ", join("/", ("%3.0f") x @Energy_estimate),
 			    $p->income_estimate],
-    	    [cash      => " | ", "%-11s",
+	    [cash      => " | ", "%-11s",
 			    $self->status_short_cash($p)],
 	    # XXX more useful to show how much energy you'd lose to your
 	    # hand limit when you're over
-    	    [hand      => " | ", $rel->($p->current_hand_count, $p->hand_limit)],
-    	);
+	    [hand      => " | ", $rel->($p->current_hand_count, $p->hand_limit)],
+	);
 
 	my $s = '';
-    	for (@spec) {
+	for (@spec) {
 	    my ($title, $sep, $this_fmt, @arg) = @$_;
 
 	    my $formatted = sprintf $this_fmt, @arg;
 	    $s .= $sep . $formatted;
 
 	    if (defined $header) {
-	    	my $l = length $formatted;
+		my $l = length $formatted;
 		#$title .= '-' while length($title) < length($formatted);
-    	    	$header .= $sep . sprintf "%-${l}s", $title;
+		$header .= $sep . sprintf "%-${l}s", $title;
 	    }
 	}
 	$s .= "\n";
@@ -323,14 +323,14 @@ sub status_short_cash {
 	$visible_e = $p->current_energy_liquid;
     }
     else {
-    	my @ep = $p->current_energy_liquid_public;
+	my @ep = $p->current_energy_liquid_public;
 	# show as exact if the value is actually visible
 	if (!defined $ep[ENERGY_EST_MIN]) {
 	    $visible_e = $ep[ENERGY_EST_AVG];
 	}
 	else {
 	    return sprintf "" . join("/", ("%3.0f") x @Energy_estimate), @ep;
-    	}
+	}
     }
 
     return sprintf "   \$%3d", $visible_e;
@@ -344,7 +344,7 @@ sub status_short_gems {
     my $s = '';
     my @g = grep { $_->is_active } reverse $p->gems_by_cost;
     for (@g) {
-    	$s .= $_->abbrev;
+	$s .= $_->abbrev;
     }
     for (@g+1 .. $p->num_gem_slots) {
 	$s .= "-";
@@ -380,7 +380,7 @@ sub _action_gem_backend {
 
     my $gtype = $Gem{$gname};
     if (!defined $gtype) {
-    	die "invalid gem name ", dstr $gname, "\n";
+	die "invalid gem name ", dstr $gname, "\n";
     }
 
     my ($gem) = grep { $_->a_gem_type == $gtype } @gem;
@@ -399,7 +399,7 @@ add_action (
     [
 	"- activate an inactive gem from your pentagon",
 	"- you don't ordinarily have to do this, it's only necessary",
-    	"  if you've used the deactivate-gem command",
+	"  if you've used the deactivate-gem command",
     ],
 );
 
@@ -438,7 +438,7 @@ sub action_advance_knowledge {
 
     my $ktype;
     if (!defined $kname_or_type) {
-    	$ktype = $self->choose_knowledge_type_to_advance;
+	$ktype = $self->choose_knowledge_type_to_advance;
 	if (!defined $ktype) {
 	    die "no advancable knowledge chips\n";
 	}
@@ -464,7 +464,7 @@ add_action (
     [
 	"- automatically activate your best gems, now and later as necessary",
 	"- you don't ordinarily have to do this, it's only necessary",
-    	"  if you've used the activate-gem or deactivate-gem commands",
+	"  if you've used the activate-gem or deactivate-gem commands",
     ],
 );
 
@@ -496,13 +496,13 @@ sub action_auction {
 
     my @a = $self->a_game->auctionable_items;
     $aix >= 1 && $aix <= @a
-    	or die "invalid auction index ", dstr $aix, "\n";
+	or die "invalid auction index ", dstr $aix, "\n";
     my $auc = $a[$aix - 1];
     $start_bid = $auc->a_data_min_bid
-    	if !defined $start_bid;
+	if !defined $start_bid;
 
     if (!defined $self->vet_bid($auc, $start_bid)) {
-    	return 1;
+	return 1;
     }
     $self->a_game->auction_item($self->a_player, $auc, $start_bid);
     return 1;
@@ -526,7 +526,7 @@ sub action_buy_knowledge_chip {
 
     my $kchip;
     if (defined $cost) {
-    	looks_like_number $cost
+	looks_like_number $cost
 	    or die "invalid-looking knowledge chip cost ", dstr $cost, "\n";
 	$kchip = first { $_->a_cost == $cost }
 		$self->a_player->knowledge_chips_unbought_by_cost
@@ -611,7 +611,7 @@ sub _action_help_backend {
 
     $self->out("Actions/commands:\n");
     for my $group (0..$#Action_group) {
-    	$self->out("${i}$Action_group[$group]:\n");
+	$self->out("${i}$Action_group[$group]:\n");
 	for my $name (grep { $Action{$_}[ACTION_GROUP] == $group }
 			sort $self->get_action_names) {
 	    my $ra = $Action{$name};
@@ -657,31 +657,31 @@ sub _action_help_backend {
 
     $self->out("\n");
     $self->out("${i}            Gem names: ",
-    	join(" ", map {
+	join(" ", map {
 	    # XXX sub for this
 	    $self->tag_abbrev($Gem[$_], $Gem_data[$_][GEM_DATA_ABBREV])
 	} 0..$#Gem), "\n");
     $self->out("${i}Knowledge track names: ",
-    	join(" ", map {
+	join(" ", map {
 	    # XXX sub for this
 	    $self->tag_abbrev($Knowledge[$_],
 				$Knowledge_data[$_][KNOW_DATA_ABBREV])
-    	} 0..$#Knowledge), "\n");
+	} 0..$#Knowledge), "\n");
 
     my $fmt = ${i} x 3 . "%4s = %-29s %6s = %s\n";
     $self->out("${i} Player status legend:\n");
     $self->out(sprintf $fmt,
-    	    	"vp",  "victory points(turn order)",
+		"vp",  "victory points(turn order)",
 		"income",  "min/average/max",
-    	    );
+	    );
     $self->out(sprintf $fmt,
-    	    	"know",  "knowledge levels",
-    	    	"cash", "min/average/max or exact",
-    	    );
+		"know",  "knowledge levels",
+		"cash", "min/average/max or exact",
+	    );
     $self->out(sprintf $fmt,
 		"gems",  "active gem/empty slot list",
-    	    	"hand",  "hand size(vs limit)",
-    	    );
+		"hand",  "hand size(vs limit)",
+	    );
 
     if ($self->can_underline && !$brief) {
 	$self->out("\n");
@@ -744,15 +744,15 @@ sub action_items {
 
     my $player;
     if (!defined $pnum) {
-    	$player = $self->a_player;
+	$player = $self->a_player;
     }
     else {
-    	my @p = $self->a_game->players_in_table_order;
+	my @p = $self->a_game->players_in_table_order;
 	my $pix = $pnum - 1;
 	if (!looks_like_number $pnum || $pix < 0 || $pix > $#p) {
 	    die "invalid player number ", dstr $pnum,
 		" (valid values are 1-", 0+@p, ")\n";
-    	}
+	}
 	$player = $p[$pix];
     }
 
@@ -766,7 +766,7 @@ sub action_items {
     # how many sentinels have been bought.
 
     $self->out(sprintf "$fmt %s (number %d in table order)\n",
-    	    	    	"player",
+			"player",
 			$name,
 			$player->a_table_ordinal);
 
@@ -800,12 +800,12 @@ sub action_items {
 	$self->out(sprintf "$fmt %s liquid visible\n",
 			    "energy",
 			    $self->status_short_cash($player));
-    	# XXX count from gems
+	# XXX count from gems
     }
 
     if ($game->option(OPT_ANYBODY_LEVEL_3_RUBY)
-    	    || ($player->a_char == CHAR_DRUID
-    	    	&& $game->option(OPT_DRUID_LEVEL_3_RUBY))) {
+	    || ($player->a_char == CHAR_DRUID
+		&& $game->option(OPT_DRUID_LEVEL_3_RUBY))) {
 	$self->out(sprintf "$fmt %s bought a ruby\n",
 			    "ruby",
 			    $player->a_bought_ruby ? "has" : "has not");
@@ -814,7 +814,7 @@ sub action_items {
     #$self->out("\n");
     $self->out("items:\n");
     for (sort { $a <=> $b } $player->items) {
-    	# XXX hide non-public info for other players
+	# XXX hide non-public info for other players
 	$self->out(sprintf "%s%s\n", $indent,
 		    same_referent($player, $self->a_player)
 			? "$_"
@@ -840,7 +840,7 @@ sub action_buy_gem {
 
     my $gtype = $Gem{$gname};
     if (!defined $gtype) {
-    	die "invalid gem name ", dstr $gname, "\n";
+	die "invalid gem name ", dstr $gname, "\n";
     }
 
     $self->a_player->buy_gem($gtype);
@@ -866,7 +866,7 @@ sub action_sell_gem {
 
     my $gtype = $Gem{$gname};
     if (!defined $gtype) {
-    	die "invalid gem name ", dstr $gname, "\n";
+	die "invalid gem name ", dstr $gname, "\n";
     }
 
     # XXX let user pick
@@ -875,8 +875,8 @@ sub action_sell_gem {
     # makes this non-critical)
 
     my ($gem)
-    	# XXX test
-    	= sort { !!$a->is_active <=> !!$b->is_active }
+	# XXX test
+	= sort { !!$a->is_active <=> !!$b->is_active }
 	    grep { $_->a_gem_type == $gtype } $self->a_player->gems;
     if (!$gem) {
 	die "you don't own a $gname\n"; # XXX grammar
@@ -914,7 +914,7 @@ sub action_sentinels {
     for (0..$#a) {
 	my $a = $a[$_];
 	next unless $a->is_sentinel;
-    	$s_available++;
+	$s_available++;
 	my $n = $_ + 1;
 	$self->out(sprintf "${Indent}%2d %s\n", $n, $a);
     }
@@ -926,7 +926,7 @@ sub action_sentinels {
     my $s_to_go     = $Game_end_sentinels_sold_count - $s_purchased;
     # XXX negative $s_to_go
     $self->out($s_purchased, " sentinel", plural($s_purchased),
-    	    	" have been purchased ($s_to_go more to end the game)\n");
+		" have been purchased ($s_to_go more to end the game)\n");
 
     return 1;
 }

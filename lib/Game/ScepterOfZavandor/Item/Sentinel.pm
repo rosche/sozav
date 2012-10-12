@@ -37,15 +37,15 @@ sub as_string_fields {
     }
 
     push @r,
-    	$self->data(SENT_DATA_VP_PER) . 'x',
+	$self->data(SENT_DATA_VP_PER) . 'x',
 	$self->data(SENT_DATA_DESC);
     if (my $max = $self->data(SENT_DATA_MAX_BONUS_VP)) {
-    	push @r, "(max bonus $max)";
+	push @r, "(max bonus $max)";
     }
 
     my $owner = $self->a_player;
     for my $p ($owner ? ($owner) : $self->a_game->players_in_table_order) {
-    	my $b = $self->vp_extra_for_player($p)
+	my $b = $self->vp_extra_for_player($p)
 	    or next;
 	push @r, sprintf "bonus-vp=%s:%d", $p, $b;
     }
@@ -84,13 +84,13 @@ sub vp_extra_for_player {
 
     } elsif (defined(my $bonus_auc = $self->data(SENT_DATA_BONUS_AUC_TYPE))) {
 
-    	$ct = grep { $bonus_auc->{$_->a_auc_type} } $p->auctionables;
+	$ct = grep { $bonus_auc->{$_->a_auc_type} } $p->auctionables;
 
     } elsif ($auc_type == SENT_PHOENIX) {
 
 	# per kind of active gem
 
-    	my %g;
+	my %g;
 	for ($p->active_gems) {
 	    $g{$_->a_gem_type} = 1;
 	}

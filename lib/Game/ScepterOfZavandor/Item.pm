@@ -7,7 +7,7 @@ use overload (
     '<=>' => "spaceship",
 );
 
-use Game::Util  	qw($Debug add_array_indices debug eval_block
+use Game::Util		qw($Debug add_array_indices debug eval_block
 			    make_ro_accessor make_rw_accessor);
 use RS::Handy		qw(badinvo data_dump dstr xconfess);
 use Scalar::Util	qw(refaddr weaken);
@@ -23,7 +23,7 @@ BEGIN {
     add_array_indices 'ITEM', qw(
 	GAME
 	PLAYER
-    	TYPE
+	TYPE
 	DATA
 	STATIC_VP
 	GEM_SLOTS
@@ -119,7 +119,7 @@ sub data {
     my @ix   = @_;
 
     my $rd = $self->[ITEM_DATA]
-    	or xconfess "no data list for $self";
+	or xconfess "no data list for $self";
 
     my @r;
     for my $ix (@ix) {
@@ -152,7 +152,7 @@ sub as_string_fields {
 
     push @r,
 	    "hl=$self->[ITEM_HAND_COUNT]",
-    	if $Debug > 1;
+	if $Debug > 1;
 
     # XXX inaccurate with concentrated energy, opals
     if (1) {

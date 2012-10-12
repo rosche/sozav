@@ -31,7 +31,7 @@ BEGIN {
 	valid_ix_plus_1
     );
     @EXPORT_OK = qw(
-    	%Index
+	%Index
     );
 }
 
@@ -58,7 +58,7 @@ sub debug_maybe {
 sub debug_var {
     return unless $Debug;
     while (@_) {
-    	my ($key, $val) = splice @_, 0, 2;
+	my ($key, $val) = splice @_, 0, 2;
 	debug sprintf "%-20s %s", $key, dstr $val;
     }
 }
@@ -84,7 +84,7 @@ sub debug_var {
 #
 #    my $r = \%Index;
 #    while (@iname) {
-#    	my $this_part = shift @iname;
+#	my $this_part = shift @iname;
 #	if ($this_part !~ /^\w+\z/) {
 #	    xconfess "invalid index name part ", dstr $this_part;
 #	}
@@ -173,7 +173,7 @@ sub add_array_indices {
     my ($itype, @iname) = @_;
 
     add_array_index_type $itype
-    	if !$Index{$itype};
+	if !$Index{$itype};
     add_array_index $itype, $_, scalar caller for @iname;
 }
 
@@ -207,15 +207,15 @@ sub eval_block (&) {
 
 # External interface is:
 #     ($total_cost, $total_value, @item)
-#     	  = knapsack_0_1
-#     	      $ref_to_list_of_items,
-#     	      $code_ref_returning_cost_and_value_of_given_item,
-#     	      $max_cost;
+#	  = knapsack_0_1
+#	      $ref_to_list_of_items,
+#	      $code_ref_returning_cost_and_value_of_given_item,
+#	      $max_cost;
 #
 # When called recursively there are 2 additional args:
 #
-#     	      $max_item_list_index
-#    	      $ref_to_cache
+#	      $max_item_list_index
+#	      $ref_to_cache
 
 # XXX not sure I like the argument order
 
@@ -230,10 +230,10 @@ sub knap_item_to_str {
 sub knapsack_0_1_backend {
     @_ == 7 || badinvo;
     my ($ritem, $cb_item_to_cost_value, $max_cost, $cb_too_much, $tot_value,
-    	    $max_i, $rcache) = @_;
+	    $max_i, $rcache) = @_;
 
     my $recurse = sub {
-    	@_ == 3 || badinvo;
+	@_ == 3 || badinvo;
 	return knapsack_0_1_backend(
 		$ritem, $cb_item_to_cost_value, $_[0], $cb_too_much,
 		$_[1], $_[2], $rcache);
@@ -250,7 +250,7 @@ sub knapsack_0_1_backend {
 
 # XXX cb_too_much could rely on anything, not just these 2
 #    if (my $r = $rcache->{$max_i}{$max_cost}) {
-#    	print $debug_s, "memoized max_i=$max_i max_cost=$max_cost @$r\n"
+#	print $debug_s, "memoized max_i=$max_i max_cost=$max_cost @$r\n"
 #	    if KNAPSACK_DEBUG;
 #	return @$r;
 #    }
@@ -262,7 +262,7 @@ sub knapsack_0_1_backend {
     if ($max_i == -1 || $max_cost <= 0) {
 	print $debug_s, "zero\n"
 	    if KNAPSACK_DEBUG;
-    	return 0, 0;
+	return 0, 0;
     }
 
     my @r;
@@ -283,8 +283,8 @@ sub knapsack_0_1_backend {
 	@r = $recurse->($max_cost, $tot_value, $max_i - 1);
     }
     else {
-    	my $next_max_i = $max_i - 1;
-    	print "recursing for index $next_max_i\n"
+	my $next_max_i = $max_i - 1;
+	print "recursing for index $next_max_i\n"
 	    if KNAPSACK_DEBUG;
 	my @without_this = $recurse->($max_cost,              $tot_value, $next_max_i);
 	# XXX bug is here, $max_cost = 0, $this_cost = 2
@@ -295,9 +295,9 @@ sub knapsack_0_1_backend {
 	push @with_this, $this_item;
 
 	printf "%skeep=%1d this=%-8s val_without=%4.1f val_with=%4.1f\n",
-	    	$debug_s,
+		$debug_s,
 		$keep,
-    	    	knap_item_to_str($this_item, $cb_item_to_cost_value),
+		knap_item_to_str($this_item, $cb_item_to_cost_value),
 		$without_this[1],
 		$with_this[1]
 	    if KNAPSACK_DEBUG;
@@ -363,7 +363,7 @@ sub make_accessor_pkg {
 		return $old;
 	    }
 	    : sub {
-	    	@_ == 1 || badinvo 1, "$name property is read-only";
+		@_ == 1 || badinvo 1, "$name property is read-only";
 		my $r = shift;
 		$r = $r->[$_] for @pi;
 		return $r->[$index];
@@ -400,7 +400,7 @@ sub valid_ix {
 	&& defined $ix
 	&& looks_like_number($ix)
 	&& $ix >= 0
-    	&& $ix <= $#{ $r };
+	&& $ix <= $#{ $r };
 }
 
 sub valid_ix_plus_1 {

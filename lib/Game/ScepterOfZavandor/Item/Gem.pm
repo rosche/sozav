@@ -49,7 +49,7 @@ sub as_string_fields {
     my $self = shift;
     my @r = $self->SUPER::as_string_fields(@_);
     push @r,
-    	$Gem[$self->[ITEM_GEM_TYPE]],
+	$Gem[$self->[ITEM_GEM_TYPE]],
 	$self->is_active ? "active" : ();
     return @r;
 }
@@ -61,7 +61,7 @@ sub spaceship {
     $b->is_gem
 	    ? $b->[ITEM_GEM_TYPE] <=> $a->[ITEM_GEM_TYPE]
 	    : 0
-    	or $a->SUPER::spaceship($b, $rev)
+	or $a->SUPER::spaceship($b, $rev)
 }
 
 #------------------------------------------------------------------------------
@@ -82,7 +82,7 @@ sub activate {
     debug "activate $self";
 
     $self->a_player->num_free_gem_slots
-    	or xconfess "no free gem slots";
+	or xconfess "no free gem slots";
 
     $self->[ITEM_GEM_ACTIVE] = 1;
     $self->a_game->note_to_players(NOTE_GEM_ACTIVATE, $self->a_player, $self);
@@ -129,7 +129,7 @@ sub produce_energy {
 	my $deck = $self->[ITEM_GEM_DECK];
 	my $c = $deck->draw_first_matching_no_shuffle(
 		    sub { shift->energy == 5 });
-    	if ($c) {
+	if ($c) {
 	    return $c;
 	}
 	# This can't really happen.
