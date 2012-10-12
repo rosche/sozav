@@ -2,7 +2,7 @@ use strict;
 
 package Game::ScepterOfZavandor::UI;
 
-use Game::Util 	qw(add_array_indices debug
+use Game::Util 	qw(add_array_indices debug debug_maybe
 		    make_ro_accessor make_rw_accessor);
 use RS::Handy	qw(badinvo data_dump dstr process_arg_pairs xconfess);
 use Scalar::Util qw(weaken);
@@ -167,7 +167,7 @@ sub ui_note_backend {
 
     my $meth = "ui_note_$ndesc";
     if (!$self->can($meth) && $self->a_ignore_unimplemented_notes) {
-	debug "$self ui ignoring note $ndesc";
+	debug_maybe 2, "$self ui ignoring note $ndesc";
     	return;
     }
 

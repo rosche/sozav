@@ -18,6 +18,7 @@ BEGIN {
 	add_array_index
 	add_array_indices
 	debug
+	debug_maybe
 	debug_var
 	eval_block
 	knapsack_0_1
@@ -44,6 +45,14 @@ BEGIN {
 sub debug {
     # XXX attach debug flag to game object +/- other objects
     print @_, "\n" if $Debug;
+}
+
+sub debug_maybe {
+    @_ || badinvo;
+    my $require_level = shift;
+    return unless $Debug >= $require_level;
+    # XXX attach debug flag to game object +/- other objects
+    print @_, "\n";
 }
 
 sub debug_var {

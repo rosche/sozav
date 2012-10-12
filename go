@@ -8,9 +8,9 @@ use RS::Handy;
 use Carp ();
 
 BEGIN {
-    if (@ARGV && $ARGV[0] eq '-d') {
+    while (@ARGV && $ARGV[0] eq '-d') {
 	shift @ARGV;
-	$Game::Util::Debug = 1;
+	$Game::Util::Debug++;
 	$SIG{__WARN__} = \&Carp::confess;
     }
 }
