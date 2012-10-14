@@ -24,6 +24,7 @@ use Game::ScepterOfZavandor::Constant qw(
     /^DUST_DATA_/
     /^ENERGY_EST_/
     /^GEM_/
+    /^ITEM_TYPE_/
     /^KNOW_/
     /^NOTE_/
     /^OPT_/
@@ -886,7 +887,9 @@ sub destroy_active_gem {
     }
     else {
 	$g = $self->a_ui->choose_active_gem_to_destroy;
-	# XXX validate
+	if ($g->a_item_type != ITEM_TYPE_GEM || !$g->is_active) {
+	    die "player didn't choose active gem to destory, got $g";
+	}
     }
 
     $self->remove_items($g);

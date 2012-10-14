@@ -85,7 +85,7 @@ sub worst_active_gem {
     @_ == 1 || badinvo;
     my $self = shift;
 
-    my @g = $self->a_player->gems_by_cost;
+    my @g = grep { $_->is_active } $self->a_player->gems_by_cost;
     return @g ? $g[0] : ();
 }
 
