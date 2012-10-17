@@ -1,9 +1,6 @@
 - important outstanding items
 
-    - non-current human player doesn't see current status or "maximum
-      liquid bid" during auction
     - add knowledge-info command
-    - add inventory command to show other player's stuff
     - add undo feature
     - be less verbose by default
     - sometimes the program takes a really long time to figure out what
@@ -49,7 +46,6 @@
 
 - before release, other items
 
-    - rename from plain "zavandor" due to "Mines of Zavandor"
     - Z-Man rules + 9 Sages
     	- you can look at the cards as soon as you get them?
 	- you turn in cards for dust immediately, so (eg) if you got
@@ -99,7 +95,6 @@
     - show things you can afford to do
     - search for die/croak, deal more gracefully with some of them
     - many assertion-type tests
-    - have unbought sentinels show you the bonus points for each player
     - problems with selling gems
 	- selling a gem reports via ui_note that it was deactivated, but
 	  not sold
@@ -110,6 +105,11 @@
 	      it would sell an opal then buy an opal
     - when using OPT_AVERAGED_CARDS Dave suggested actually using 7.5 as
       the value for emerald cards, and adding a 0.5 dust type, do this?
+    - when advancing knowledge and getting an extra gem slot, resulting
+      notes are in a confusing order:
+	- fairy starting actions
+	- fairy activated a gem(vp=1 energy=3/5/7 sapphire active)
+	- fairy advanced Knowledge of Accumulation to level 2 for $4
 
 - questions
     - are gems limited?
