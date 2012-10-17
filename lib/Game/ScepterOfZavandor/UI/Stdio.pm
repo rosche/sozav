@@ -9,7 +9,7 @@ use base qw(Game::ScepterOfZavandor::UI::Human);
 use Game::Util		qw(add_array_indices add_array_indices
 			    debug eval_block same_referent valid_ix_plus_1);
 use List::Util		qw(first);
-use RS::Handy		qw(badinvo data_dump dstr plural xconfess);
+use RS::Handy		qw(badinvo data_dump dstr plural subname xconfess);
 use Scalar::Util	qw(looks_like_number);
 use Symbol		qw(qualify_to_ref);
 use Term::ANSIColor	qw(color);
@@ -162,6 +162,14 @@ sub add_action {
     }
 }
 
+sub bad_action_invo {
+    my ($self, $cmd, @arg) = @_;
+
+    die "wrong number of arguments for $cmd\n",
+    	color('reset'),
+    	$self->_action_help_one_command($cmd, 0);
+}
+
 sub get_action_names {
     @_ == 1 || badinvo;
     my $class = shift;
@@ -217,7 +225,7 @@ sub one_action {
 	xconfess "no method defined for action $mcmd";
     }
 
-    my $ret = eval_block { $self->$method(@arg) };
+    my $ret = eval_block { $self->$method($cmd, @arg) };
     if ($@) {
 	$self->out("\n", $self->a_player, ": ");
 	$self->out_error($@);
@@ -404,8 +412,9 @@ add_action (
 );
 
 sub action_activate_gem {
-    @_ == 2 || badinvo;
+    @_ == 3 || shift->bad_action_invo(@_);
     my $self = shift;
+    my $cmd  = shift;
     my $gname = shift;
 
     $self->a_player->num_free_gem_slots
@@ -432,8 +441,9 @@ add_action (
 );
 
 sub action_advance_knowledge {
-    @_ == 1 || @_ == 2 || badinvo;
-    my $self  = shift;
+    @_ == 2 || @_ == 3 || shift->bad_action_invo(@_);
+    my $self = shift;
+    my $cmd  = shift;
     my $kname_or_type = shift;
 
     my $ktype;
@@ -469,8 +479,9 @@ add_action (
 );
 
 sub action_auto_activate_gems {
-    @_ == 1 || badinvo;
+    @_ == 2 || shift->bad_action_invo(@_);
     my $self = shift;
+    my $cmd  = shift;
 
     $self->a_player->a_auto_activate_gems(1);
     $self->a_player->auto_activate_gems;
@@ -489,8 +500,9 @@ add_action (
     ],
 );
 sub action_auction {
-    @_ == 2 || @_ == 3 || badinvo;
+    @_ == 3 || @_ == 4 || shift->bad_action_invo(@_);
     my $self      = shift;
+    my $cmd       = shift;
     my $aix       = shift;
     my $start_bid = shift;
 
@@ -520,8 +532,9 @@ add_action (
 );
 
 sub action_buy_knowledge_chip {
-    @_ == 1 || @_ == 2 || badinvo;
+    @_ == 2 || @_ == 3 || shift->bad_action_invo(@_);
     my $self = shift;
+    my $cmd  = shift;
     my $cost = shift;
 
     my $kchip;
@@ -554,8 +567,9 @@ add_action (
 );
 
 sub action_deactivate_gem {
-    @_ == 2 || badinvo;
-    my $self = shift;
+    @_ == 3 || shift->bad_action_invo(@_);
+    my $self  = shift;
+    my $cmd   = shift;
     my $gname = shift;
 
     $self->_action_gem_backend($gname, sub {
@@ -568,7 +582,7 @@ sub action_deactivate_gem {
 }
 
 #sub action_done {
-#    @_ == 1 || badinvo;
+#    @_ == 1 || shift->bad_action_invo(@_);
 #    my $self = shift;
 #
 #    return 0;
@@ -586,8 +600,9 @@ add_action (
 );
 
 sub action_gem_info {
-    @_ == 1 || badinvo;
+    @_ == 2 || shift->bad_action_invo(@_);
     my $self = shift;
+    my $cmd  = shift;
 
     $self->out_char("gem info:\n");
     # XXX show gem knowledge level
@@ -603,6 +618,40 @@ sub action_gem_info {
 
 # XXX quit/exit command
 
+sub _action_help_one_command {
+    @_ == 3 || badinvo;
+    my $self  = shift;
+    my $name  = shift;
+    my $brief = shift;
+
+    my $ra = $Action{$name};
+    my $out = '';
+
+    my $abbrev = $ra->[ACTION_ABBREV];
+    if (defined $abbrev) {
+	# XXX lousy solution for ?
+	$name .= " (or $abbrev)" if $abbrev eq "?";
+	$out .= $self->tag_abbrev($name, $abbrev);
+    }
+    else {
+	$out .= $name;
+    }
+
+    my $rarg = $ra->[ACTION_ARG];
+    for (@$rarg) {
+	$out .= " $_";
+    }
+    $out .= "\n";
+
+    if (!$brief) {
+	for (@{ $ra->[ACTION_DESC] }) {
+	    $out .= "$Indent$_\n";
+	}
+    }
+
+    return $out;
+}
+
 sub _action_help_backend {
     @_ == 2 || badinvo;
     my $self  = shift;
@@ -615,31 +664,9 @@ sub _action_help_backend {
 	$self->out("${i}$Action_group[$group]:\n");
 	for my $name (grep { $Action{$_}[ACTION_GROUP] == $group }
 			sort $self->get_action_names) {
-	    my $ra = $Action{$name};
-
-	    my $out = $i x 2;
-
-	    my $abbrev = $ra->[ACTION_ABBREV];
-	    if (defined $abbrev) {
-		# XXX lousy solution for ?
-		$name .= " (or $abbrev)" if $abbrev eq "?";
-		$out .= $self->tag_abbrev($name, $abbrev);
-	    }
-	    else {
-		$out .= $name;
-	    }
-
-	    my $rarg = $ra->[ACTION_ARG];
-	    for (@$rarg) {
-		$out .= " $_";
-	    }
-	    $self->out($out, "\n");
-
-	    if (!$brief) {
-		for (@{ $ra->[ACTION_DESC] }) {
-		    $self->out($i x 3, $_, "\n");
-		}
-	    }
+	    my $out = $self->_action_help_one_command($name, $brief);
+	    $out =~ s/^/$i$i/mg;
+	    $self->out($out);
 	}
     }
 
@@ -705,8 +732,9 @@ add_action (
 );
 
 sub action_help {
-    @_ == 1 || badinvo;
+    @_ == 2 || shift->bad_action_invo(@_);
     my $self = shift;
+    my $cmd  = shift;
     return $self->_action_help_backend(0);
 }
 
@@ -721,8 +749,9 @@ add_action (
 );
 
 sub action_help_brief {
-    @_ == 1 || badinvo;
+    @_ == 2 || shift->bad_action_invo(@_);
     my $self = shift;
+    my $cmd  = shift;
     return $self->_action_help_backend(1);
 }
 
@@ -739,8 +768,9 @@ add_action (
 );
 
 sub action_items {
-    @_ == 1 || @_ == 2 || badinvo;
+    @_ == 2 || @_ == 3 || shift->bad_action_invo(@_);
     my $self = shift;
+    my $cmd  = shift;
     my $pnum = shift;
 
     my $player;
@@ -835,8 +865,9 @@ add_action (
 );
 
 sub action_buy_gem {
-    @_ == 2 || badinvo;
+    @_ == 3 || shift->bad_action_invo(@_);
     my $self = shift;
+    my $cmd  = shift;
     my $gname = shift;
 
     my $gtype = $Gem{$gname};
@@ -861,8 +892,9 @@ add_action (
 );
 
 sub action_sell_gem {
-    @_ == 2 || badinvo;
+    @_ == 3 || shift->bad_action_invo(@_);
     my $self  = shift;
+    my $cmd  = shift;
     my $gname = shift;
 
     my $gtype = $Gem{$gname};
@@ -902,8 +934,9 @@ add_action (
 );
 
 sub action_sentinels {
-    @_ == 1 || badinvo;
+    @_ == 2 || shift->bad_action_invo(@_);
     my $self = shift;
+    my $cmd  = shift;
 
     my $player = $self->a_player;
 
@@ -943,8 +976,9 @@ add_action (
 );
 
 sub action_test {
-    @_ == 1 || badinvo;
+    @_ == 2 || shift->bad_action_invo(@_);
     my $self = shift;
+    my $cmd  = shift;
 
     $self->out(sprintf "You %s have unbought knowledge chips.\n",
 		$self->a_player->knowledge_chips_unbought_by_cost
