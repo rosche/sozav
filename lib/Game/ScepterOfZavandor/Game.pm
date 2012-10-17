@@ -489,12 +489,14 @@ sub auction_item {
 	die "bid too low (minimum $min, bid $start_bid)\n";
     }
 
-    if (!$start_player->allowed_to_start_auction($auc)) {
-	die "$start_player isn't currently allowed to start an auction for $auc";
+    if (defined(my $deny_reason
+	    = $start_player->not_allowed_to_start_auction_reason($auc))) {
+	die "$start_player can't start an auction for $auc ($deny_reason)\n";
     }
 
-    if (!$start_player->allowed_to_own_auctionable($auc)) {
-	die "$start_player isn't allowed to own $auc";
+    if (defined(my $deny_reason
+	    = $start_player->not_allowed_to_own_auctionable_reason($auc))) {
+	die "$start_player isn't allowed to own $auc ($deny_reason)\n";
     }
 
     $self->note_to_players(NOTE_AUCTION_START, $start_player, $auc, $start_bid);

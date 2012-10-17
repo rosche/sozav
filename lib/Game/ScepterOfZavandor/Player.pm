@@ -457,15 +457,28 @@ sub advance_knowledge {
     $self->a_game->note_to_players(NOTE_KNOWLEDGE_ADVANCE, $self, $k, $cost);
 }
 
-sub allowed_to_start_auction {
+sub not_allowed_to_start_auction_reason {
     @_ == 2 || badinvo;
     my $self = shift;
     my $auc  = shift;
 
     if ($auc->destroys_active_gems && !$self->active_gems) {
-	return 0;
+    	return "no active gems";
     }
-    return 1;
+    return undef;
+}
+
+sub not_allowed_to_own_auctionable_reason {
+    @_ == 2 || badinvo;
+    my $self = shift;
+    my $auc  = shift;
+
+    if ($auc->own_only_one && grep { $_->a_auc_type == $auc->a_auc_type }
+				    $self->auctionables) {
+    	return "already owns one";
+    }
+
+    return undef;
 }
 
 sub allowed_to_own_auctionable {
@@ -473,9 +486,7 @@ sub allowed_to_own_auctionable {
     my $self = shift;
     my $auc  = shift;
 
-    return !$auc->own_only_one
-	    || !grep { $_->a_auc_type == $auc->a_auc_type }
-		$self->auctionables;
+    return !defined $self->not_allowed_to_own_auctionable_reason($auc);
 }
 
 sub am_over_hand_limit {
@@ -571,8 +582,9 @@ sub buy_auctionable {
     my $auc   = shift;
     my $price = shift;
 
-    if (!$self->allowed_to_own_auctionable($auc)) {
-	die "you can only own one $auc\n";
+    if (defined(my $deny_reason
+		    = $self->not_allowed_to_own_auctionable_reason($auc))) {
+	die "you can't buy $auc ($deny_reason)\n";
     }
 
     if ($price < (my $cost = $auc->a_data_min_bid)) {
