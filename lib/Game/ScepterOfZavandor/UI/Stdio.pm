@@ -537,6 +537,7 @@ sub action_buy_knowledge_chip {
 	    or die "no unbought chips\n";
     }
     $self->a_player->buy_knowledge_chip($kchip, 0);
+    return 1;
 }
 
 add_action (
