@@ -6,7 +6,7 @@ use base qw(Game::ScepterOfZavandor::AI);
 
 use Game::Util	qw(debug_var);
 use RS::Handy	qw(badinvo data_dump dstr process_arg_pairs shuffle xconfess);
-use List::Util	qw(max);
+use List::Util	qw(max sum);
 #use Scalar::Util qw(weaken);
 
 use Game::ScepterOfZavandor::Constant	qw(
@@ -35,6 +35,7 @@ sub choose_knowledge_type_to_advance {
     my $self = shift;
 
     my @k = $self->advancable_knowledge_chips_by_cost;
+    # it's free so choose the most expensive one
     return @k ? $k[-1]->a_type : ();
 }
 
@@ -196,7 +197,9 @@ sub maybe_advance_knowledge {
 
     if ($before_gem_purchase) {
 	my $k = $p->knowledge_chip_for_track(KNOW_GEMS);
-	if ($k && $k->is_advancable && $liquid >= $k->next_level_cost + 10) {
+	if ($k && $k->is_advancable && $liquid >= $k->next_level_cost
+		# XXX need proper calculation for being able to buy a gem after
+		+ 10) {
 	    $p->advance_knowledge($k->a_type, 0);
 	    return 1;
 	}
@@ -269,6 +272,8 @@ sub maybe_buy_gem {
 	$gem_to_buy = $best_gtype;
     }
     else {
+	# XXX this will replace a 3rd opal with a sapphire, even if
+	# that's the only upgrade being done
 	for (grep { $_->is_active } $p->gems_by_cost) {
 	    # can't use != due to ruby limit, else you'd try to buy a
 	    # gem to replace a ruby
@@ -283,12 +288,23 @@ sub maybe_buy_gem {
 	return 0;
     }
 
-    if ($liquid < $p->gem_cost($best_gtype)) {
-	return undef; # wanted to buy but couldn't afford
+    if ($liquid >= $p->gem_cost($gem_to_buy)) {
+	$p->buy_gem($gem_to_buy);
+	return 1;
     }
 
-    $p->buy_gem($best_gtype);
-    return 1;
+    # couldn't afford the best gem type, maybe buy a 3rd opal
+
+    my @o = grep { $_->a_gem_type == GEM_OPAL } $p->active_gems;
+    if ($p->num_free_gem_slots # don't try to "upgrade" to opal
+	    && @o == 2
+	    && $liquid >= $p->gem_cost(GEM_OPAL)) {
+	$p->buy_gem(GEM_OPAL);
+	return 1;
+    }
+
+    # wanted to buy but couldn't afford
+    return undef;
 }
 
 sub maybe_buy_knowledge_chip {
