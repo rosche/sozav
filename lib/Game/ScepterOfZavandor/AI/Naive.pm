@@ -91,7 +91,7 @@ sub best_sentinels {
 
     my $p = $self->a_player;
     my @s = $self->a_game->auctionable_sentinels
-	or return 0; # can't happen
+	or return;
 
     my $max_vp = -1;
     my @best;

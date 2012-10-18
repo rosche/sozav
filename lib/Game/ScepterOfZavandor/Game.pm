@@ -61,6 +61,8 @@ BEGIN {
 sub new {
     my ($class) = @_;
 
+    $SIG{__DIE__} ||= sub { xconfess shift };
+
     my $self = bless [], $class;
     $self->[GAME_INITIALIZED]          = 0;
     $self->[GAME_OPTION]               = [];
