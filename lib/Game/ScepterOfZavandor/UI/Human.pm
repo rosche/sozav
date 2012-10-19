@@ -10,6 +10,7 @@ use RS::Handy	qw(badinvo data_dump dstr process_arg_pairs xconfess);
 use List::Util	qw(max);
 
 use Game::ScepterOfZavandor::Constant	qw(
+    /^CUR_ENERGY_/
     /^GEM_DATA_/
     /^KNOW_DATA_/
     @Character
@@ -314,22 +315,40 @@ sub vet_bid {
 
 sub maybe_confirm_payment {
     @_ == 2 || badinvo;
-    my ($self, $payment) = @_;
+    my ($self, $full_payment) = @_;
 
-    if (!$self->SUPER::maybe_confirm_payment($payment)) {
+    if (!$self->SUPER::maybe_confirm_payment($full_payment)) {
 	return 0;
     }
 
-    my $liq  = $self->a_player->current_energy_liquid;
-    my $left = $liq - $payment;
-    if ($left >= 0) {
+    my $to_pay = $full_payment;
+    my @ed     = $self->a_player->current_energy_detail;
+
+    $to_pay -= $ed[CUR_ENERGY_CARDS_DUST];
+    if ($to_pay <= 0) {
 	return 1;
     }
 
-    my $conf = $self->in(sprintf
-		    "This will require you to sell "
-		    . "\$%d worth of active gems, type Y to confirm: ",
-		    -$left);
+    my $to_sell_desc;
+    for ([CUR_ENERGY_INACTIVE_GEMS, "\$%d worth of inactive gems"],
+	 [CUR_ENERGY_ACTIVE_GEMS,   "\$%d worth of ACTIVE gems"]) {
+	my ($ix, $fmt) = @$_;
+	my $this = $ed[$ix];
+	if ($to_pay <= $this) {
+	    $to_sell_desc = sprintf $fmt, $to_pay;
+	    last;
+	}
+	$to_pay -= $this;
+    }
+    if (!defined $to_sell_desc) {
+	die; # can't happen
+    }
+
+    # XXX only require confirmation once when buying anything?  could
+     # track based on the object being purchased
+
+    my $conf = $self->in("This will require you to sell $to_sell_desc, "
+			    . "type Y to confirm: ");
     return defined $conf && $conf =~ /^[Yy]$/;
 }
 

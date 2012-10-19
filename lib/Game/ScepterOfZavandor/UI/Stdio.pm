@@ -326,6 +326,17 @@ sub status_short_cash {
     my $self = shift;
     my $p    = shift;
 
+    if (same_referent $p, $self->a_player) {
+	my @ed = $p->current_energy_detail;
+	my $cash = $ed[CUR_ENERGY_CARDS_DUST];
+	if (my $iag = $ed[CUR_ENERGY_INACTIVE_GEMS]) {
+	    return sprintf "%3d+%3d=%3d", $iag, $cash, $cash+$iag;
+	}
+	else {
+	    return sprintf "   \$%3d", $cash;
+	}
+    }
+
     my $visible_e;
     if ($p->player_can_see_my_cash($self->a_player)) {
 	$visible_e = $p->current_energy_liquid;
@@ -696,19 +707,23 @@ sub _action_help_backend {
 				$Knowledge_data[$_][KNOW_DATA_ABBREV])
 	} 0..$#Knowledge), "\n");
 
-    my $fmt = ${i} x 3 . "%4s = %-29s %6s = %s\n";
+    my $fmt = ${i} x 3 . "%4s %-31s %6s %s\n";
     $self->out("${i} Player status legend:\n");
     $self->out(sprintf $fmt,
-		"vp",  "victory points(turn order)",
-		"income",  "min/average/max",
+		"vp",     "= victory points(turn order)",
+		"income", "= min/average/max",
 	    );
     $self->out(sprintf $fmt,
-		"know",  "knowledge levels",
-		"cash", "min/average/max or exact",
+		"know", "= knowledge levels",
+		"cash", "= min/average/max, \$exact,",
 	    );
     $self->out(sprintf $fmt,
-		"gems",  "active gem/empty slot list",
-		"hand",  "hand size(vs limit)",
+		"gems",  "= active gem/empty slot list",
+		"    ",  "  or inactive gems+cash=total",
+	    );
+    $self->out(sprintf $fmt,
+		"    ",  "",
+		"hand",  "= hand size(vs limit)",
 	    );
 
     if ($self->can_underline && !$brief) {
