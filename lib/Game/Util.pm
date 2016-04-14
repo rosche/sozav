@@ -116,15 +116,15 @@ sub debug_var {
 # matter if you clash with your siblings.  Right now all are disjoint,
 # which wastes array space.  Eg it'd be nice to have:
 #
-#     object Foo,          fields fa = 0, fb = 1
-#     object Bar @ISA Foo, fields bc = 2, bc = 3
-#     object Baz @ISA Foo, fields zd = 2, ze = 3
+#     object Foo,          fields f1 = 0, f2 = 1
+#     object Bar @ISA Foo, fields b1 = 2, b2 = 3
+#     object Baz @ISA Foo, fields z1 = 2, z2 = 3
 #
 # but now we have
 #
-#     object Foo,          fields fa = 0, fb = 1
-#     object Bar @ISA Foo, fields bc = 2, bc = 3
-#     object Baz @ISA Foo, fields zd = 4, ze = 5
+#     object Foo,          fields f1 = 0, f2 = 1
+#     object Bar @ISA Foo, fields b1 = 2, b2 = 3
+#     object Baz @ISA Foo, fields z1 = 4, z2 = 5
 
 sub add_array_index_type {
     @_ == 1 || badinvo;
@@ -211,13 +211,6 @@ sub eval_block (&) {
 #	      $ref_to_list_of_items,
 #	      $code_ref_returning_cost_and_value_of_given_item,
 #	      $max_cost;
-#
-# When called recursively there are 2 additional args:
-#
-#	      $max_item_list_index
-#	      $ref_to_cache
-
-# XXX not sure I like the argument order
 
 use constant KNAPSACK_DEBUG => 0;
 
@@ -227,120 +220,98 @@ sub knap_item_to_str {
     return join ":", $cb->($item);
 }
 
-sub knapsack_0_1_backend {
-    @_ == 7 || badinvo;
-    my ($ritem, $cb_item_to_cost_value, $max_cost, $cb_too_much, $tot_value,
-	    $max_i, $rcache) = @_;
-
-    my $recurse = sub {
-	@_ == 3 || badinvo;
-	return knapsack_0_1_backend(
-		$ritem, $cb_item_to_cost_value, $_[0], $cb_too_much,
-		$_[1], $_[2], $rcache);
-    };
-
-    my $debug_s =
-	    sprintf "max_cost=%4.1f  max_i=%-3d  ritem=%s\n-> ",
-		$max_cost,
-		$max_i,
-		join " ", map { knap_item_to_str $_, $cb_item_to_cost_value }
-			    @{ $ritem }[0..$max_i]
-	if KNAPSACK_DEBUG;
-    print "on entry: $debug_s< from ", fileline(2), "\n" if KNAPSACK_DEBUG;
-
-# XXX cb_too_much could rely on anything, not just these 2
-#    if (my $r = $rcache->{$max_i}{$max_cost}) {
-#	print $debug_s, "memoized max_i=$max_i max_cost=$max_cost @$r\n"
-#	    if KNAPSACK_DEBUG;
-#	return @$r;
-#    }
-
-    $max_i    >= -1	or xconfess $max_i;
-    # XXX no longer true since $cb_too_much might not test this
-    #$max_cost >=  0	or xconfess $max_cost;
-
-    if ($max_i == -1 || $max_cost <= 0) {
-	print $debug_s, "zero\n"
-	    if KNAPSACK_DEBUG;
-	return 0, 0;
-    }
-
-    my @r;
-    my $this_item = $ritem->[$max_i];
-    my ($this_cost, $this_value) = $cb_item_to_cost_value->($this_item);
-
-    # XXX add $this_item at end?
-    my $too_much = $cb_too_much->($this_cost, $max_cost, $this_value, $tot_value);
-    if (KNAPSACK_DEBUG) {
-	printf "too_much(this_cost=%4.1f, max_cost=%4.1f, this_value=%4.1f, tot_value=%4.1f) -> %d\n",
-	    $this_cost, $max_cost, $this_value, $tot_value, $too_much;
-    }
-
-    if ($too_much) {
-	# can't include this item, it costs too much
-	print $debug_s, "too big\n"
-	    if KNAPSACK_DEBUG;
-	@r = $recurse->($max_cost, $tot_value, $max_i - 1);
-    }
-    else {
-	my $next_max_i = $max_i - 1;
-	print "recursing for index $next_max_i\n"
-	    if KNAPSACK_DEBUG;
-	my @without_this = $recurse->($max_cost,              $tot_value, $next_max_i);
-	# XXX bug is here, $max_cost = 0, $this_cost = 2
-	my @with_this    = $recurse->($max_cost - $this_cost, $tot_value + $this_value, $next_max_i);
-	$with_this[0]   += $this_cost;
-	$with_this[1]   += $this_value;
-	my $keep         = ($with_this[1] >= $without_this[1]);
-	push @with_this, $this_item;
-
-	printf "%skeep=%1d this=%-8s val_without=%4.1f val_with=%4.1f\n",
-		$debug_s,
-		$keep,
-		knap_item_to_str($this_item, $cb_item_to_cost_value),
-		$without_this[1],
-		$with_this[1]
-	    if KNAPSACK_DEBUG;
-	@r = $keep ? @with_this : @without_this;
-    }
-
-    $rcache->{$max_i}{$max_cost} = \@r;
-    return @r;
-}
+# XXX not sure I like the argument order
 
 sub knapsack_0_1 {
-    @_ == 3 || @_ == 4 || badinvo;
-    my ($ritem, $cb_item_to_cost_value, $max_cost, $cb_too_much) = @_;
+    @_ == 3 || badinvo;
+    my ($ritem, $cb_cost_value, $max_cost) = @_;
 
     if (KNAPSACK_DEBUG) {
 	print  "=== top level\n";
 	printf "  input max_cost=%4.1f  ritem=%s\n",
 		$max_cost,
-		join " ", map { knap_item_to_str $_, $cb_item_to_cost_value }
+		join " ", map { knap_item_to_str $_, $cb_cost_value }
 			    @{ $ritem };
 	print data_dump \@_
 	    if 0;
     }
 
-    $cb_too_much ||= sub { $_[0] > $_[1] };
-    my @r = knapsack_0_1_backend
-		$ritem,
-		$cb_item_to_cost_value,
-		$max_cost,
-		$cb_too_much,
-		0,
-		$#{ $ritem },
-		{};
+    if ($max_cost <= 0) {
+        return 0, 0;
+    }
+
+    # make arrays 1-based so 0 index can be used for leaf case
+    my @cost  = (undef);
+    my @value = (undef);
+    for (@$ritem) {
+        my @i = $cb_cost_value->($_);
+        push @cost,  $i[0];
+        push @value, $i[1];
+    }
+
+    # @m holds best answer:
+    #   $m[$max_index][$max_cost] = [$cost, $value, list of indices];
+    my @m;
+
+    for my $wlim (0..$max_cost) {
+        $m[0][$wlim] = [0, 0];
+    }
+    for my $i (0..$#cost) {
+        $m[$i][0] = [0, 0];
+    }
+    print data_dump \@m
+        if KNAPSACK_DEBUG && 0;
+
+    for my $i (1..$#cost) {
+        for my $wlim (1..$max_cost) {
+            my $remaining_cost = $wlim - $cost[$i];
+            printf "\$i=%3s \$wlim=%3s \$this_cost=%3s \$remaining=%3s prev cost=%3s ",
+                    $i, $wlim, $cost[$i], $remaining_cost, $m[$i-1][$wlim][1]
+                if KNAPSACK_DEBUG;
+
+            if ($remaining_cost < 0) {
+                print "too costly $cost[$i] > $wlim"
+                    if KNAPSACK_DEBUG;
+                $m[$i][$wlim] = [@{ $m[$i-1][$wlim] }];
+                next;
+            }
+
+            my $new_cost  = $m[$i-1][$remaining_cost][0] + $cost[$i];
+            my $new_value = $m[$i-1][$remaining_cost][1] + $value[$i];
+
+            if ($m[$i-1][$wlim][1] >= $new_value) {
+                print "not better $m[$i-1][$wlim][1] >= $new_value"
+                    if KNAPSACK_DEBUG;
+                $m[$i][$wlim] = [@{ $m[$i-1][$wlim] }];
+                next;
+            }
+
+            print "take $m[$i-1][$wlim][1] < $new_value"
+                if KNAPSACK_DEBUG;
+            # add $i to index list
+            $m[$i][$wlim] = [@{ $m[$i-1][$remaining_cost] }, $i];
+            # set cost/value
+            $m[$i][$wlim][0] = $new_cost;
+            $m[$i][$wlim][1] = $new_value;
+        }
+        continue {
+            print " m=@{ $m[$i][$wlim] }\n"
+                if KNAPSACK_DEBUG;
+        }
+    }
+
+    my ($total_cost, $total_value, @item_index) = @{ $m[-1][-1] };
+    my @ret_item = map { $ritem->[$_-1] } @item_index;
 
     if (KNAPSACK_DEBUG) {
 	#print "result @r\n";
-	print "result cost=$r[0] value=$r[1] ",
-	     join(" ", map {
-		 knap_item_to_str($_, $cb_item_to_cost_value) } @r[2..$#r]),
+	print "result cost=$total_cost/$max_cost value=$total_value/",
+	    join(" ", map {
+		 knap_item_to_str($_, $cb_cost_value) } @ret_item),
 	    "\n";
     }
 
-    return @r;
+    return $total_cost, $total_value, @ret_item;
 }
 
 sub make_accessor_pkg {
