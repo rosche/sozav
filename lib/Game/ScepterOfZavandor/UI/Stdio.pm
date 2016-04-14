@@ -506,7 +506,7 @@ add_action (
     ["item-number", "[starting-bid]"],
     [
 	"- start an auction for the given item",
-	"- if the price isn't given the minimum bid is used",
+	"- if a starting bid isn't given the minimum bid is used",
 	"- the item-number can be either an artifact or a sentinel",
     ],
 );

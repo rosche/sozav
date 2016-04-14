@@ -3,13 +3,12 @@ use strict;
 
 # $Id: player.t,v 1.1 2012-09-23 01:14:25 roderick Exp $
 
-use Game::Util				qw(knapsack_0_1);
 use Game::ScepterOfZavandor::Constant	qw(/^[A-Z]/);
 use Game::ScepterOfZavandor::Test;
 
 # without 1 dust --------------------------------------------------------------
 
-create_standard_test_game;
+create_standard_test_game OPT_1_DUST, 0;
 
 discard_all_energy;
 add_dust 6, 3 => 2, 2, 2;

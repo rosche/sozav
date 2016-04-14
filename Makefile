@@ -2,7 +2,7 @@
 
 all:
 
-install_dest 		= /usr/local/src/sozav-inst
+install_dest 		= $(HOME)/src/sozav-inst
 install_rsync_args      =
 
 all_files		:= $(shell find -type f \
@@ -11,7 +11,9 @@ all_files		:= $(shell find -type f \
 pm_file			:= $(shell find lib -name '*.pm' ! -name '.*')
 pm_name			:= $(shell echo "$(pm_file)" | \
 				sed 's,lib/,,g; s,\.pm,,g; s,/,-,g')
-pm_test			:= $(patsubst %,t/0-load-%.t,$(pm_name))
+pm_test			:= $(patsubst %,t/0-load-%.t, \
+				$(filter-out Game-ScepterOfZavandor-Test, \
+					    $(pm_name)))
 
 all: $(pm_test)
 $(pm_test): create-load-test

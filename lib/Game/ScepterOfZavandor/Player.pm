@@ -776,6 +776,8 @@ sub have_ability_to_acquire_cards_of_gem_type {
     return 0;
 }
 
+# XXX should this be using ->make_dust?
+
 sub consolidate_dust {
     @_ == 1 || badinvo;
     my $self = shift;

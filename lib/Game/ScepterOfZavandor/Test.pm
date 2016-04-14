@@ -79,7 +79,7 @@ sub create_test_game {
     for (1 .. $num_players) {
 	my $ui = Game::ScepterOfZavandor::UI::Test->new($g);
 	$ui->a_want_char(shift @want_char);
-	push @p, Game::ScepterOfZavandor::Player->new($g, $ui, undef);
+	push @p, Game::ScepterOfZavandor::Player->new($g, $ui, undef, undef);
 	$g->add_player($p[-1]);
     }
 

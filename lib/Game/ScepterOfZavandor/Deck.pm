@@ -126,7 +126,8 @@ sub discard_outliers {
 	    push @new, $c;
 	}
     }
-    $self->push(@new);
+    $self->push(@new)
+        if @new;
 
     debug "deck after discarding outliers: $self";
 }
