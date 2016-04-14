@@ -9,9 +9,6 @@ use base qw(Game::ScepterOfZavandor::Item);
 use Game::Util		qw(add_array_indices debug make_ro_accessor);
 use RS::Handy		qw(badinvo data_dump dstr xconfess);
 
-#use Game::ScepterOfZavandor::Constant qw(
-#);
-
 BEGIN {
     add_array_indices 'ITEM', map { "ENERGY_$_" } qw(VALUE);
 }
@@ -160,99 +157,138 @@ use RS::Handy	qw(badinvo data_dump dstr xconfess);
 use Game::ScepterOfZavandor::Constant qw(
     /^DUST_/
     /^ITEM_/
+    /^OPT_/
 );
 
-{
-
-# XXX need game object to validate dust amount
 sub new {
     @_ == 3 || badinvo;
     my ($class, $player, $value) = @_;
 
-    my $hl;
-    # XXX need game object to validate dust amount, this won't choke on
-    # 1 dust even if the option isn't turned on
-    for (@Game::ScepterOfZavandor::Constant::Dust_data,
-	    $Game::ScepterOfZavandor::Constant::Dust_data_val_1) {
-	if ($_->[DUST_DATA_VALUE] == $value) {
-	    $hl = $_->[DUST_DATA_HAND_COUNT];
-	    last;
-	}
-    }
-    defined $hl or xconfess dstr $value;
+    my $rdd = $player->a_game->a_dust_data_hash->{$value}
+        or xconfess dstr $value;
+    my $hl = $rdd->[DUST_DATA_HAND_COUNT];
 
     return $class->SUPER::new($player, ITEM_TYPE_DUST, $value, $hl);
-} }
+}
 
 #------------------------------------------------------------------------------
 
-=begin comment
-
-sub xxx_make_dust_with_hand_limit {
+sub make_dust_with_hand_limit {
     @_ == 4 || badinvo;
     my ($class, $player, $tot_value, $max_hand_count) = @_;
 
-    $tot_value > 0 or xconfess dstr $tot_value;
+    $tot_value > 0       or xconfess dstr $tot_value;
+    $max_hand_count >= 0 or xconfess dstr $max_hand_count;
 
-    my @dd = @{ $player->a_game->a_dust_data };
-
+    my $rdd_hash        = $player->a_game->a_dust_data_hash;
+    my $remaining_value = $tot_value;
+    my $used_hand_count = 0;
     my @r;
-    my $tot_hand_count = 0;
 
-    my $add_one_kind = sub {
+    my $add_one = sub {
 	my $rdust = shift;
 	my $v     = $rdust->[DUST_DATA_VALUE];
 	my $hc    = $rdust->[DUST_DATA_HAND_COUNT];
-	while ($tot_value >= $v) {
-	    if ($max_hand_count && $tot_hand_count + $hc > $max_hand_count) {
-		return;
-	    }
-	    push @r, $class->new($player, $v);
-	    $tot_value      -= $v;
-	    $tot_hand_count += $hc;
-	}
+        if ($remaining_value < $v
+            || ($max_hand_count && $used_hand_count + $hc > $max_hand_count)) {
+            return 0;
+        }
+        push @r, $class->new($player, $v);
+        $remaining_value -= $v;
+        $used_hand_count += $hc;
+        return 1;
     };
 
+    my $add_one_kind = sub {
+	my $rdust = shift;
+        while ($add_one->($rdust)) {
+            # empty loop
+        }
+    };
+
+    my $add = sub {
+        $add_one->($rdd_hash->{+shift});
+    };
+
+    if ($player->a_game->option(OPT_1_DUST)) {
+        for (@{ $player->a_game->a_dust_data }) {
+            $add_one_kind->($_)
+        }
+        # XXX info if you lost dust
+        return @r;
+    }
+
+    # There's no 1 dust so it's trickier.  The presence of
+    # $max_hand_count means this doesn't map well to a knapsack problem.
+    #
     # Instead of doing a generalized solution based on @Dust, this
     # hardcodes knowledge about the dust.
 
-#    $add_one_kind->(shift @dd);
-#
-#    if ($tot_value % 2 == 0
-#	    && (!$max_hand_count
-#		    || $tot_hand_count + $tot_value/2 <= $max_hand_count)) {
-#	$add_one_kind->(grep { $_->[DUST_DATA_VALUE] == 2 } @dd);
-#    }
+    while ($remaining_value > 13) {
+        $add->(10)
+            or last;
+    }
 
-
-    $player->a_game->dust_data_loop(sub { $add_one_kind->($_) });
-
-#    while ($tot_value > 0
-#	    # XXX 10 (count 3) -> 5 2 2 2 (count 5), needs 2 extra hc
-#	    && (!$max_hand_count || $tot_hand_count < $max_hand_count)) {
-#	for (reverse 0 .. $#r) {
-#	    my $this_v  = $r[$_]->energy;
-#	    my $this_hc = $r[$_]->hand_count;
-#	    if ($this_v % 2) {
-#		# most trailing odd dust, split it up
-#		$tot_value -= $this_v;
-#		$hc        -= $this_hc;
-
+    my $remaining_hand_count = $max_hand_count
+                                    ? $max_hand_count - $used_hand_count
+                                    : 23;
+    if ($remaining_value >= 13 && $remaining_hand_count >= 6) {
+        $add->(5);
+        $add->(2);
+        $add->(2);
+        $add->(2);
+        $add->(2);
+    }
+    elsif ($remaining_value >= 12 && $remaining_hand_count >= 4) {
+        $add->(10);
+        $add->(2);
+    }
+    elsif ($remaining_value >= 11 && $remaining_hand_count >= 5) {
+        $add->(5);
+        $add->(2);
+        $add->(2);
+        $add->(2);
+    }
+    elsif ($remaining_value >= 10 && $remaining_hand_count >= 3) {
+        $add->(10);
+    }
+    elsif ($remaining_value >= 9 && $remaining_hand_count >= 4) {
+        $add->(5);
+        $add->(2);
+        $add->(2);
+    }
+    elsif ($remaining_value >= 8 && $remaining_hand_count >= 4) {
+        $add->(2);
+        $add->(2);
+        $add->(2);
+        $add->(2);
+    }
+    elsif ($remaining_value >= 7 && $remaining_hand_count >= 3) {
+        $add->(5);
+        $add->(2);
+    }
+    elsif ($remaining_value >= 6 && $remaining_hand_count >= 3) {
+        $add->(2);
+        $add->(2);
+        $add->(2);
+    }
+    elsif ($remaining_value >= 5 && $remaining_hand_count >= 2) {
+        $add->(5);
+    }
+    elsif ($remaining_value >= 4 && $remaining_hand_count >= 2) {
+        $add->(2);
+        $add->(2);
+    }
+    # 3 impossible
+    elsif ($remaining_value >= 2 && $remaining_hand_count >= 1) {
+        $add->(2);
+    }
+    # 1 impossible
 
     # XXX info if you lost dust
 
     return @r;
 }
-
-sub xxx_make_dust {
-    @_ == 3 || badinvo;
-    my $class = shift;
-    return $class->make_dust_with_hand_limit(@_, 0);
-}
-
-=end
-
-=cut
 
 #------------------------------------------------------------------------------
 
@@ -260,65 +296,7 @@ sub make_dust {
     @_ == 3 || badinvo;
     my ($class, $player, $tot_value) = @_;
 
-    $tot_value > 0 or xconfess dstr $tot_value;
-
-    # XXX this can cheat you if there's no 1 dust:  6 energy -> 5 dust
-    # chit, could be 2+2+2 chits
-
-    # XXX perhaps just special-case ($t % 10) == 6 and ($t % 10) == 8
-    # instead of doing a full knapsack thing
-
-    my @r;
-    $player->a_game->dust_data_loop(sub {
-	my $v = $_->[DUST_DATA_VALUE];
-	while ($tot_value >= $v) {
-	    push @r, $class->new($player, $v);
-	    $tot_value -= $v;
-	}
-    });
-
-    # XXX info if you lost dust
-
-    return @r;
-}
-
-sub make_dust_with_hand_limit {
-    @_ == 4 || badinvo;
-    my ($class, $player, $tot_value, $max_hand_count) = @_;
-
-    $tot_value > 0 or xconfess dstr $tot_value;
-
-    # XXX this has got to be completely wrong, doesn't it maximize the
-    # energy you can get for the hand count, ignoring the $tot_value
-
-    my @dummy = ();
-    #print "tot_value=$tot_value dummy=";
-    $player->a_game->dust_data_loop(sub {
-	my $hc = $_->[DUST_DATA_HAND_COUNT];
-	my $v  = $_->[DUST_DATA_VALUE];
-	for (1 .. $tot_value / $v) {
-	    #print " $v";
-	    #push @dummy, [$v, $v/$hc];
-	    push @dummy, [$hc, $v];
-	}
-    });
-    #print "\n";
-    #@dummy or xconfess; # XXX what about 1?
-
-    # XXX this isn't trying to minimize hand limit?
-    my ($got_cost, $got_value, @want_dummy)
-	= knapsack_0_1 \@dummy, sub { @{ +shift } }, $max_hand_count,
-			sub { $_[0] > $_[1] || $_[2] + $_[3] > $tot_value };
-
-    my @r;
-    for (@want_dummy) {
-	my ($hc, $v) = @$_;
-	push @r, $class->new($player, $v);
-    }
-
-    # XXX info if you lost dust
-
-    return @r;
+    return $class->make_dust_with_hand_limit($player, $tot_value, 0);
 }
 
 sub make_dust_from_opals {

@@ -30,6 +30,7 @@ BEGIN {
 	$Concentrated_hand_count
 	@Current_energy
 	@Dust_data
+        %Dust_data
 	$Dust_data_val_1
 	@Energy_estimate
 	$Game_end_sentinels_sold_count
@@ -389,12 +390,16 @@ BEGIN {
 	$r->[DUST_DATA_VALUE]      = $v;
 	$r->[DUST_DATA_HAND_COUNT] = $hl;
 	$r->[DUST_DATA_OPAL_COUNT] = $opal_count;
-	push @Dust_data, $r;
+        if ($v == 1) {
+            # 1-value dust isn't normally present, it can be added via
+            # an option.
+            $Dust_data_val_1 = $r;
+        }
+        else {
+            push @Dust_data, $r;
+            $Dust_data{$v} = $r;
+        }
     }
-
-    # 1-value dust isn't normally present, it can be added via an option.
-
-    $Dust_data_val_1 = pop @Dust_data;
 }
 
 # 126 energy cards

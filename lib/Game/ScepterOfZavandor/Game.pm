@@ -22,6 +22,7 @@ use Game::ScepterOfZavandor::Constant	qw(
     $Concentrated_additional_dust
     @Config_by_num_players
     @Dust_data
+    %Dust_data
     $Dust_data_val_1
     $Game_end_sentinels_sold_count
     @Gem
@@ -49,6 +50,7 @@ BEGIN {
 	'KIBITZER',
 	'GEM_DATA',
 	'DUST_DATA',
+	'DUST_DATA_HASH',
 	'ARTIFACT_DECK',
 	'ARTIFACTS_ON_AUCTION',
 	'ARTIFACTS_AT_ONCE',
@@ -71,6 +73,7 @@ sub new {
     $self->[GAME_KIBITZER]             = [];
     $self->[GAME_GEM_DATA]             = [];
     $self->[GAME_DUST_DATA]            = [@Dust_data];
+    $self->[GAME_DUST_DATA_HASH]       = {%Dust_data};
     $self->[GAME_ARTIFACTS_ON_AUCTION] = [];
     $self->[GAME_SENTINEL]             = [];
 
@@ -81,15 +84,21 @@ sub new {
     $self->option(OPT_VERBOSE           , 1);
     $self->option(OPT_DRUID_LEVEL_3_RUBY, 1);
     $self->option(OPT_9_SAGES_DUST      , 1);
-    $self->option(OPT_1_DUST            , 1);
-    $self->option(OPT_5_SAPPHIRE_START  , 1);
-    $self->option(OPT_LESS_RANDOM_START , 1);
 
     return $self;
 }
 
+sub set_my_options {
+    my ($self) = @_;
+
+    $self->option(OPT_1_DUST            , 1);
+    $self->option(OPT_5_SAPPHIRE_START  , 1);
+    $self->option(OPT_LESS_RANDOM_START , 1);
+}
+
 make_ro_accessor (
-    a_dust_data => GAME_DUST_DATA,
+    a_dust_data      => GAME_DUST_DATA,
+    a_dust_data_hash => GAME_DUST_DATA_HASH,
 );
 
 make_rw_accessor (
@@ -209,6 +218,7 @@ sub init {
 
     if ($self->option(OPT_1_DUST)) {
 	push @{ $self->a_dust_data }, $Dust_data_val_1;
+        ${ $self->a_dust_data_hash }{1} = $Dust_data_val_1;
     }
 
     $self->init_items($artifact_copies);
@@ -882,6 +892,7 @@ sub run_game {
     my @ui = @_;
 
     my $g = Game::ScepterOfZavandor::Game->new;
+    $g->set_my_options;
 
     {
 	my $ui = $g->new_ui("UI::Kibitzer", *STDIN, *STDOUT);
